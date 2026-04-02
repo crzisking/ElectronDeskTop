@@ -1,0 +1,179 @@
+{
+  "version": "1.0.0",
+
+  "app": {
+    "language": "zh-TW",
+    "theme": "system",
+    "startMinimized": false,
+    "launchOnStartup": false
+  },
+
+  "sidebar": {
+    "defaultCollapsed": false,
+    "items": [
+      {
+        "id": "unified-platform",
+        "label": "統一平台",
+        "icon": "Grid",
+        "routeName": "unified-platform",
+        "enabled": true
+      },
+      {
+        "id": "ai-quick-functions",
+        "label": "AI 快捷功能",
+        "icon": "MagicStick",
+        "routeName": "ai-quick-functions",
+        "enabled": true
+      },
+      {
+        "id": "quick-contact",
+        "label": "快速聯繫",
+        "icon": "ChatDotRound",
+        "routeName": "quick-contact",
+        "enabled": true
+      }
+    ]
+  },
+
+  "floatingBall": {
+    "size": 60,
+    "opacity": 0.9,
+    "defaultPosition": { "x": 100, "y": 300 },
+    "snapToEdge": true,
+    "quickMenu": [
+      {
+        "id": "menu-show-main",
+        "label": "打開主窗口",
+        "icon": "Monitor",
+        "enabled": true,
+        "separator": false,
+        "action": { "type": "show-main-window" }
+      },
+      {
+        "id": "menu-sep-1",
+        "label": "",
+        "enabled": true,
+        "separator": true,
+        "action": { "type": "show-main-window" }
+      },
+      {
+        "id": "menu-go-platform",
+        "label": "統一平台",
+        "icon": "Grid",
+        "enabled": true,
+        "separator": false,
+        "action": { "type": "navigate", "routeName": "unified-platform" }
+      },
+      {
+        "id": "menu-go-ai",
+        "label": "AI 快捷功能",
+        "icon": "MagicStick",
+        "enabled": true,
+        "separator": false,
+        "action": { "type": "navigate", "routeName": "ai-quick-functions" }
+      },
+      {
+        "id": "menu-go-contact",
+        "label": "快速聯繫",
+        "icon": "ChatDotRound",
+        "enabled": true,
+        "separator": false,
+        "action": { "type": "navigate", "routeName": "quick-contact" }
+      },
+      {
+        "id": "menu-sep-2",
+        "label": "",
+        "enabled": true,
+        "separator": true,
+        "action": { "type": "show-main-window" }
+      },
+      {
+        "id": "menu-quit",
+        "label": "退出應用",
+        "icon": "SwitchButton",
+        "enabled": true,
+        "separator": false,
+        "action": { "type": "quit-app" }
+      }
+    ]
+  },
+
+  "unifiedPlatform": {
+    "systems": [
+      {
+        "id": "sys-erp",
+        "name": "新ERP 系統",
+        "description": "ERP系統",
+        "url": "http://192.168.110.122:9996/?returnUrl=http://192.168.120.79:8080/",
+        "openMode": "external-browser",
+        "ssoEnabled": false
+      },
+      {
+        "id": "sys-bi",
+        "name": "BI 數據分析",
+        "description": "業務報表、數據看板、趨勢分析",
+        "url": "http://192.168.20.27:8080/webroot/decision/login?origin=66404fa7-165b-412f-9172-87297ba1b781#/",
+        "openMode": "external-browser",
+        "ssoEnabled": false,
+        "ssoTokenParam": "sso_token"
+      },
+      {
+        "id": "sys-fanwei",
+        "name": "泛微平台",
+        "description": "泛微",
+        "url": "http://192.168.120.84/wui/index.html",
+        "openMode": "external-browser",
+        "ssoEnabled": false,
+        "ssoTokenParam": "sso_token"
+      },
+      {
+        "id": "sys-it",
+        "name": "IT 服務台",
+        "description": "報修工單、IT 資產、VPN 申請",
+        "url": "https://itsm.example.com",
+        "openMode": "external-browser",
+        "ssoEnabled": false
+      }
+    ]
+  },
+
+  "aiQuickFunctions": {
+    "apiBaseUrl": "https://api.example.com/ai/v1",
+    "apiTimeout": 30000,
+    "tools": [
+      {
+        "id": "text-processor",
+        "name": "文本處理",
+        "description": "翻譯、潤色、縮短、擴寫、語氣轉換等快捷文本操作",
+        "icon": "Edit",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "ai-text-processor"
+      },
+      {
+        "id": "summarizer",
+        "name": "文章摘要",
+        "description": "貼入長文章，快速生成結構化摘要",
+        "icon": "Document",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "ai-summarizer"
+      },
+      {
+        "id": "qanda",
+        "name": "AI 問答",
+        "description": "多輪對話智能問答，支持流式輸出",
+        "icon": "ChatDotRound",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "ai-qanda"
+      }
+    ]
+  },
+
+  "quickContact": {
+    "searchApiEndpoint": "https://api.example.com/contacts/search",
+    "emailApiEndpoint": "https://api.example.com/contacts/email/send",
+    "maxSearchResults": 20
+  }
+}

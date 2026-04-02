@@ -1,0 +1,129 @@
+/**
+ * 全局樣式
+ *
+ * 作用：
+ *  1. 覆蓋 Element Plus CSS 變量（主題色、圓角、字體等）
+ *  2. body/html 基礎 reset（去除默認邊距、設置高度撐滿）
+ *  3. 滾動條美化（Chromium 自定義滾動條）
+ *  4. 全局工具類（可選）
+ *
+ * 引入順序（src/main.ts）：
+ *  import 'element-plus/dist/index.css'   ← 先引入
+ *  import './styles/global.css'           ← 後引入（覆蓋變量）
+ *
+ * Element Plus CSS 變量參考：
+ *  https://element-plus.org/zh-CN/guide/theming.html
+ */
+
+/* ── Element Plus 主題色覆蓋 ───────────────────────────── */
+:root {
+  /* 主色：藍色（與浮球漸變色呼應） */
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+
+  /* 圓角：稍大，視覺更現代 */
+  --el-border-radius-base: 6px;
+  --el-border-radius-small: 4px;
+  --el-border-radius-round: 20px;
+
+  /* 字體 */
+  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
+    'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
+  --el-font-size-base: 14px;
+
+  /* 側邊欄寬度（供 AppLayout 使用） */
+  --sidebar-width: 200px;
+
+  /* 標題欄高度（供 AppLayout 使用） */
+  --titlebar-height: 38px;
+}
+
+/* ── HTML/Body 基礎 Reset ──────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* 禁止全局文字選中（表單內仍可選中，Element Plus 組件自帶 user-select: text） */
+  user-select: none;
+  /* 防止頁面出現橫向滾動條 */
+  overflow: hidden;
+}
+
+/* Vue 掛載根元素撐滿全屏 */
+#app {
+  width: 100%;
+  height: 100%;
+  font-family: var(--el-font-family);
+  font-size: var(--el-font-size-base);
+  color: var(--el-text-color-primary);
+  background: var(--el-bg-color-page, #f2f3f5);
+}
+
+/* ── 滾動條美化（Chromium/Electron 適用） ──────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--el-border-color-darker, #ccc);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--el-color-primary-light-3);
+}
+
+/* ── 輸入框允許文字選中 ─────────────────────────────────── */
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ── Element Plus 組件微調 ──────────────────────────────── */
+
+/* 表單標籤加粗 */
+.el-form-item__label {
+  font-weight: 500;
+}
+
+/* 抽屜底部固定樣式 */
+.el-drawer__footer {
+  border-top: 1px solid var(--el-border-color-lighter);
+  padding: 12px 20px;
+}
+
+/* 消息提示居中顯示（配合無原生標題欄的窗口） */
+.el-message {
+  top: 56px !important; /* 避免被自定義標題欄遮擋 */
+}
+
+/* ── 過渡動畫工具類 ──────────────────────────────────────── */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

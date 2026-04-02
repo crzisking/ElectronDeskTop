@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      浮球窗口特殊 CSP：
+      - 比主窗口更嚴格，不允許外部連接（浮球不需要請求 API）
+      - 允許 unsafe-inline 用於 Element Plus 動態樣式
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    />
+    <title>浮球</title>
+    <style>
+      /*
+        浮球窗口全局樣式
+        - background: transparent  必須設為透明，配合 BrowserWindow transparent:true
+        - overflow: hidden         防止內容溢出矩形窗口邊界
+        - user-select: none        防止拖動時選中文字
+        - -webkit-app-region: no-drag  禁用默認 app 拖動，由 Vue 組件自行處理
+      */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent !important;
+        overflow: hidden;
+        user-select: none;
+        -webkit-app-region: no-drag;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 浮球 Vue 應用掛載點 -->
+    <div id="floating-ball-app"></div>
+    <!-- 浮球渲染進程入口腳本（獨立的 Vue 實例） -->
+    <script type="module" src="./src/floating-ball/main.ts"></script>
+  </body>
+</html>

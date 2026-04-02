@@ -1,0 +1,169 @@
+/**
+ * AI 流式輸出 Composable（SSE）
+ *
+ * 智能問答使用 Server-Sent Events 流式響應，
+ * 實現打字機效果（AI 邊生成邊顯示）。
+ *
+ * 為什麼不用 Axios？
+ *  Axios 會等待響應完全接收後才 resolve，
+ *  而 SSE 是持續的數據流，必須使用 fetch API + ReadableStream。
+ *
+ * 使用方式：
+ *  const { answerText, isStreaming, error, streamQa, stopStream } = useAiStream()
+ *
+ * SSE 數據格式（後端約定）：
+ *  data: {"text": "部分回答文字"}\n\n
+ *  data: [DONE]\n\n  （流結束標誌）
+ */
+
+import { ref } from 'vue'
+import { useConfigStore } from '@/stores/config.store'
+import { useAuthStore } from '@/stores/auth.store'
+import type { QaRequest } from '@/types/api.types'
+
+export function useAiStream() {
+  // ─── State ──────────────────────────────────────────────────
+  /** 累積的 AI 回答文本（流式追加） */
+  const answerText = ref<string>('')
+
+  /** 是否正在流式接收中 */
+  const isStreaming = ref<boolean>(false)
+
+  /** 錯誤信息（null 表示無錯誤） */
+  const streamError = ref<string | null>(null)
+
+  /** AbortController 用於取消正在進行的流式請求 */
+  let abortController: AbortController | null = null
+
+  // ─── Methods ────────────────────────────────────────────────
+  /**
+   * 發送問答請求並流式接收回答
+   *
+   * @param request 問答請求（問題 + 對話歷史）
+   *
+   * @example
+   * await streamQa({ question: '什麼是 SSE？' })
+   */
+  async function streamQa(request: QaRequest): Promise<void> {
+    // 如果有進行中的請求，先中止
+    stopStream()
+
+    const configStore = useConfigStore()
+    const authStore = useAuthStore()
+
+    const apiBaseUrl = configStore.aiConfig?.apiBaseUrl ?? ''
+    if (!apiBaseUrl) {
+      streamError.value = 'AI API 地址未配置'
+      return
+    }
+
+    // 重置狀態
+    answerText.value = ''
+    streamError.value = null
+    isStreaming.value = true
+
+    abortController = new AbortController()
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/qa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 注入 Auth Token
+          ...(authStore.accessToken
+            ? { Authorization: `Bearer ${authStore.accessToken}` }
+            : {}),
+          // 告知服務器客戶端接受 SSE 格式
+          Accept: 'text/event-stream',
+          'X-Client-Type': 'electron-desktop'
+        },
+        body: JSON.stringify(request),
+        signal: abortController.signal
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      if (!response.body) {
+        throw new Error('響應體為空，服務器可能不支持流式輸出')
+      }
+
+      // 使用 ReadableStream 逐塊讀取 SSE 數據
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder('utf-8')
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        // 解碼二進制數據為字符串
+        const chunk = decoder.decode(value, { stream: true })
+
+        // 解析 SSE 格式，提取 data 字段
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim()
+
+            // 流結束標誌
+            if (dataStr === '[DONE]') {
+              isStreaming.value = false
+              return
+            }
+
+            // 解析 JSON 數據並追加到回答文本
+            try {
+              const parsed = JSON.parse(dataStr) as { text?: string; content?: string }
+              const text = parsed.text ?? parsed.content ?? ''
+              if (text) {
+                answerText.value += text
+              }
+            } catch {
+              // 非 JSON 格式，直接追加原始文本
+              if (dataStr) answerText.value += dataStr
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // AbortError 是主動取消，不算錯誤
+      if (err instanceof Error && err.name === 'AbortError') {
+        return
+      }
+      streamError.value = err instanceof Error ? err.message : '流式請求失敗'
+      console.error('[useAiStream] 流式請求錯誤:', err)
+    } finally {
+      isStreaming.value = false
+      abortController = null
+    }
+  }
+
+  /**
+   * 停止當前流式請求
+   * 適用場景：用戶點擊"停止生成"按鈕
+   */
+  function stopStream(): void {
+    if (abortController) {
+      abortController.abort()
+      abortController = null
+      isStreaming.value = false
+    }
+  }
+
+  /** 清空回答內容 */
+  function clearAnswer(): void {
+    answerText.value = ''
+    streamError.value = null
+  }
+
+  return {
+    answerText,
+    isStreaming,
+    streamError,
+    streamQa,
+    stopStream,
+    clearAnswer
+  }
+}
