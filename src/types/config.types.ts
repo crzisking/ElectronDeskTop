@@ -111,7 +111,7 @@ export interface AppSettings {
    *   'en'    ：英文
    * 在哪裡用：i18n 國際化配置，設置 vue-i18n 的 locale
    */
-  language: 'zh-TW' | 'zh-CN' | 'en'
+  language: 'zh-TW' | 'en'
 
   /**
    * 主題模式
@@ -441,7 +441,7 @@ export interface SystemLink {
    *   優點：兼容所有系統，不受 iframe 限制
    *   缺點：離開了應用界面，體驗割裂
    */
-  openMode: 'iframe' | 'external-browser'
+  openMode: 'iframe' | 'external-browser' | 'electron-window'
 
   /**
    * 是否啟用 SSO 自動登錄
