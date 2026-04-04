@@ -15,6 +15,7 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@antv/x6": "^3.1.7",
     "@element-plus/icons-vue": "^2.3.0",
     "axios": "^1.6.0",
     "electron-store": "^8.1.0",
