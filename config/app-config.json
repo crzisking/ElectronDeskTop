@@ -127,6 +127,15 @@
         "ssoTokenParam": "sso_token"
       },
       {
+        "id": "sys-BPM",
+        "name": "BPM系統",
+        "description": "BPM系統",
+        "url": "http://asvspm03.ichia.com/BPM/Login/Index",
+        "openMode": "external-browser",
+        "ssoEnabled": false,
+        "ssoTokenParam": "sso_token"
+      },
+      {
         "id": "sys-it",
         "name": "IT 服務台",
         "description": "報修工單、IT 資產、VPN 申請",
