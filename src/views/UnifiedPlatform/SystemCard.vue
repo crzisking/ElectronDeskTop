@@ -17,6 +17,7 @@
  */
 
 import type { SystemLink } from '@/types/config.types'
+import {ArrowRight} from "@element-plus/icons-vue";
 
 defineProps<{
   system: SystemLink
@@ -53,12 +54,13 @@ const emit = defineEmits<{
         <el-tag v-if="system.ssoEnabled" size="small" type="success" effect="light">
           SSO 直通
         </el-tag>
+        <!-- 打開方式標籤：iframe=嵌入顯示 / electron-window=獨立窗口 / external-browser=外部瀏覽器 -->
         <el-tag
           size="small"
-          :type="system.openMode === 'iframe' ? 'primary' : 'info'"
+          :type="system.openMode === 'iframe' ? 'primary' : system.openMode === 'electron-window' ? 'warning' : 'info'"
           effect="light"
         >
-          {{ system.openMode === 'iframe' ? '嵌入顯示' : '外部瀏覽器' }}
+          {{ system.openMode === 'iframe' ? '嵌入顯示' : system.openMode === 'electron-window' ? '獨立窗口' : '外部瀏覽器' }}
         </el-tag>
       </div>
     </div>

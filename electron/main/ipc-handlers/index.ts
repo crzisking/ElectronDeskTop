@@ -289,6 +289,21 @@ export function registerAllHandlers(
     return windowManager.getFloatingBallPosition()
   })
 
+  // ─── 子窗口（electron-window 模式）──────────────────────────────────────
+  /**
+   * OPEN_CHILD_WINDOW：在新 Electron 窗口中打開 URL。
+   *
+   * 觸發位置：
+   *   統一平台頁面，用戶點擊 openMode 為 'electron-window' 的系統卡片
+   *   → window.electronAPI.window.openChild(url, title)
+   *   → preload: ipcRenderer.invoke(IpcChannels.OPEN_CHILD_WINDOW, url, title)
+   *   → 本 Handler 調用 windowManager.openChildWindow()
+   */
+  ipcMain.handle(IpcChannels.OPEN_CHILD_WINDOW, (_event, url: string, title: string) => {
+    windowManager.openChildWindow(url, title)
+    logger.info(`打開子窗口: ${title}`, 'IPC:window')
+  })
+
   // ─── 應用退出 ──────────────────────────────────────────────────────────
   /**
    * 'app:quit'：觸發應用完全退出。

@@ -47,6 +47,13 @@ declare global {
         hide: () => void
         /** 查詢主窗口當前是否最大化 */
         isMaximized: () => Promise<boolean>
+        /**
+         * 在新的 Electron 子窗口中打開指定 URL
+         * 用於 openMode 為 'electron-window' 的系統（不受 iframe X-Frame-Options 限制）
+         * @param url   系統的訪問 URL
+         * @param title 子窗口標題（顯示在任務欄）
+         */
+        openChild: (url: string, title: string) => Promise<void>
       }
 
       // ─── 浮球控制 ────────────────────────────────────────────

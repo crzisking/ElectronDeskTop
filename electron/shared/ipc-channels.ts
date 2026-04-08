@@ -389,7 +389,23 @@ export const IpcChannels = {
    * 使用場景：用戶雙擊標題欄、拖到屏幕頂部等操作讓窗口最大化，
    *            標題欄需要同步更新按鈕狀態。
    */
-  PUSH_WINDOW_MAXIMIZED: 'push:window-maximized'
+  PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
+
+  // ─── 子窗口控制 ──────────────────────────────────────────────────────────
+  /**
+   * OPEN_CHILD_WINDOW：在新的 Electron BrowserWindow 中打開指定 URL。
+   *
+   * 調用方向：
+   *   發送方：主窗口的 preload 腳本的 window.openChild(url, title) 方法
+   *           → 觸發時機：用戶在統一平台頁面點擊 openMode 為 'electron-window' 的系統卡片
+   *   接收方：electron/main/ipc-handlers/index.ts
+   *           → 調用 windowManager.openChildWindow(url, title)
+   *           → 創建一個新的 BrowserWindow 加載指定 URL
+   *
+   * 傳入數據：url（string，系統的訪問地址）+ title（string，窗口標題）
+   * 通信類型：invoke/handle（雙向，等待窗口創建完成）
+   */
+  OPEN_CHILD_WINDOW: 'window:open-child'
 
 } as const
 

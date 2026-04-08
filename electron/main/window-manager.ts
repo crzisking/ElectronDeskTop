@@ -245,6 +245,45 @@ export class WindowManager {
     this.floatingBallWindow.setPosition(clampedX, clampedY)
   }
 
+  /**
+   * 在新的 Electron 窗口中打開指定 URL
+   *
+   * 用於 openMode: 'electron-window' 的系統：
+   *  - 不受 iframe X-Frame-Options 限制（直接加載 URL）
+   *  - 保持在應用窗口內（不離開應用到外部瀏覽器）
+   *  - 每次打開創建一個新窗口，關閉時自動銷毀
+   *
+   * @param url   要加載的系統 URL
+   * @param title 窗口標題（顯示在任務欄）
+   */
+  openChildWindow(url: string, title: string): BrowserWindow {
+    const child = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      title,
+      // 使用系統原生標題欄（子窗口不需要自定義標題欄）
+      frame: true,
+      webPreferences: {
+        // 安全配置：子窗口不需要 Node.js 能力
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    })
+
+    // 加載目標 URL
+    child.loadURL(url)
+
+    // 攔截新窗口打開請求，改為在系統默認瀏覽器打開
+    child.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
+      shell.openExternal(linkUrl)
+      return { action: 'deny' }
+    })
+
+    logger.info(`子窗口已創建: ${title} → ${url}`, 'WindowManager')
+    return child
+  }
+
   /** 銷毀所有窗口（應用退出前調用） */
   destroyAll(): void {
     this.floatingBallWindow?.destroy()

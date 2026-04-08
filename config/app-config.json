@@ -1,7 +1,14 @@
 {
+  "_comment": "此 JSON 文件中所有以 '_comment' 開頭的欄位均為注釋，不參與程式邏輯，僅供開發人員閱讀參考",
+
   "version": "1.0.0",
 
   "app": {
+    "_comment": "應用全局設定",
+    "_comment_language": "語言設定，可選值：'zh-TW'（繁體中文）、'en'（英文）",
+    "_comment_theme": "主題設定，可選值：'system'（跟隨系統）、'light'（淺色）、'dark'（深色）",
+    "_comment_startMinimized": "啟動時是否最小化到浮球（true=啟動後只顯示浮球，false=啟動後顯示主窗口）",
+    "_comment_launchOnStartup": "是否開機自動啟動應用",
     "language": "zh-TW",
     "theme": "system",
     "startMinimized": false,
@@ -9,6 +16,9 @@
   },
 
   "sidebar": {
+    "_comment": "左側導航欄配置",
+    "_comment_defaultCollapsed": "側邊欄是否預設為收合狀態（true=收合只顯示圖標，false=展開顯示圖標+文字）",
+    "_comment_items": "導航欄菜單項目陣列，每個項目包含：id（唯一標識）、label（顯示名稱）、icon（Element Plus 圖標名稱）、routeName（Vue Router 路由名稱）、enabled（是否啟用）",
     "defaultCollapsed": false,
     "items": [
       {
@@ -36,6 +46,13 @@
   },
 
   "floatingBall": {
+    "_comment": "桌面浮球配置",
+    "_comment_size": "浮球直徑，單位為像素（px）",
+    "_comment_opacity": "浮球透明度，範圍 0~1（0=完全透明，1=完全不透明）",
+    "_comment_defaultPosition": "浮球初始位置，x 為距螢幕左邊距離，y 為距螢幕頂部距離（單位 px）",
+    "_comment_snapToEdge": "鬆開滑鼠後浮球是否自動吸附到最近的螢幕邊緣",
+    "_comment_quickMenu": "浮球右鍵快捷菜單項目陣列。每個項目：id（唯一標識）、label（顯示文字）、icon（Element Plus 圖標名稱，可選）、enabled（是否啟用）、separator（true 時渲染為分隔線，忽略其他欄位）、action（點擊動作）",
+    "_comment_action_types": "action.type 可選值：'show-main-window'（顯示主窗口）、'navigate'（跳轉路由，需搭配 action.routeName）、'quit-app'（退出應用）、'open-url'（用默認瀏覽器打開連結，需搭配 action.url）",
     "size": 60,
     "opacity": 0.9,
     "defaultPosition": { "x": 100, "y": 300 },
@@ -99,6 +116,11 @@
   },
 
   "unifiedPlatform": {
+    "_comment": "統一平台頁面配置 — 整合公司各內部系統的入口",
+    "_comment_openMode": "系統的打開方式（openMode）有三種值可選：(1) 'iframe' — 在主窗口內以 iframe 嵌入顯示，適合支持 iframe 嵌入的系統；(2) 'external-browser' — 用電腦默認瀏覽器打開，適合需要完整瀏覽器功能的系統；(3) 'electron-window' — 在 Electron 應用內新開一個獨立窗口加載網頁，既不離開應用也不受 iframe 的 X-Frame-Options 限制，適合禁止 iframe 嵌入但又希望留在應用內的系統",
+    "_comment_ssoEnabled": "是否啟用 SSO 單點登錄自動注入。設為 true 時應用會自動將 token 附加到 URL 的 ssoTokenParam 指定的參數中",
+    "_comment_ssoTokenParam": "SSO token 附加到 URL 時使用的查詢參數名稱（僅 ssoEnabled 為 true 時生效）",
+    "_comment_systems": "系統列表陣列。每個系統：id（唯一標識）、name（顯示名稱）、description（簡短描述）、url（訪問地址）、iconUrl（圖標地址，可選）、openMode（打開方式）、ssoEnabled（是否 SSO）、ssoTokenParam（SSO 參數名，可選）",
     "systems": [
       {
         "id": "sys-erp",
@@ -147,6 +169,10 @@
   },
 
   "aiQuickFunctions": {
+    "_comment": "AI 快捷功能頁面配置",
+    "_comment_apiBaseUrl": "AI 後端 API 的基礎 URL，所有 AI 請求都發送到這個地址",
+    "_comment_apiTimeout": "API 請求超時時間，單位為毫秒（ms）。例如 30000 = 30 秒",
+    "_comment_tools": "AI 工具列表陣列。每個工具：id（唯一標識）、name（顯示名稱）、description（功能描述）、icon（Element Plus 圖標名稱）、enabled（是否啟用）、openMode（目前僅 'page' 表示打開獨立頁面）、routeName（對應的 Vue Router 路由名稱）",
     "apiBaseUrl": "https://api.example.com/ai/v1",
     "apiTimeout": 30000,
     "tools": [
@@ -181,6 +207,10 @@
   },
 
   "quickContact": {
+    "_comment": "快速聯繫功能配置",
+    "_comment_searchApiEndpoint": "搜尋聯繫人的 API 端點地址",
+    "_comment_emailApiEndpoint": "發送郵件的 API 端點地址",
+    "_comment_maxSearchResults": "搜尋結果最多顯示的聯繫人數量",
     "searchApiEndpoint": "https://api.example.com/contacts/search",
     "emailApiEndpoint": "https://api.example.com/contacts/email/send",
     "maxSearchResults": 20

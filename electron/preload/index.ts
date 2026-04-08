@@ -44,7 +44,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     close:    () => ipcRenderer.send(IpcChannels.WINDOW_CLOSE),
     show:     () => ipcRenderer.send(IpcChannels.WINDOW_SHOW),
     hide:     () => ipcRenderer.send(IpcChannels.WINDOW_HIDE),
-    isMaximized: () => ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED)
+    isMaximized: () => ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED),
+
+    /**
+     * 在新的 Electron 子窗口中打開指定 URL
+     * 用於 openMode 為 'electron-window' 的系統
+     * @param url   系統的訪問 URL
+     * @param title 子窗口標題（顯示在任務欄）
+     */
+    openChild: (url: string, title: string) =>
+      ipcRenderer.invoke(IpcChannels.OPEN_CHILD_WINDOW, url, title)
   },
 
   // ─── 浮球控制 ──────────────────────────────────────────────

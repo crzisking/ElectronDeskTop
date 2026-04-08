@@ -45,12 +45,20 @@ const filteredSystems = computed(() => {
  * 根據 openMode 決定在 iframe 嵌入還是在外部瀏覽器打開
  */
 function handleOpenSystem(system: SystemLink) {
-  if (system.openMode === 'iframe') {
-    // 切換到 iframe 啟動器視圖
-    activeSystem.value = system
-  } else {
-    // 外部瀏覽器模式：直接打開，無需 SSO 注入（由系統自身處理）
-    window.open(system.url, '_blank')
+  switch (system.openMode) {
+    case 'iframe':
+      // iframe 嵌入模式：切換到啟動器視圖
+      activeSystem.value = system
+      break
+    case 'electron-window':
+      // Electron 子窗口模式：主進程新建 BrowserWindow 加載 URL
+      window.electronAPI.window.openChild(system.url, system.name)
+      break
+    case 'external-browser':
+    default:
+      // 外部瀏覽器模式：調用系統默認瀏覽器打開
+      window.open(system.url, '_blank')
+      break
   }
 }
 
