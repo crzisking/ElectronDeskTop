@@ -118,60 +118,72 @@ export interface AiResponse {
 
 // ─── 業務安排與尋找相關類型 ──────────────────────────────────────────
 
+// ── 流程節點類型枚舉 ────────────────────────────────────────────────
 /**
- * X6 流程圖節點數據
+ * 項目流程中的節點類型
  *
- * 對應 @antv/x6 的 Node.Metadata，用於序列化/反序列化流程圖。
- * 保存到後端時，整個流程圖被拆分為 nodes[] + edges[] 兩個數組。
+ * 不同類型對應不同的視覺樣式和業務含義：
+ *  - start    ：流程起點（綠色圓角，每個流程只有一個）
+ *  - end      ：流程終點（紅色圓角，可以有多個，代表不同結束方式）
+ *  - task     ：任務節點（藍色，具體的工作項，例如「編寫需求文檔」）
+ *  - approval ：審批節點（橙色，需要某人審批通過才能繼續）
+ *  - condition：條件分支（菱形，根據條件走不同路徑，例如「金額 > 10萬？」）
  */
-export interface FlowNode {
-  /** 節點唯一 ID（X6 自動生成或手動指定） */
-  id: string
-  /** 節點在畫布上的 X 座標 */
-  x: number
-  /** 節點在畫布上的 Y 座標 */
-  y: number
-  /** 節點寬度 */
-  width: number
-  /** 節點高度 */
-  height: number
-  /** 節點形狀（rect=矩形, circle=圓形, ellipse=橢圓, polygon=多邊形等） */
-  shape: string
-  /** 節點顯示文字 */
+export type FlowNodeType = 'start' | 'end' | 'task' | 'approval' | 'condition'
+
+/**
+ * 流程節點業務數據
+ *
+ * 這些字段存儲在 Vue Flow 的 node.data 中，
+ * 由自定義節點組件讀取並渲染為卡片內容。
+ *
+ * ── 設計說明 ────────────────────────────────────────────────────────
+ * 此流程圖用於 **靜態業務流程留存**，存入資料庫供日後查詢負責人。
+ * 不是動態狀態追蹤，因此沒有 status / estimatedDays 等動態欄位。
+ * 每個節點記錄該步驟的負責人資訊（工號、姓名、部門代碼），
+ * 方便後續根據流程圖查找對應負責人。
+ */
+export interface FlowNodeData {
+  /** 節點顯示標題（簡短描述此步驟做什麼） */
   label: string
+
   /**
-   * 節點自定義業務數據（可擴展）
-   * 用於存儲與業務相關的額外信息，例如：
-   *  - owner: 負責人
-   *  - status: 節點狀態（待處理/進行中/已完成）
-   *  - description: 詳細描述
+   * 節點類型（決定視覺樣式和業務含義）
+   * 對應 FlowNodeType 枚舉
    */
-  data?: Record<string, unknown>
+  nodeType: FlowNodeType
+
+  /** 負責人工號（例如：'A12345'） */
+  employeeId?: string
+
+  /** 負責人姓名 */
+  employeeName?: string
+
+  /** 部門代碼（例如：'IT-001'、'HR-002'） */
+  departmentCode?: string
+
+  /** 詳細描述（此步驟的具體內容、注意事項等） */
+  description?: string
 }
 
 /**
- * X6 流程圖邊（連線）數據
+ * 流程圖邊業務數據
  *
- * 對應 @antv/x6 的 Edge.Metadata，描述兩個節點之間的連線關係。
+ * 存儲在 Vue Flow 的 edge.data 中，描述連線的業務含義。
  */
-export interface FlowEdge {
-  /** 邊唯一 ID */
-  id: string
-  /** 來源節點 ID */
-  source: string
-  /** 目標節點 ID */
-  target: string
-  /** 邊上的文字標籤（可選，例如：「審批通過」「審批駁回」） */
+export interface FlowEdgeData {
+  /** 邊上的文字標籤（例如：「審批通過」「審批駁回」「條件成立」） */
   label?: string
-  /** 邊的自定義業務數據（可擴展） */
-  data?: Record<string, unknown>
 }
 
 /**
  * 業務流水線實體
  *
- * 一條流水線包含基本信息和完整的流程圖數據（nodes + edges）。
- * 前端使用 X6 渲染流程圖，保存時將圖數據序列化為此結構傳給後端。
+ * 一條流水線包含基本信息和完整的 Vue Flow 圖數據。
+ * 前端使用 Vue Flow 渲染流程圖，保存時將圖數據序列化為此結構傳給後端。
+ *
+ * nodes 和 edges 使用 Vue Flow 的原生格式（Node[] 和 Edge[]），
+ * 序列化時直接 JSON.stringify 即可。
  */
 export interface Pipeline {
   /** 流水線唯一 ID（後端生成） */
@@ -180,10 +192,10 @@ export interface Pipeline {
   name: string
   /** 流水線描述（可選） */
   description?: string
-  /** 流程圖節點數組 */
-  nodes: FlowNode[]
-  /** 流程圖連線數組 */
-  edges: FlowEdge[]
+  /** Vue Flow 節點數組（JSON 序列化） */
+  nodes: any[]
+  /** Vue Flow 邊數組（JSON 序列化） */
+  edges: any[]
   /** 創建時間（ISO 8601） */
   createdAt: string
   /** 最後更新時間（ISO 8601） */
@@ -208,10 +220,10 @@ export interface SavePipelineRequest {
   name: string
   /** 流水線描述（可選） */
   description?: string
-  /** 流程圖節點數組（X6 圖的序列化數據） */
-  nodes: FlowNode[]
-  /** 流程圖連線數組（X6 圖的序列化數據） */
-  edges: FlowEdge[]
+  /** Vue Flow 節點數組 */
+  nodes: any[]
+  /** Vue Flow 邊數組 */
+  edges: any[]
 }
 
 /**
