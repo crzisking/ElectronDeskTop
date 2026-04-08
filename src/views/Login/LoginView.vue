@@ -26,7 +26,7 @@
     <div class="login-card">
       <!-- 應用標識 -->
       <div class="login-brand">
-        <div class="brand-icon">企</div>
+        <img class="brand-icon" src="@/assets/logo.png" alt="ichia" />
         <h2 class="brand-name">企業桌面客戶端</h2>
         <p class="brand-desc">統一平台 · AI 助手 · 快速聯繫</p>
       </div>
@@ -86,14 +86,8 @@
 .brand-icon {
   width: 64px;
   height: 64px;
-  background: var(--el-color-primary);
-  color: #fff;
-  font-size: 24px;
-  font-weight: bold;
   border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
   margin: 0 auto 16px;
 }
 

@@ -28,8 +28,8 @@ import FloatingBall from './FloatingBall.vue'
 
 html,
 body {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   overflow: hidden;
   background: transparent;
   /* 禁用文字選中，避免拖動時出現選中效果 */

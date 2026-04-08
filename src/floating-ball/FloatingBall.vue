@@ -78,30 +78,26 @@ function onContextmenu(event: MouseEvent) {
     @mouseup="onMouseup"
     @contextmenu="onContextmenu"
   >
-    <!-- 浮球內容：公司 Logo 首字 -->
-    <span class="ball-text">企</span>
+    <!-- 浮球內容：公司 Logo -->
+    <img class="ball-img" src="../assets/logo.png" alt="ichia" />
 
-    <!-- 拖動時顯示移動指示圓環 -->
-    <div v-if="isDragging" class="drag-ring" />
   </div>
 </template>
 
 <style scoped>
 .floating-ball {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  /* 漸變背景，視覺上有質感 */
-  background: linear-gradient(145deg, #409eff, #2c7be5);
+  background: #fff;
   box-shadow:
-    0 4px 16px rgba(64, 158, 255, 0.5),
-    0 2px 6px rgba(0, 0, 0, 0.2);
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 2px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   user-select: none;
-  /* 懸停時縮放動畫 */
   transition: transform 0.15s, box-shadow 0.15s;
   position: relative;
 }
@@ -109,38 +105,22 @@ function onContextmenu(event: MouseEvent) {
 .floating-ball:hover {
   transform: scale(1.08);
   box-shadow:
-    0 6px 20px rgba(64, 158, 255, 0.6),
-    0 4px 10px rgba(0, 0, 0, 0.25);
+    0 6px 20px rgba(0, 0, 0, 0.25),
+    0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* 拖動中：光標變為移動樣式，稍微縮小 */
+/* 拖動中 */
 .floating-ball.is-dragging {
   cursor: grabbing;
   transform: scale(0.95);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* 浮球中央文字 */
-.ball-text {
-  color: #fff;
-  font-size: 20px;
-  font-weight: bold;
-  letter-spacing: -1px;
+/* 浮球內 Logo 圖片 */
+.ball-img {
+  width: 75%;
+  height: 75%;
+  object-fit: contain;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-/* 拖動時顯示的外圈動畫 */
-.drag-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255, 255, 255, 0.6);
-  animation: rotate 2s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes rotate {
-  to { transform: rotate(360deg); }
 }
 </style>

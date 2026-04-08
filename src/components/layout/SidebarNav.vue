@@ -37,7 +37,7 @@ function toggleCollapse() {
   <aside class="sidebar" :class="{ 'sidebar--collapsed': collapsed }">
     <!-- 頂部 Logo 區域（折疊時只顯示圖標） -->
     <div class="sidebar-logo">
-      <div class="logo-icon">企</div>
+      <img class="logo-icon" src="@/assets/logo.png" alt="ichia" />
       <span v-show="!collapsed" class="logo-text">企業客戶端</span>
     </div>
 
@@ -109,14 +109,8 @@ function toggleCollapse() {
 .logo-icon {
   width: 32px;
   height: 32px;
-  background: var(--el-color-primary);
-  color: #fff;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

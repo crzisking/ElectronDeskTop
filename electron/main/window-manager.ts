@@ -23,6 +23,9 @@ import { logger } from './utils/logger'
 /** 是否為開發模式（electron-vite 在開發時設置 ELECTRON_RENDERER_URL） */
 const isDev = !app.isPackaged
 
+/** 應用圖標路徑（Windows 任務欄、窗口標題欄使用） */
+const appIconPath = join(__dirname, '../../resources/icons/icon.ico')
+
 export class WindowManager {
   /** 主窗口實例（可能為 null，創建前或銷毀後） */
   private mainWindow: BrowserWindow | null = null
@@ -42,6 +45,7 @@ export class WindowManager {
       height: 800,
       minWidth: 960,
       minHeight: 620,
+      icon: appIconPath,
       // 自定義標題欄（在 Vue 中渲染，包含拖動區域和窗口控制按鈕）
       frame: false,
       // 先隱藏，ready-to-show 後才顯示，防止加載期間白閃
@@ -117,8 +121,8 @@ export class WindowManager {
    */
   createFloatingBallWindow(): BrowserWindow {
     this.floatingBallWindow = new BrowserWindow({
-      width: 64,
-      height: 64,
+      width: 80,
+      height: 80,
       // 無邊框（標題欄、邊框全無）
       frame: false,
       // 透明背景，配合 CSS border-radius 呈現圓形
@@ -261,8 +265,11 @@ export class WindowManager {
       width: 1200,
       height: 800,
       title,
+      icon: appIconPath,
       // 使用系統原生標題欄（子窗口不需要自定義標題欄）
       frame: true,
+      // 隱藏系統菜單欄（File, Edit 等）
+      autoHideMenuBar: true,
       webPreferences: {
         // 安全配置：子窗口不需要 Node.js 能力
         contextIsolation: true,
@@ -270,6 +277,10 @@ export class WindowManager {
         sandbox: true,
       },
     })
+
+    // 移除菜單欄（徹底去掉 File/Edit 等系統菜單）
+    child.setMenuBarVisibility(false)
+    child.removeMenu()
 
     // 加載目標 URL
     child.loadURL(url)

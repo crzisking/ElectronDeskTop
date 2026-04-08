@@ -52,7 +52,7 @@ function closeWindow() {
     <div class="title-bar-drag">
       <!-- 應用 Logo 和標題 -->
       <div class="title-bar-brand">
-        <div class="app-icon">企</div>
+        <img class="app-icon" src="@/assets/logo.png" alt="ichia" />
         <span class="app-title">企業桌面客戶端</span>
       </div>
     </div>
@@ -118,18 +118,11 @@ function closeWindow() {
   gap: 8px;
 }
 
-/* 應用圖標占位（實際項目替換為 <img> 或 SVG） */
 .app-icon {
-  width: 22px;
-  height: 22px;
-  background: rgba(255, 255, 255, 0.25);
+  width: 32px;
+  height: 32px;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: bold;
-  letter-spacing: -0.5px;
+  object-fit: contain;
 }
 
 .app-title {

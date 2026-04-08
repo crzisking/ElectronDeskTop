@@ -127,7 +127,7 @@
         "name": "新ERP 系統",
         "description": "ERP系統",
         "url": "http://192.168.110.122:9996/?returnUrl=http://192.168.120.79:8080/",
-        "openMode": "external-browser",
+        "openMode": "electron-window",
         "ssoEnabled": false
       },
       {
@@ -135,7 +135,7 @@
         "name": "BI 數據分析",
         "description": "業務報表、數據看板、趨勢分析",
         "url": "http://192.168.20.27:8080/webroot/decision/login?origin=66404fa7-165b-412f-9172-87297ba1b781#/",
-        "openMode": "external-browser",
+        "openMode": "electron-window",
         "ssoEnabled": false,
         "ssoTokenParam": "sso_token"
       },
@@ -144,7 +144,7 @@
         "name": "泛微平台",
         "description": "泛微",
         "url": "http://192.168.120.84/wui/index.html",
-        "openMode": "external-browser",
+        "openMode": "electron-window",
         "ssoEnabled": false,
         "ssoTokenParam": "sso_token"
       },
@@ -153,7 +153,7 @@
         "name": "BPM系統",
         "description": "BPM系統",
         "url": "http://asvspm03.ichia.com/BPM/Login/Index",
-        "openMode": "external-browser",
+        "openMode": "electron-window",
         "ssoEnabled": false,
         "ssoTokenParam": "sso_token"
       },
@@ -184,24 +184,6 @@
         "enabled": true,
         "openMode": "page",
         "routeName": "ai-text-processor"
-      },
-      {
-        "id": "summarizer",
-        "name": "文章摘要",
-        "description": "貼入長文章，快速生成結構化摘要",
-        "icon": "Document",
-        "enabled": true,
-        "openMode": "page",
-        "routeName": "ai-summarizer"
-      },
-      {
-        "id": "qanda",
-        "name": "AI 問答",
-        "description": "多輪對話智能問答，支持流式輸出",
-        "icon": "ChatDotRound",
-        "enabled": true,
-        "openMode": "page",
-        "routeName": "ai-qanda"
       }
     ]
   },
