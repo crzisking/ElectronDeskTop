@@ -73,6 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   /**
    * 節點被點擊時觸發
+   * @param e
    * @param node 被點擊節點的業務數據
    */
   (e: 'node-click', node: FlowNode): void
@@ -85,6 +86,7 @@ const emit = defineEmits<{
 
   /**
    * 節點被雙擊時觸發（可用於打開節點編輯彈窗）
+   * @param e
    * @param node 被雙擊節點的業務數據
    */
   (e: 'node-dblclick', node: FlowNode): void
