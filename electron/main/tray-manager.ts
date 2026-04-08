@@ -45,7 +45,7 @@ export class TrayManager {
     }
 
     this.tray = new Tray(icon)
-    this.tray.setToolTip('企業桌面客戶端')
+    this.tray.setToolTip('ichiaDesktop')
 
     // 構建托盤菜單
     this.buildContextMenu()

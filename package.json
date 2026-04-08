@@ -1,7 +1,7 @@
 {
   "name": "enterprise-desktop-client",
   "version": "1.0.0",
-  "description": "企業桌面客戶端 - 統一平台、AI快捷功能、快速聯繫",
+  "description": "ichiaDesktop",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -21,6 +21,7 @@
     "electron-store": "^8.1.0",
     "element-plus": "^2.4.0",
     "pinia": "^2.1.0",
+    "tslib": "^2.8.1",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"
   },
@@ -41,7 +42,7 @@
   },
   "build": {
     "appId": "com.company.enterprise-desktop-client",
-    "productName": "企業桌面客戶端",
+    "productName": "ichiaDesktop",
     "copyright": "Copyright © 2026 Company",
     "directories": {
       "output": "dist"

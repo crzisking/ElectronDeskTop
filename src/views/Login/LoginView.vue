@@ -27,7 +27,7 @@
       <!-- 應用標識 -->
       <div class="login-brand">
         <img class="brand-icon" src="@/assets/logo.png" alt="ichia" />
-        <h2 class="brand-name">企業桌面客戶端</h2>
+        <h2 class="brand-name">ichiaDesktop</h2>
         <p class="brand-desc">統一平台 · AI 助手 · 快速聯繫</p>
       </div>
 

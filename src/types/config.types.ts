@@ -87,11 +87,11 @@ export interface AppConfig {
   aiQuickFunctions: AiQuickFunctionsConfig
 
   /**
-   * 快速聯繫功能配置
-   * 對應 JSON：{ "quickContact": { "searchApiEndpoint": "...", ... } }
-   * 詳細結構見 QuickContactConfig interface
+   * 業務安排與尋找功能配置
+   * 對應 JSON：{ "business": { "pipelineApiEndpoint": "...", ... } }
+   * 詳細結構見 BusinessConfig interface
    */
-  quickContact: QuickContactConfig
+  business: BusinessConfig
 }
 
 // ── 全局設置 ──────────────────────────────────────────────────────────
@@ -549,35 +549,41 @@ export interface AiTool {
   url?: string
 }
 
-// ── 快速聯繫 ──────────────────────────────────────────────────────────
+// ── 業務安排與尋找 ────────────────────────────────────────────────────
 // 對應 JSON：
-// "quickContact": {
-//   "searchApiEndpoint": "https://api.company.internal/contacts/search",
-//   "emailApiEndpoint": "https://api.company.internal/email/send",
-//   "maxSearchResults": 10
+// "business": {
+//   "pipelineApiEndpoint": "https://api.company.internal/business/pipeline",
+//   "ownerSearchApiEndpoint": "https://api.company.internal/business/owner/search",
+//   "maxSearchResults": 20
 // }
-export interface QuickContactConfig {
+export interface BusinessConfig {
   /**
-   * 聯繫人搜索 API 完整地址
-   * 支持 GET 查詢參數 q（關鍵字）
-   * 完整請求示例：GET https://api.company.internal/contacts/search?q=Alice
-   * 返回值：搜索結果的用戶列表（類型定義在 api.types.ts 中）
-   * 在哪裡用：QuickContactView.vue 的搜索輸入框觸發 debounce 搜索時
+   * 業務流水線 CRUD API 端點
+   *
+   * 支持的操作：
+   *  - GET    ${endpoint}           → 獲取所有流水線列表
+   *  - GET    ${endpoint}/:id       → 獲取單條流水線詳情（含節點和邊數據）
+   *  - POST   ${endpoint}           → 新增流水線
+   *  - PUT    ${endpoint}/:id       → 更新流水線（含 X6 圖的節點/邊 JSON）
+   *  - DELETE ${endpoint}/:id       → 刪除流水線
+   *
+   * 在哪裡用：BusinessView 和 PipelineEditor 中的流水線增刪改查
    */
-  searchApiEndpoint: string
+  pipelineApiEndpoint: string
 
   /**
-   * 發送郵件 API 完整地址（POST）
-   * 請求體：{ to: string, subject: string, body: string }
-   * 在哪裡用：QuickContactView.vue 的郵件發送表單提交時
+   * 業務負責人搜索 API 端點
+   *
+   * 支持 GET 查詢：${endpoint}?q={keyword}&limit={maxSearchResults}
+   * 返回匹配的業務負責人列表
+   *
+   * 在哪裡用：BusinessOwnerSearch 組件的搜索功能
    */
-  emailApiEndpoint: string
+  ownerSearchApiEndpoint: string
 
   /**
    * 搜索結果最多顯示條數
-   * 限制下拉列表高度，避免過多結果導致 UI 溢出
-   * 例如：10 表示最多顯示 10 條搜索結果
-   * 在哪裡用：搜索結果 slice(0, config.maxSearchResults) 截斷
+   * 限制列表高度，避免過多結果導致 UI 溢出
    */
   maxSearchResults: number
 }

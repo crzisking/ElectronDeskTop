@@ -56,8 +56,8 @@ export const useConfigStore = defineStore('config', () => {
   /** AI 功能配置 */
   const aiConfig = computed(() => appConfig.value?.aiQuickFunctions)
 
-  /** 快速聯繫配置 */
-  const contactConfig = computed(() => appConfig.value?.quickContact)
+  /** 業務安排與尋找配置 */
+  const businessConfig = computed(() => appConfig.value?.business)
 
   /** 當前語言設置 */
   const language = computed(() => appConfig.value?.app.language ?? 'zh-TW')
@@ -104,7 +104,7 @@ export const useConfigStore = defineStore('config', () => {
     floatingBallConfig,
     platformSystems,
     aiConfig,
-    contactConfig,
+    businessConfig,
     language,
     theme,
     // Actions

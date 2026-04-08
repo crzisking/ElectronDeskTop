@@ -5,7 +5,7 @@
  *  - 統一 API 錯誤類型 ApiError
  *  - Auth 相關類型
  *  - AI 功能相關類型
- *  - 快速聯繫相關類型
+ *  - 業務安排與尋找相關類型
  */
 
 // ─── 統一錯誤類型 ────────────────────────────────────────────────
@@ -116,56 +116,136 @@ export interface AiResponse {
   }
 }
 
-// ─── 快速聯繫相關類型 ────────────────────────────────────────────
-/** 聯繫人搜索結果項 */
-export interface Contact {
+// ─── 業務安排與尋找相關類型 ──────────────────────────────────────────
+
+/**
+ * X6 流程圖節點數據
+ *
+ * 對應 @antv/x6 的 Node.Metadata，用於序列化/反序列化流程圖。
+ * 保存到後端時，整個流程圖被拆分為 nodes[] + edges[] 兩個數組。
+ */
+export interface FlowNode {
+  /** 節點唯一 ID（X6 自動生成或手動指定） */
+  id: string
+  /** 節點在畫布上的 X 座標 */
+  x: number
+  /** 節點在畫布上的 Y 座標 */
+  y: number
+  /** 節點寬度 */
+  width: number
+  /** 節點高度 */
+  height: number
+  /** 節點形狀（rect=矩形, circle=圓形, ellipse=橢圓, polygon=多邊形等） */
+  shape: string
+  /** 節點顯示文字 */
+  label: string
+  /**
+   * 節點自定義業務數據（可擴展）
+   * 用於存儲與業務相關的額外信息，例如：
+   *  - owner: 負責人
+   *  - status: 節點狀態（待處理/進行中/已完成）
+   *  - description: 詳細描述
+   */
+  data?: Record<string, unknown>
+}
+
+/**
+ * X6 流程圖邊（連線）數據
+ *
+ * 對應 @antv/x6 的 Edge.Metadata，描述兩個節點之間的連線關係。
+ */
+export interface FlowEdge {
+  /** 邊唯一 ID */
+  id: string
+  /** 來源節點 ID */
+  source: string
+  /** 目標節點 ID */
+  target: string
+  /** 邊上的文字標籤（可選，例如：「審批通過」「審批駁回」） */
+  label?: string
+  /** 邊的自定義業務數據（可擴展） */
+  data?: Record<string, unknown>
+}
+
+/**
+ * 業務流水線實體
+ *
+ * 一條流水線包含基本信息和完整的流程圖數據（nodes + edges）。
+ * 前端使用 X6 渲染流程圖，保存時將圖數據序列化為此結構傳給後端。
+ */
+export interface Pipeline {
+  /** 流水線唯一 ID（後端生成） */
+  id: string
+  /** 流水線名稱 */
+  name: string
+  /** 流水線描述（可選） */
+  description?: string
+  /** 流程圖節點數組 */
+  nodes: FlowNode[]
+  /** 流程圖連線數組 */
+  edges: FlowEdge[]
+  /** 創建時間（ISO 8601） */
+  createdAt: string
+  /** 最後更新時間（ISO 8601） */
+  updatedAt: string
+}
+
+/**
+ * 獲取流水線列表響應
+ * GET {pipelineApiEndpoint}
+ */
+export interface PipelineListResponse {
+  pipelines: Pipeline[]
+  total: number
+}
+
+/**
+ * 創建/更新流水線請求體
+ * POST / PUT {pipelineApiEndpoint}
+ */
+export interface SavePipelineRequest {
+  /** 流水線名稱 */
+  name: string
+  /** 流水線描述（可選） */
+  description?: string
+  /** 流程圖節點數組（X6 圖的序列化數據） */
+  nodes: FlowNode[]
+  /** 流程圖連線數組（X6 圖的序列化數據） */
+  edges: FlowEdge[]
+}
+
+/**
+ * 業務負責人（搜索結果項）
+ *
+ * 與原 Contact 類似，但聚焦在業務職責信息上。
+ */
+export interface BusinessOwner {
+  /** 唯一 ID */
   id: string
   /** 姓名 */
   name: string
   /** 工作郵箱 */
   email: string
-  /** 部門 */
+  /** 所屬部門 */
   department: string
+  /** 職位 */
+  title?: string
   /**
-   * 負責範圍描述列表
-   * 用於向用戶說明"這個人負責什麼"
-   * 示例：["網絡故障", "服務器運維", "IT 設備申請"]
+   * 負責的業務範圍列表
+   * 示例：["採購審批", "供應商管理", "合同簽署"]
    */
   responsibilities: string[]
-  /** 頭像 URL（可選） */
-  avatar?: string
   /** 聯繫電話（可選） */
   phone?: string
+  /** 頭像 URL（可選） */
+  avatar?: string
 }
 
 /**
- * 聯繫人搜索響應
- * GET {searchApiEndpoint}?q={keyword}
+ * 業務負責人搜索響應
+ * GET {ownerSearchApiEndpoint}?q={keyword}
  */
-export interface SearchContactsResponse {
-  contacts: Contact[]
+export interface BusinessOwnerSearchResponse {
+  owners: BusinessOwner[]
   total: number
-}
-
-/**
- * 發送郵件請求體
- * POST {emailApiEndpoint}
- */
-export interface SendEmailRequest {
-  /** 收件人郵箱 */
-  to: string
-  /** 收件人顯示名稱 */
-  toName: string
-  /** 郵件主題 */
-  subject: string
-  /** 郵件正文（純文本） */
-  body: string
-}
-
-/** 發送郵件響應 */
-export interface SendEmailResponse {
-  /** 發送成功標誌 */
-  success: boolean
-  /** 郵件服務商返回的消息 ID（可用於追蹤） */
-  messageId?: string
 }

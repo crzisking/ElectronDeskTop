@@ -53,7 +53,7 @@ function closeWindow() {
       <!-- 應用 Logo 和標題 -->
       <div class="title-bar-brand">
         <img class="app-icon" src="@/assets/logo.png" alt="ichia" />
-        <span class="app-title">企業桌面客戶端</span>
+        <span class="app-title">ichiaDesktop</span>
       </div>
     </div>
 

@@ -12,7 +12,7 @@
  * / (AppLayout 父路由)
  *   /unified-platform       → UnifiedPlatformView（統一平台）
  *   /ai-quick-functions     → AiQuickFunctionsView（AI 快捷功能）
- *   /quick-contact          → QuickContactView（快速聯繫）
+ *   /business               → BusinessView（業務安排與尋找）
  * /:pathMatch(.*)*          → 所有未知路由重定向到 /unified-platform（404 處理）
  *
  * ── 父子路由嵌套原理 ─────────────────────────────────────────────────
@@ -163,16 +163,16 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // ── 快速聯繫 ────────────────────────────────────────────────
-      // 完整 URL：http://app/#/quick-contact
-      // 提供員工搜索和快速發送郵件功能
+      // ── 業務安排與尋找 ──────────────────────────────────────────
+      // 完整 URL：http://app/#/business
+      // 提供業務流水線維護（X6 流程圖）和業務負責人查找功能
       {
-        path: 'quick-contact',
-        name: 'quick-contact',
-        component: () => import('@/views/QuickContact/QuickContactView.vue'),
+        path: 'business',
+        name: 'business',
+        component: () => import('@/views/Business/BusinessView.vue'),
         meta: {
           requiresAuth: true,
-          title: '快速聯繫'
+          title: '業務安排與尋找'
         }
       }
     ]

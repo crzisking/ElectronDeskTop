@@ -36,10 +36,10 @@
         "enabled": true
       },
       {
-        "id": "quick-contact",
-        "label": "快速聯繫",
-        "icon": "ChatDotRound",
-        "routeName": "quick-contact",
+        "id": "business",
+        "label": "業務安排與尋找",
+        "icon": "DataLine",
+        "routeName": "business",
         "enabled": true
       }
     ]
@@ -90,12 +90,12 @@
         "action": { "type": "navigate", "routeName": "ai-quick-functions" }
       },
       {
-        "id": "menu-go-contact",
-        "label": "快速聯繫",
-        "icon": "ChatDotRound",
+        "id": "menu-go-business",
+        "label": "業務安排與尋找",
+        "icon": "DataLine",
         "enabled": true,
         "separator": false,
-        "action": { "type": "navigate", "routeName": "quick-contact" }
+        "action": { "type": "navigate", "routeName": "business" }
       },
       {
         "id": "menu-sep-2",
@@ -188,13 +188,13 @@
     ]
   },
 
-  "quickContact": {
-    "_comment": "快速聯繫功能配置",
-    "_comment_searchApiEndpoint": "搜尋聯繫人的 API 端點地址",
-    "_comment_emailApiEndpoint": "發送郵件的 API 端點地址",
-    "_comment_maxSearchResults": "搜尋結果最多顯示的聯繫人數量",
-    "searchApiEndpoint": "https://api.example.com/contacts/search",
-    "emailApiEndpoint": "https://api.example.com/contacts/email/send",
+  "business": {
+    "_comment": "業務安排與尋找功能配置",
+    "_comment_pipelineApiEndpoint": "業務流水線 CRUD API 端點地址（GET 獲取列表、POST 新增、PUT 更新、DELETE 刪除）",
+    "_comment_ownerSearchApiEndpoint": "尋找業務負責人的搜索 API 端點地址（GET，query 參數 q=關鍵詞）",
+    "_comment_maxSearchResults": "業務負責人搜索結果最多顯示數量",
+    "pipelineApiEndpoint": "https://api.example.com/business/pipeline",
+    "ownerSearchApiEndpoint": "https://api.example.com/business/owner/search",
     "maxSearchResults": 20
   }
 }
