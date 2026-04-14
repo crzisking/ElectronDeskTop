@@ -31,7 +31,6 @@ const tools = computed<AiTool[]>(
  * - openMode='external' → 外部瀏覽器
  */
 function handleOpen(tool: AiTool) {
-  console.log('111',tool)
   if (tool.openMode === 'external' && tool.url) {
     window.open(tool.url, '_blank')
   } else if (tool.openMode === 'page' && tool.routeName) {

@@ -163,6 +163,19 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      // ── BPM 負責人查詢（AI 工具子頁面）────────────────────────────
+      // 完整 URL：http://app/#/ai-bpm-finder
+      // 嵌入 Dify chatbot，URL 由 app-config.json 管理
+      {
+        path: 'ai-bpm-finder',
+        name: 'ai-bpm-finder',
+        component: () => import('@/views/AiQuickFunctions/child/BpmFinderView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'BPM 負責人查詢'
+        }
+      },
+
       // ── 業務安排與尋找 ──────────────────────────────────────────
       // 完整 URL：http://app/#/business
       // 提供業務流水線維護（X6 流程圖）和業務負責人查找功能

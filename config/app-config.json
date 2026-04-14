@@ -177,13 +177,14 @@
     "apiTimeout": 30000,
     "tools": [
       {
-        "id": "text-processor",
-        "name": "文本處理",
-        "description": "翻譯、潤色、縮短、擴寫、語氣轉換等快捷文本操作",
+        "id": "bpmUserFinder",
+        "name": "bpm負責人查詢",
+        "description": "查找對應的bpm表單負責人",
         "icon": "Edit",
         "enabled": true,
         "openMode": "page",
-        "routeName": "ai-text-processor"
+        "routeName": "ai-bpm-finder",
+        "url": "http://192.168.19.62/chatbot/5NyfqoZ9lGUWfCf8"
       }
     ]
   },
