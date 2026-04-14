@@ -16,6 +16,7 @@
  */
 
 import { ref, watch } from 'vue'
+import {Loading} from "@element-plus/icons-vue";
 
 const props = defineProps<{
   /** iframe 加載的 URL */

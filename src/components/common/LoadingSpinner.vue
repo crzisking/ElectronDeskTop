@@ -1,8 +1,9 @@
-<script setup lang="ts">
-/**
+<script setup lang="ts">/**
  * 通用加載狀態組件
  * 用於頁面初始化、數據請求期間的加載提示
  */
+import {Loading} from "@element-plus/icons-vue";
+
 defineProps<{
   /** 加載提示文字，默認"加載中..." */
   text?: string
