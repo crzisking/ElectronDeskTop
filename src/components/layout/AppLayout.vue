@@ -22,12 +22,12 @@ import SidebarNav from './SidebarNav.vue'
 <template>
   <div class="app-layout">
     <!-- 自定義標題欄（frameless 窗口，替代原生標題欄） -->
-    <TitleBar />
+    <TitleBar/>
 
     <!-- 主體區域：側邊欄 + 內容 -->
     <div class="app-body">
       <!-- 左側導航欄（config 驅動） -->
-      <SidebarNav />
+      <SidebarNav/>
 
       <!-- 右側內容區：渲染子路由 -->
       <main class="app-content">
@@ -35,11 +35,7 @@ import SidebarNav from './SidebarNav.vue'
           RouterView 過渡動畫：切換路由時淡入淡出
           keep-alive 保留已訪問的組件狀態（如 iframe 已加載的頁面）
         -->
-        <router-view v-slot="{ Component, route }">
-          <keep-alive>
-            <component :is="Component" :key="route.fullPath" />
-          </keep-alive>
-        </router-view>
+        <router-view />
       </main>
     </div>
   </div>

@@ -47,7 +47,6 @@ export function createHttpClient(baseURL: string, timeout = 15000): AxiosInstanc
     baseURL,
     timeout,
     headers: {
-      'Content-Type': 'application/json',
       // 告知後端這是 Electron 桌面端請求，便於後端日誌區分
       'X-Client-Type': 'electron-desktop'
     }

@@ -1,68 +1,4 @@
-/**
- * Vue Router 路由配置
- *
- * ── 什麼是 Vue Router？ ──────────────────────────────────────────────
- * Vue Router 是 Vue 3 官方路由庫，讓單頁應用（SPA）實現「多頁面」效果：
- *  - URL 變化時，不刷新整個頁面，只替換指定區域（<router-view>）的組件
- *  - 使用者感覺像在不同頁面間跳轉，實際上始終在同一個 HTML 文件中
- *
- * ── 路由結構樹 ──────────────────────────────────────────────────────
- * /login                    → LoginView（不需要認證，登錄頁）
- * /                         → 重定向到 /unified-platform
- * / (AppLayout 父路由)
- *   /unified-platform       → UnifiedPlatformView（統一平台）
- *   /internal-functions     → InternalFunctionsView（內部功能）
- *   /business               → BusinessView（業務安排與尋找）
- * /:pathMatch(.*)*          → 所有未知路由重定向到 /unified-platform（404 處理）
- *
- * ── 父子路由嵌套原理 ─────────────────────────────────────────────────
- * AppLayout 是「父路由」，它的組件模板中有一個 <router-view>：
- *   // AppLayout.vue 的模板簡化示意：
- *   <template>
- *     <div class="app-layout">
- *       <TitleBar />             ← 所有子頁面共用的頂部標題欄
- *       <SidebarNav />           ← 所有子頁面共用的左側導航欄
- *       <main>
- *         <router-view />        ← 子路由的組件渲染在這裡
- *       </main>
- *     </div>
- *   </template>
- * 訪問 /unified-platform 時：
- *   外層 <router-view>（在 App.vue 中）渲染 AppLayout
- *   AppLayout 內層 <router-view> 渲染 UnifiedPlatformView
- * 好處：TitleBar 和 SidebarNav 不需要在每個頁面重複寫，統一在父路由中管理。
- *
- * ── 路由守衛 ────────────────────────────────────────────────────────
- * 目前認證守衛已注釋（登錄功能未實現）
- * 預留位置清晰可見，登錄功能完成後取消注釋即可
- */
 
-// ── import 說明 ──────────────────────────────────────────────────────
-// createRouter：Vue Router 提供的工廠函數，創建路由器實例
-// createWebHashHistory：創建「Hash 模式」的路由歷史記錄管理器
-//   URL 格式：http://localhost/#/unified-platform
-//   （# 號後面的部分是 hash，不會發送到服務器）
-//
-// ── 為什麼用 createWebHashHistory 而不用 createWebHistory？ ──────────
-// createWebHistory（HTML5 History 模式）的 URL 格式：
-//   http://localhost/unified-platform（沒有 # 號，看起來更「正常」）
-// 但它依賴服務器的「URL 重寫」：
-//   當直接訪問 /unified-platform 時，服務器必須返回 index.html 而不是 404
-//   在 Nginx/Apache 中需要配置 try_files $uri /index.html
-//
-// Electron 加載的是本地文件，URL 格式類似：
-//   file:///C:/Users/Admin/app/dist/index.html
-// 當路由跳轉到 /unified-platform 後，如果刷新，Electron 會嘗試加載：
-//   file:///C:/Users/Admin/app/dist/unified-platform（這個文件不存在！→ 空白頁）
-//
-// Hash 模式下，URL 變為：
-//   file:///C:/Users/Admin/app/dist/index.html#/unified-platform
-// 路由路徑在 # 號之後，Electron/瀏覽器始終加載 index.html，
-// 路由由 Vue Router 在客戶端解析，完全繞開了服務器/文件系統的問題。
-//
-// 結論：Electron 本地文件環境 → 必須用 Hash 模式
-//
-// 來源：vue-router 套件
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -196,7 +132,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'it-repair',
         name: 'it-repair',
-        component: () => import('@/views/ITRepair/ITRepairView.vue'),
+        component: () => import('@/views/InternalFunctions/child/ITRepairView.vue'),
         meta: {
           requiresAuth: true,
           title: 'IT 報修'

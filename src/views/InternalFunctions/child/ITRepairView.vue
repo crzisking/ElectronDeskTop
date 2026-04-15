@@ -19,9 +19,127 @@ import type { UploadFile, UploadRequestOptions, FormInstance } from 'element-plu
 import { useAuthStore } from '@/stores/auth.store'
 import { repairApi } from '@/api/modules/repair.api'
 import type { RepairListItem, RepairDetail, RepairAttachment, RepairStatus } from '@/types/api.types'
-import { Plus, ArrowLeft, View } from '@element-plus/icons-vue'
+import { Plus, View, MagicStick } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
+
+// ══════════════════════════════════════════════════════════════════
+// 內容潤色（Dify blocking 模式）
+// ══════════════════════════════════════════════════════════════════
+
+const DIFY_URL = 'http://192.168.19.62/v1/chat-messages'
+const DIFY_API_KEY = 'app-aJSqbQXsd4NUHBtQUheWR1ST'
+
+/** 潤色彈窗是否可見 */
+const polishVisible = ref(false)
+/** 是否正在流式接收（用於按鈕 loading + 彈窗「生成中」標記） */
+const polishLoading = ref(false)
+/** SSE 流式累積的結果文字 */
+const polishResult = ref('')
+/** AbortController，用於關閉彈窗時中止請求 */
+let polishAbort: AbortController | null = null
+
+/**
+ * 同一描述內容的 AI 整理次數限制
+ * key = 描述文字（trim 後），value = 已使用次數
+ * 描述內容改變後自動對應到新的 key，計數重新累積
+ */
+const POLISH_LIMIT = 5
+/** 本次報修已使用 AI 整理的次數，提交報修後重置為 0 */
+const polishUsedCount = ref(0)
+/** 是否已達整理上限 */
+const polishLimitReached = computed(() => polishUsedCount.value >= POLISH_LIMIT)
+
+/**
+ * 點擊「使用AI整理」
+ * - 先開彈窗，再用 fetch SSE 流式邊收邊顯示
+ * - axios 在瀏覽器不支持 ReadableStream，改用原生 fetch
+ */
+async function polishDescription() {
+  if (!submitForm.description.trim()) {
+    ElMessage.warning('請先填寫問題描述')
+    return
+  }
+
+  if (polishLimitReached.value) {
+    ElMessage.warning(`同一問題描述最多整理 ${POLISH_LIMIT} 次，請修改描述後再試`)
+    return
+  }
+
+  // 計數先加，避免重複點擊
+  polishUsedCount.value++
+
+  polishVisible.value = true
+  polishLoading.value = true
+  polishResult.value = ''
+  polishAbort = new AbortController()
+
+  const prompt =
+    `請幫我潤色以下 IT 報修問題描述，讓表達更清晰、完整、專業，` +
+    `保留所有原始資訊和細節，語言與原文保持一致：\n\n${submitForm.description}`
+
+  try {
+    const response = await fetch(DIFY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${DIFY_API_KEY}`
+      },
+      body: JSON.stringify({
+        inputs: {},
+        query: prompt,
+        response_mode: 'streaming',
+        user: authStore.user?.userName ?? 'desktop-user'
+      }),
+      signal: polishAbort.signal
+    })
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.body) throw new Error('響應體為空')
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      for (const line of decoder.decode(value, { stream: true }).split('\n')) {
+        if (!line.startsWith('data: ')) continue
+        const raw = line.slice(6).trim()
+        if (!raw) continue
+        try {
+          const parsed = JSON.parse(raw) as { event: string; answer?: string }
+          // 普通 Chat App → event: "message"
+          // Agent Chat App → event: "agent_message"
+          if ((parsed.event === 'message' || parsed.event === 'agent_message') && parsed.answer) {
+            polishResult.value += parsed.answer
+          }
+        } catch { /* 忽略非 JSON 行 */ }
+      }
+    }
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') return
+    ElMessage.error('AI 整理失敗，請確認服務是否可用')
+    polishVisible.value = false
+  } finally {
+    polishLoading.value = false
+    polishAbort = null
+  }
+}
+
+/** 採用整理結果：寫回描述欄並關閉彈窗 */
+function applyPolish() {
+  submitForm.description = polishResult.value
+  polishVisible.value = false
+}
+
+/** 關閉彈窗：若仍在串流則中止請求 */
+function closePolish() {
+  polishAbort?.abort()
+  polishVisible.value = false
+  polishResult.value = ''
+}
 
 // ══════════════════════════════════════════════════════════════════
 // Tab 狀態
@@ -89,7 +207,6 @@ async function handleUpload(options: UploadRequestOptions) {
     uploadedAttachments.value.push({ fileUrl: result.fileUrl, fileName: result.fileName })
     options.onSuccess(result)
   } catch (e) {
-    options.onError(e as ProgressEvent)
     ElMessage.error(`${(options.file as File).name} 上傳失敗，請重試`)
   } finally {
     uploadingCount.value--
@@ -136,10 +253,11 @@ async function handleSubmit() {
       attachments: uploadedAttachments.value
     })
     ElMessage.success(`報修提交成功！工單號：${result.requestNo}`)
-    // 重置表單
+    // 重置表單（含 AI 整理次數）
     submitForm.description = ''
     uploadedAttachments.value = []
     uploadFileList.value = []
+    polishUsedCount.value = 0
     submitFormRef.value?.resetFields()
     // 切換到「我的工單」並刷新列表
     activeTab.value = 'tickets'
@@ -255,8 +373,32 @@ const previewUrls = computed<string[]>(
           label-position="top"
           class="submit-form"
         >
-          <!-- 問題描述 -->
-          <el-form-item label="問題描述" prop="description">
+          <!-- 問題描述（標籤右側附 AI 整理按鈕） -->
+          <el-form-item prop="description">
+            <template #label>
+              <span class="desc-label-row">
+                <span>問題描述</span>
+                <el-tooltip
+                  :content="polishLimitReached ? `已達 ${POLISH_LIMIT} 次上限，請修改描述後再試` : `剩餘 ${POLISH_LIMIT - polishUsedCount} 次`"
+                  placement="top"
+                >
+                  <el-button
+                    link
+                    :type="polishLimitReached ? 'info' : 'primary'"
+                    size="small"
+                    :loading="polishLoading"
+                    :disabled="polishLimitReached"
+                    @click="polishDescription"
+                  >
+                    <el-icon v-if="!polishLoading"><MagicStick /></el-icon>
+                    使用AI整理
+                    <span v-if="polishUsedCount > 0" class="polish-count">
+                      {{ polishUsedCount }}/{{ POLISH_LIMIT }}
+                    </span>
+                  </el-button>
+                </el-tooltip>
+              </span>
+            </template>
             <el-input
               v-model="submitForm.description"
               type="textarea"
@@ -449,6 +591,55 @@ const previewUrls = computed<string[]>(
         <el-button @click="detailVisible = false">關閉</el-button>
       </template>
     </el-dialog>
+
+    <!-- ── 內容潤色彈窗 ──────────────────────────────────────── -->
+    <el-dialog
+      v-model="polishVisible"
+      title="✨ 使用AI整理"
+      width="680px"
+      :close-on-click-modal="false"
+      :before-close="closePolish"
+      destroy-on-close
+    >
+      <div class="polish-content">
+        <div class="polish-section-label">原始描述</div>
+        <el-input
+          :value="submitForm.description"
+          type="textarea"
+          :rows="4"
+          readonly
+          resize="none"
+          class="polish-original"
+        />
+
+        <div class="polish-arrow">↓ AI 整理結果</div>
+
+        <div class="polish-section-label">
+          整理後的版本
+          <el-tag v-if="polishLoading" size="small" type="primary" effect="plain">生成中...</el-tag>
+        </div>
+        <!-- 結果可手動微調後再採用 -->
+        <el-input
+          v-model="polishResult"
+          type="textarea"
+          :rows="6"
+          resize="none"
+          placeholder="AI 正在生成中..."
+          class="polish-result"
+        />
+      </div>
+
+      <template #footer>
+        <el-button @click="closePolish">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="!polishResult.trim()"
+          @click="applyPolish"
+        >
+          使用此版本
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -595,5 +786,53 @@ export default { components: { Loading } }
   font-size: 12px;
   color: var(--el-text-color-placeholder);
   background: var(--el-fill-color-lighter);
+}
+
+/* 描述標籤列（文字 + AI整理按鈕並排）
+   必須用 inline-flex，否則 Element Plus 的 * 號 span 會被 block 元素擠到獨立一行 */
+.desc-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 整理次數標記 */
+.polish-count {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+/* 潤色彈窗 */
+.polish-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.polish-section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.polish-arrow {
+  text-align: center;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  padding: 4px 0;
+}
+
+.polish-original :deep(textarea) {
+  background: var(--el-fill-color-lighter);
+  color: var(--el-text-color-secondary);
+}
+
+.polish-result :deep(textarea) {
+  font-size: 14px;
+  line-height: 1.7;
 }
 </style>

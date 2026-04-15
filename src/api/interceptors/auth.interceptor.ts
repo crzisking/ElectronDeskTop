@@ -144,7 +144,8 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
         }
 
         case 403: {
-          await ElMessageBox.alert(getError('Unauthorized_operation'), 'Warning', {
+          // 同 404：不 await，彈窗異步顯示，reject 立即傳播
+          ElMessageBox.alert(getError('Unauthorized_operation'), 'Warning', {
               confirmButtonText: getError('OK'),
               callback: () => {
               },
@@ -153,7 +154,8 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
         }
 
         case 404: {
-          await ElMessageBox.alert(getError('ERR_BAD_REQUEST'), 'Warning', {
+          // 不 await：彈窗異步顯示，reject 立即傳播（loading spinner 不需等用戶點確認才停）
+          ElMessageBox.alert(getError('ERR_BAD_REQUEST'), 'Warning', {
               confirmButtonText: getError('OK'),
               callback: () => {
               },

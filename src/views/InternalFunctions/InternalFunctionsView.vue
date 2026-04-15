@@ -16,6 +16,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config.store'
 import type { InternalTool } from '@/types/config.types'
+import {Search} from "@element-plus/icons-vue";
 
 const router = useRouter()
 const configStore = useConfigStore()
