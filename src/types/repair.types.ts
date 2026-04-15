@@ -14,8 +14,6 @@
 export interface RepairAttachment {
   /** OSS 可訪問的圖片 URL */
   fileUrl: string
-  /** 原始文件名（方便顯示） */
-  fileName: string
 }
 
 /**
@@ -25,11 +23,9 @@ export interface RepairAttachment {
  * 調用前須先通過 repairApi.uploadFile() 上傳所有圖片，取得 URL 列表後再提交。
  */
 export interface RepairCreateRequest {
-  /** 提交人 ID（從 authStore.user.id 讀取） */
-  userId: number
-  /** 提交人姓名（冗余字段，後端避免 Join 用戶表） */
-  userName: string
-  /** 問題描述（純文字，最多 2000 字） */
+  /** 工單標題（簡短說明問題，最多 100 字） */
+  title: string
+  /** 問題描述（富文本 HTML，最多 2000 字） */
   description: string
   /** 已上傳 OSS 的附件列表 */
   attachments: RepairAttachment[]
@@ -59,7 +55,9 @@ export type RepairStatus = 1 | 2 | 3
 export interface RepairListItem {
   id: number
   requestNo: string
-  /** 問題描述（列表中用 show-overflow-tooltip 截斷顯示） */
+  /** 工單標題 */
+  title: string
+  /** 問題描述（富文本 HTML，列表中不顯示，詳情彈窗才展示） */
   description: string
   status: RepairStatus
   userName: string
@@ -86,7 +84,7 @@ export interface RepairDetail extends RepairListItem {
  */
 export interface RepairListParams {
   /** 按提交人 ID 過濾（用戶查自己的工單時傳入） */
-  userId?: number
+  userId?: string
   /** 狀態過濾（不傳則查全部） */
   status?: RepairStatus
   /** 按處理人 ID 過濾 */
@@ -113,5 +111,4 @@ export interface RepairListResponse {
  */
 export interface RepairUploadResponse {
   fileUrl: string
-  fileName: string
 }

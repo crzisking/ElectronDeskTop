@@ -132,7 +132,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'it-repair',
         name: 'it-repair',
-        component: () => import('@/views/InternalFunctions/child/ITRepairView.vue'),
+        component: () => import('@/views/InternalFunctions/child/ITRepair/ITRepairView.vue'),
         meta: {
           requiresAuth: true,
           title: 'IT 報修'

@@ -15,13 +15,13 @@
  * 若未設置環境變量，回退到 http://localhost:5247（便於本地開發）
  */
 
-import { createHttpClient } from '../http-client'
+import {createHttpClient} from '../http-client'
 import type {
   RepairCreateRequest,
   RepairCreateResponse,
+  RepairDetail,
   RepairListParams,
   RepairListResponse,
-  RepairDetail,
   RepairUploadResponse
 } from '@/types/api.types'
 
@@ -99,9 +99,9 @@ export const repairApi = {
   async uploadFile(file: File): Promise<RepairUploadResponse> {
     const form = new FormData()
     form.append('file', file)
-    // 傳入 FormData 時 Axios 自動設置 Content-Type: multipart/form-data; boundary=...
-    const { data } = await getClient().post('/api/repair/upload', form)
-    return data as RepairUploadResponse
+    // 攔截器已返回 response.data（完整 JSON body），其中 data 欄位才是實際 URL
+    const result = await getClient().post('/api/repair/upload', form)
+    return { fileUrl: result.data as string }
   },
 
   /**

@@ -1,0 +1,377 @@
+<script setup lang="ts">
+/**
+ * IT 報修主視圖
+ *
+ * 職責：組裝子模塊，處理跨模塊協作邏輯（提交成功後切換 Tab）。
+ * 業務邏輯已分離至：
+ *  - composables/useRepairSubmit   表單、富文本編輯器、圖片上傳、AI 潤色
+ *  - composables/useRepairTickets  工單列表、分頁篩選、詳情載入
+ *  - components/RepairPolishDialog AI 整理彈窗 UI
+ *  - components/RepairDetailDialog 工單詳情彈窗 UI
+ */
+import { ref } from 'vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { MagicStick, View } from '@element-plus/icons-vue'
+import { useRepairSubmit } from './composables/useRepairSubmit'
+import { useRepairTickets, STATUS_LABELS, STATUS_TAG_TYPES } from './composables/useRepairTickets'
+import RepairPolishDialog from './components/RepairPolishDialog.vue'
+import RepairDetailDialog from './components/RepairDetailDialog.vue'
+
+/** 當前激活的 Tab，控制 el-tabs 顯示哪個面板 */
+const activeTab = ref<'submit' | 'tickets'>('submit')
+
+// ── 工單列表 Composable ───────────────────────────────────────────
+// 先初始化 tickets，因為 onSubmitSuccess 需要引用其中的 ticketParams / loadTickets
+const {
+  ticketsLoading, tickets, ticketsTotal, ticketParams, loadTickets,
+  handleStatusFilter, handlePageChange,
+  detailVisible, detailLoading, currentDetail, handleRowClick, previewUrls,
+} = useRepairTickets()
+
+/**
+ * 跨模塊回調：工單提交成功後由 useRepairSubmit 調用。
+ * 負責切換到「我的工單」Tab 並重置到第一頁刷新列表。
+ * 定義在兩個 composable 初始化之間，用於解耦 submit 和 tickets 模塊。
+ */
+async function onSubmitSuccess() {
+  activeTab.value = 'tickets'
+  ticketParams.pageIndex = 1
+  await loadTickets()
+}
+
+// ── 提交表單 Composable ───────────────────────────────────────────
+// 傳入 onSubmitSuccess 回調，提交完成後由 composable 內部調用
+const {
+  submitFormRef, submitForm, quillEditorRef, richSubmitRules, descriptionWordCount,
+  uploading, submitting, handleEditorReady, handleEditorBlur, handleSubmit, getPlainText,
+  POLISH_LIMIT, polishVisible, polishLoading, polishResult, polishUsedCount, polishLimitReached,
+  polishDescription, applyPolish, closePolish,
+} = useRepairSubmit(onSubmitSuccess)
+
+/**
+ * Tab 切換事件處理：切換到「我的工單」且列表為空時自動觸發首次載入。
+ * 避免在初始渲染時就發起不必要的請求（用戶可能只使用提交功能）。
+ *
+ * 注意：在 <script setup> 中 ref 不自動解包，需使用 .value。
+ */
+function onTabChange(name: string | number) {
+  if (name === 'tickets' && tickets.value.length === 0 && !ticketsLoading.value) {
+    loadTickets()
+  }
+}
+</script>
+
+<template>
+  <div class="it-repair-view">
+    <!-- 頁面頭部 -->
+    <div class="page-header">
+      <h2 class="page-title">IT 報修</h2>
+      <p class="page-subtitle">提交設備故障或 IT 相關問題，IT 人員將儘快處理</p>
+    </div>
+
+    <!-- 主體 Tab -->
+    <el-tabs v-model="activeTab" class="repair-tabs" @tab-change="onTabChange">
+
+      <!-- ── 提交報修 Tab ──────────────────────────────────────── -->
+      <el-tab-pane label="提交報修" name="submit">
+        <el-form
+          ref="submitFormRef"
+          :model="submitForm"
+          :rules="richSubmitRules"
+          label-position="top"
+          class="submit-form"
+        >
+          <!-- 工單標題 -->
+          <el-form-item label="工單標題" prop="title">
+            <el-input
+              v-model="submitForm.title"
+              placeholder="請簡短描述問題，例如：電腦無法開機"
+              maxlength="100"
+              show-word-limit
+              clearable
+            />
+          </el-form-item>
+
+          <!-- 問題描述 + AI 整理 -->
+          <el-form-item prop="description">
+            <template #label>
+              <span class="desc-label-row">
+                <span>問題描述</span>
+                <el-tooltip
+                  :content="polishLimitReached
+                    ? `已達 ${POLISH_LIMIT} 次上限，請修改描述後再試`
+                    : `剩餘 ${POLISH_LIMIT - polishUsedCount} 次`"
+                  placement="top"
+                >
+                  <el-button
+                    link
+                    :type="polishLimitReached ? 'info' : 'primary'"
+                    size="small"
+                    :loading="polishLoading"
+                    :disabled="polishLimitReached"
+                    @click="polishDescription"
+                  >
+                    <el-icon v-if="!polishLoading"><MagicStick /></el-icon>
+                    使用AI整理
+                    <span v-if="polishUsedCount > 0" class="polish-count">
+                      {{ polishUsedCount }}/{{ POLISH_LIMIT }}
+                    </span>
+                  </el-button>
+                </el-tooltip>
+              </span>
+            </template>
+            <div class="editor-wrapper">
+              <QuillEditor
+                ref="quillEditorRef"
+                v-model:content="submitForm.description"
+                content-type="html"
+                theme="snow"
+                :toolbar="[]"
+                class="repair-editor"
+                @ready="handleEditorReady"
+                @blur="handleEditorBlur"
+              />
+              <div class="editor-footer">
+                <span class="editor-tip">Type normally or paste an image directly into the editor</span>
+                <span class="editor-count">{{ descriptionWordCount }}/2000</span>
+              </div>
+            </div>
+          </el-form-item>
+
+          <!-- 提交按鈕 -->
+          <el-form-item>
+            <el-button
+              type="primary"
+              size="large"
+              :loading="submitting"
+              :disabled="uploading"
+              style="min-width: 140px"
+              @click="handleSubmit"
+            >
+              {{ submitting ? '提交中...' : '提交報修' }}
+            </el-button>
+            <span v-if="uploading" class="submit-disabled-hint">請等待圖片上傳完成</span>
+          </el-form-item>
+        </el-form>
+      </el-tab-pane>
+
+      <!-- ── 我的工單 Tab ──────────────────────────────────────── -->
+      <el-tab-pane label="我的工單" name="tickets">
+        <div class="tickets-toolbar">
+          <el-radio-group v-model="ticketParams.status" @change="handleStatusFilter">
+            <el-radio-button :value="undefined">全部</el-radio-button>
+            <el-radio-button :value="1">已提交</el-radio-button>
+            <el-radio-button :value="2">已分配</el-radio-button>
+            <el-radio-button :value="3">已關閉</el-radio-button>
+          </el-radio-group>
+          <el-button :loading="ticketsLoading" @click="loadTickets">刷新</el-button>
+        </div>
+
+        <el-table
+          :data="tickets"
+          v-loading="ticketsLoading"
+          row-class-name="clickable-row"
+          empty-text="暫無工單記錄"
+          style="width: 100%"
+          @row-click="handleRowClick"
+        >
+          <el-table-column prop="requestNo" label="工單號" width="180" show-overflow-tooltip />
+          <el-table-column prop="title" label="標題" min-width="120" show-overflow-tooltip />
+          <el-table-column label="狀態" width="100">
+            <template #default="{ row }">
+              <el-tag :type="STATUS_TAG_TYPES[row.status]" size="small">
+                {{ STATUS_LABELS[row.status] }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="assignedName" label="處理人" width="120">
+            <template #default="{ row }">{{ row.assignedName ?? '待分配' }}</template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="提交時間" width="170" />
+          <el-table-column label="操作" width="80" align="center">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click.stop="handleRowClick(row)">
+                <el-icon><View /></el-icon>
+                詳情
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-pagination
+          v-if="ticketsTotal > ticketParams.pageSize"
+          v-model:current-page="ticketParams.pageIndex"
+          :page-size="ticketParams.pageSize"
+          :total="ticketsTotal"
+          layout="total, prev, pager, next"
+          class="tickets-pagination"
+          @current-change="handlePageChange"
+        />
+
+        <el-empty
+          v-if="!ticketsLoading && tickets.length === 0"
+          description="您還沒有提交過工單"
+          :image-size="100"
+        />
+      </el-tab-pane>
+    </el-tabs>
+
+    <!-- ── 工單詳情彈窗 ────────────────────────────────────────── -->
+    <RepairDetailDialog
+      v-model="detailVisible"
+      :loading="detailLoading"
+      :detail="currentDetail"
+      :preview-urls="previewUrls"
+      :status-labels="STATUS_LABELS"
+      :status-tag-types="STATUS_TAG_TYPES"
+    />
+
+    <!-- ── AI 潤色彈窗 ────────────────────────────────────────── -->
+    <RepairPolishDialog
+      v-model="polishVisible"
+      :loading="polishLoading"
+      :original-text="getPlainText(submitForm.description)"
+      :result="polishResult"
+      @update:result="polishResult = $event"
+      @apply="applyPolish"
+      @close="closePolish"
+    />
+  </div>
+</template>
+
+<style scoped>
+.it-repair-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  gap: 16px;
+}
+
+.page-header { flex-shrink: 0; }
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
+  margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  margin: 0;
+}
+
+.repair-tabs {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.repair-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 4px 4px;
+}
+
+.submit-form { max-width: 720px; }
+
+.editor-wrapper {
+  width: 100%;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--el-bg-color);
+}
+
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+}
+
+.editor-tip { line-height: 1.4; }
+.editor-count { flex-shrink: 0; }
+
+.submit-disabled-hint {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+}
+
+.desc-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.polish-count {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.tickets-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.tickets-pagination {
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.it-repair-view :deep(.clickable-row) { cursor: pointer; }
+
+.it-repair-view :deep(.clickable-row:hover > td) {
+  background-color: var(--el-fill-color-light) !important;
+}
+</style>
+
+<!-- Quill 由 JS 動態建立 DOM，scoped :deep() 無法命中，需用全域樣式覆蓋 -->
+<style>
+.repair-editor .ql-toolbar,
+.repair-editor .ql-toolbar.ql-snow {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.repair-editor .ql-container.ql-snow { border: 0 !important; }
+
+.repair-editor .ql-editor {
+  min-height: calc(55vh - 160px);
+  max-height: calc(70vh - 160px);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-y: auto;
+}
+
+.repair-editor .ql-editor.ql-blank::before {
+  left: 14px;
+  right: 14px;
+  color: var(--el-text-color-placeholder);
+  font-style: normal;
+}
+
+.repair-editor .ql-editor img {
+  max-width: 100%;
+  height: auto;
+}
+</style>

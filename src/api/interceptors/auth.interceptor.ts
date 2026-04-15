@@ -83,7 +83,7 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
 
       if (token) {
         // 直接帶 token（與 Portal HttpClient 保持一致，不加 Bearer 前綴）
-        config.headers.Authorization = token
+        config.headers.Authorization = 'Bearer '+token
       } else {
         // 有接口調用但 token 為空（理論上路由守衛已攔截，此為兜底）
         ElMessage.error(getError('TokenExpiredError'))
