@@ -64,6 +64,7 @@
 //
 // 來源：vue-router 套件
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth.store'
 
 // RouteRecordRaw：路由配置對象的 TypeScript 類型（Raw = 原始/配置態）
 //   規定了每個路由必須有哪些字段（path、component 等）
@@ -255,39 +256,29 @@ const router = createRouter({
  */
 router.beforeEach((to, _from) => {
   // ── 更新瀏覽器/窗口標題 ────────────────────────────────────────
-  // to.meta.title 是在路由配置中設置的自定義標題字符串
-  // 使用 as string | undefined 進行類型斷言（meta 字段默認類型是 unknown）
   const title = to.meta.title as string | undefined
   if (title) {
-    // document.title 直接設置瀏覽器/Electron 窗口的標題欄文字
-    // 格式：「統一平台 - 企業桌面客戶端」
     document.title = `${title} - 企業桌面客戶端`
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // TODO: 登錄功能實現後，取消下方注釋以啟用認證守衛
-  //
-  // 取消注釋前需要先在文件頂部添加以下 import：
-  //   import { useAuthStore } from '@/stores/auth.store'
-  //
-  // 認證守衛邏輯：
-  // ─────────────────────────────────────────────────────────────────
-  // const authStore = useAuthStore()
-  //
-  // // 情況1：需要認證 && 用戶未登錄 → 強制跳轉到登錄頁
-  // // to.meta.requiresAuth 讀取路由配置中的 meta 字段
-  // // authStore.isAuthenticated 讀取 auth.store.ts 中的響應式狀態
-  // if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-  //   return { name: 'login' }   // 返回路由對象 = 重定向
-  // }
-  //
-  // // 情況2：用戶已登錄 && 嘗試訪問登錄頁 → 跳轉到首頁（避免已登錄還看到登錄頁）
-  // if (to.name === 'login' && authStore.isAuthenticated) {
-  //   return { name: 'unified-platform' }
-  // }
-  //
-  // // 以上兩個 if 都不觸發時，函數返回 undefined = 允許正常跳轉
-  // ─────────────────────────────────────────────────────────────────
+  // ── 認證守衛 ────────────────────────────────────────────────────
+  // useAuthStore() 在 router guard 中調用是安全的：
+  // main.ts 中 app.use(pinia) 先於 app.use(router) 執行，
+  // 所以 guard 觸發時 pinia 已就緒。
+  const authStore = useAuthStore()
+
+  // isRestoringSession 期間不做攔截（等 restoreSession 完成後再判斷）
+  if (authStore.isRestoringSession) return
+
+  // 情況 1：需要認證 && 用戶未登錄 → 跳轉登錄頁
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'login' }
+  }
+
+  // 情況 2：已登錄 && 嘗試訪問登錄頁 → 跳轉首頁
+  if (to.name === 'login' && authStore.isAuthenticated) {
+    return { name: 'unified-platform' }
+  }
 })
 
 // 導出 router 實例供 src/main.ts 使用：

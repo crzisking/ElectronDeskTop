@@ -10,7 +10,7 @@
 
 // ─── 統一錯誤類型 ────────────────────────────────────────────────
 /**
- * 所有 API 錯誤都被 error.interceptor.ts 標準化為此格式，
+ * 所有 API 錯誤都被 auth.interceptor.ts 攔截處理，
  * 組件層只需處理 ApiError，無需了解 Axios 底層結構。
  */
 export interface ApiError {
@@ -25,35 +25,66 @@ export interface ApiError {
 }
 
 // ─── Auth 相關類型 ────────────────────────────────────────────────
-/** 登錄請求體（預留，登錄功能待實現） */
+
+/**
+ * 登錄請求體
+ * POST /api/portal/oauth/login
+ */
 export interface LoginCredentials {
-  /** 用戶名或郵箱 */
+  /** 工號（如 "S2403279"） */
   username: string
-  /** 密碼（明文，HTTPS 傳輸） */
+  /** 密碼 */
   password: string
 }
 
-/** 登錄成功響應體 */
+/**
+ * 後端登錄接口原始響應
+ * {
+ *   "code": 200,
+ *   "message": "登录成功。",
+ *   "data": { "user": {...}, "token": "eyJ..." }
+ * }
+ */
 export interface LoginResponse {
-  /** JWT Access Token */
-  accessToken: string
-  /** Token 過期時間（ISO 8601 字符串） */
-  expiresAt: string
-  /** 用戶基本信息 */
-  user: UserProfile
+  code: number
+  message: string
+  data: {
+    user: UserProfile
+    token: string
+  }
 }
 
-/** 用戶個人信息 */
+/**
+ * 用戶個人信息
+ * 對應後端 /api/portal/oauth/login 返回的 data.user 字段
+ */
 export interface UserProfile {
-  id: string
+  /** 用戶數據庫 ID */
+  id: number
+  /** 工號（如 "S2403279"） */
+  userName: string
+  /** 顯示姓名（如 "陳閏知"） */
   name: string
+  /** 是否主帳號 */
+  primary: boolean
+  /** 語言偏好（如 "zh_CN"） */
+  lang: string
+  /** 可訪問廠別代碼（逗號分隔字符串，如 "3200,3100"） */
+  fcty: string
+  /** 可訪問廠別代碼列表 */
+  fctyList: string[]
+  /** 帳號是否啟用 */
+  enabled: boolean
+  /** 部門編號（如 "10040300"） */
+  deptNo: string
+  /** 手機號碼 */
+  phoneNo: string
+  /** 電子郵件 */
   email: string
-  /** 部門名稱 */
-  department?: string
-  /** 頭像 URL */
-  avatar?: string
-  /** 職位 */
-  title?: string
+  /** 性別（true = 男） */
+  gender: boolean
+  /** 性別描述（如 "男/Male"） */
+  genderLabel: string
 }
 
 // ─── AI 快捷功能相關類型 ─────────────────────────────────────────

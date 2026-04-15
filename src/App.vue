@@ -77,7 +77,7 @@ onMounted(async () => {
     ElMessage.error('應用配置加載失敗，部分功能可能不可用')
   }
 
-  // 2. 嘗試從 OS 鑰匙串恢復登錄態
+  // 2. 嘗試從 OS 鑰匙串恢復登錄態（或開發環境自動登錄）
   try {
     await authStore.restoreSession()
   } catch (err) {

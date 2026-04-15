@@ -43,6 +43,7 @@ import { ref, computed } from 'vue'
 //   來源：@/types/api.types.ts（@ 是 src/ 目錄的別名，在 vite.config.ts 中配置）
 //   import type 表示「只導入類型」，編譯後不會出現在 JS 代碼中，節省包大小
 import type { UserProfile } from '@/types/api.types'
+import { authApi } from '@/api/modules/auth.api'
 
 // ── Store 定義 ────────────────────────────────────────────────────────
 // useAuthStore 是導出的 composable 函數名，Vue 3 約定以 use 開頭
@@ -106,10 +107,10 @@ export const useAuthStore = defineStore('auth', () => {
    * 渲染進程（Vue 代碼）通過 IPC 向主進程請求 Token：
    *   window.electronAPI.auth.getToken()  →  主進程從鑰匙串讀取  →  返回給渲染進程
    * 讀回後存到這個 ref，供 HTTP 攔截器在 Authorization header 中使用：
-   *   `Authorization: Bearer ${accessToken.value}`
+   *   `Authorization: ${accessToken.value}`（直接帶 token，不加 Bearer 前綴）
    *
    * 用途（在哪裡讀取）：
-   *  - src/api/interceptors.ts：每次發 HTTP 請求前，從這裡取 Token 放到請求頭
+   *  - src/api/interceptors/auth.interceptor.ts：每次發 HTTP 請求前注入 Authorization header
    *  - setToken() action：HTTP 攔截器收到 Token 刷新響應時，更新這個值
    */
   const accessToken = ref<string | null>(null)
@@ -150,7 +151,8 @@ export const useAuthStore = defineStore('auth', () => {
    *
    * 用途：TitleBar.vue、用戶信息彈窗等
    */
-  const avatarUrl = computed(() => user.value?.avatar ?? '')
+  /** 用戶頭像：後端暫無頭像字段，以姓名首字取代顯示 */
+  const avatarUrl = computed(() => '')
 
   // ═══════════════════════════════════════════════════════════════════
   // Actions（方法/動作）
@@ -176,8 +178,9 @@ export const useAuthStore = defineStore('auth', () => {
    * 3. 若 Token 存在：
    *    a. 將 Token 存到內存（accessToken.value）
    *    b. 設置 isAuthenticated = true（允許訪問受保護頁面）
-   *    c. TODO：調用 /auth/verify 或 /user/profile 獲取用戶信息
-   * 4. 無論成功失敗，最後都設置 isRestoringSession = false
+   *    （注意：user 信息在此步驟無法恢復，只有 token。若需要，可在此調用 /user/profile）
+   * 4. 無 Token 且開發環境開啟 AUTO_LOGIN → 自動登錄
+   * 5. 無論成功失敗，最後都設置 isRestoringSession = false
    *
    * ── async/await 說明 ────────────────────────────────────────────────
    * async function 使函數返回 Promise
@@ -189,33 +192,23 @@ export const useAuthStore = defineStore('auth', () => {
    * finally：無論成功失敗都執行（這裡用來確保 isRestoringSession 一定被設回 false）
    */
   async function restoreSession(): Promise<void> {
-    // 標記「正在恢復中」，App.vue 可根據此 flag 顯示啟動加載畫面
     isRestoringSession.value = true
     try {
-      // 通過 IPC 調用主進程，從 OS 鑰匙串讀取 Access Token
-      // window.electronAPI 由 electron/preload/index.ts 通過 contextBridge 注入
-      // 返回值：string（已存有 Token）或 null（首次使用/已登出）
+      // 1. 嘗試從 OS 鑰匙串恢復已有 Token
       const token = await window.electronAPI.auth.getToken()
 
       if (token) {
-        // Token 存在，視為「已登錄」狀態
-        // 注意：這裡不驗證 Token 是否過期，由 HTTP 攔截器在實際請求時處理 401 響應
-        accessToken.value = token         // 存到內存，供 HTTP 攔截器讀取
-        isAuthenticated.value = true      // 解鎖路由守衛，允許訪問受保護頁面
-
-        // TODO: 從後端獲取用戶信息填充 user
-        // 後端接口確認後取消注釋：
-        // const profile = await authApi.getProfile()
-        // user.value = profile
+        // Token 存在，直接恢復會話（是否過期由後續 401 攔截器處理）
+        accessToken.value = token
+        isAuthenticated.value = true
+        return
       }
-      // token 為 null 時：isAuthenticated 保持 false，路由守衛會引導到 /login
+
+      // 2. 無 Token：isAuthenticated 保持 false
+      //    路由守衛會導向 /login，LoginView 掛載時會處理開發環境自動登錄
     } catch (err) {
-      // IPC 通訊失敗（主進程無響應、鑰匙串讀取失敗等異常情況）
-      // 記錄錯誤但不讓應用崩潰，用戶將以「未登錄」狀態看到登錄頁
       console.error('[AuthStore] 會話恢復失敗:', err)
     } finally {
-      // 無論成功/失敗/Token 為空，都必須關閉加載狀態
-      // finally 保證這行代碼一定執行，即使 try 塊中有 return 或 throw
       isRestoringSession.value = false
     }
   }
@@ -240,14 +233,25 @@ export const useAuthStore = defineStore('auth', () => {
    * 直接 throw Error，所有調用者（LoginView 的提交按鈕）會收到錯誤，
    * 顯示「功能尚未實現」提示，不會讓用戶看到空白的假登錄效果
    */
-  async function login(_username: string, _password: string): Promise<void> {
-    // TODO: 實現登錄邏輯
-    // const { data } = await authApi.login({ username, password })
-    // await window.electronAPI.auth.setToken(data.accessToken)
-    // accessToken.value = data.accessToken
-    // user.value = data.user
-    // isAuthenticated.value = true
-    throw new Error('登錄功能尚未實現，敬請期待')
+  /**
+   * 登錄
+   * @param userName 工號（如 "S2403279"）
+   * @param password 密碼
+   * @throws 登錄失敗時拋出錯誤（由 LoginView 捕獲顯示給用戶）
+   */
+  async function login(userName: string, password: string): Promise<void> {
+    // 1. 呼叫後端登錄接口
+    //    攔截器已提取 response.data，authApi.login 再提取 .data 層，
+    //    最終拿到的是 { token, user }，不含外層 code/message
+    const { token, user: userInfo } = await authApi.login({ username: userName, password }) as unknown as { token: string; user: UserProfile }
+
+    // 2. 將 Token 存入 OS 鑰匙串（持久化，下次啟動可自動恢復會話）
+    await window.electronAPI.auth.setToken(token)
+
+    // 3. 更新內存狀態（供 HTTP 攔截器和各組件使用）
+    accessToken.value = token
+    user.value = userInfo
+    isAuthenticated.value = true
   }
 
   /**

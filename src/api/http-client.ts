@@ -16,7 +16,20 @@
 import axios from 'axios'
 import type { AxiosInstance } from 'axios'
 import { setupAuthInterceptor } from './interceptors/auth.interceptor'
-import { setupErrorInterceptor } from './interceptors/error.interceptor'
+
+/**
+ * 從 Vite 環境變量讀取 API 配置
+ * .env.development → npm run dev 時生效
+ * .env.production  → npm run build 時生效
+ */
+export const ENV = {
+  /** 通用業務 API 基礎地址 */
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1',
+  /** 登錄/認證 API 基礎地址 */
+  authBaseUrl: import.meta.env.VITE_AUTH_BASE_URL ?? 'http://localhost:8080/auth',
+  /** 請求超時（ms） */
+  apiTimeout: Number(import.meta.env.VITE_API_TIMEOUT ?? 30000),
+}
 
 /**
  * 創建帶有完整攔截器的 Axios 實例
@@ -40,11 +53,8 @@ export function createHttpClient(baseURL: string, timeout = 15000): AxiosInstanc
     }
   })
 
-  // 附加 Auth Token 攔截器（請求前注入 Authorization 頭）
+  // 附加完整攔截器（Token 注入 + 業務碼/HTTP錯誤/401過期 統一處理）
   setupAuthInterceptor(instance)
-
-  // 附加錯誤標準化攔截器（統一 ApiError 格式）
-  setupErrorInterceptor(instance)
 
   return instance
 }

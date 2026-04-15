@@ -1,71 +1,46 @@
 /**
- * Auth API 模塊（預留）
+ * Auth API 模塊
  *
- * 登錄、登出、Token 刷新等接口。
- * 當前為預留占位，業務邏輯標記為 TODO。
- *
- * 注意：Token 存取使用 IPC（OS 鑰匙串），不走此 HTTP 模塊。
- * 此模塊只負責與後端的 Auth 業務接口通信。
+ * 負責與後端 Portal OAuth 服務通信（登錄接口）。
+ * Token 的持久化存取走 IPC → OS 鑰匙串（見 electron/preload/index.ts），
+ * 此模塊只負責 HTTP 層的登錄請求。
  */
 
-import { createHttpClient } from '../http-client'
-import { useConfigStore } from '@/stores/config.store'
+import { createHttpClient, ENV } from '../http-client'
 import type { LoginCredentials, LoginResponse } from '@/types/api.types'
 
 /**
- * Auth API Composable
+ * Auth API 模塊
  *
- * 使用 Composable 函數風格，確保 configStore 已加載後再創建 client。
- * 在 authStore.login() 中調用此函數。
+ * 對接 Portal OAuth 登錄接口：
+ *   POST http://192.168.120.71:9222/api/portal/oauth/login
+ *
+ * API 宿主由環境變量控制：
+ *   開發環境 → .env.development 的 VITE_AUTH_BASE_URL
+ *   正式環境 → .env.production  的 VITE_AUTH_BASE_URL
  */
-export function useAuthApi() {
-  // 從 configStore 獲取 API 基礎地址
-  // TODO: 配置文件中加入 authApiBaseUrl 字段後從此讀取
-  const BASE_URL = 'https://api.company.internal/v1'
-  const client = createHttpClient(BASE_URL)
 
-  return {
-    /**
-     * 用戶登錄
-     * POST /auth/login
-     * @param credentials 用戶名+密碼
-     * @returns Token 和用戶信息
-     *
-     * TODO: 登錄功能實現時取消注釋
-     */
-    async login(credentials: LoginCredentials): Promise<LoginResponse> {
-      const { data } = await client.post<LoginResponse>('/auth/login', credentials)
-      return data
-    },
-
-    /**
-     * 驗證 Token 是否有效
-     * GET /auth/verify
-     * @returns 是否有效
-     *
-     * TODO: 用於應用啟動時驗證已保存的 Token
-     */
-    async verifyToken(): Promise<boolean> {
-      try {
-        await client.get('/auth/verify')
-        return true
-      } catch {
-        return false
-      }
-    },
-
-    /**
-     * 獲取當前用戶信息
-     * GET /auth/profile
-     *
-     * TODO: 登錄後調用此接口填充 authStore.user
-     */
-    async getProfile() {
-      const { data } = await client.get('/auth/profile')
-      return data
-    }
+/** Auth Axios 實例（單例，懶創建） */
+let _client: ReturnType<typeof createHttpClient> | null = null
+function getClient() {
+  if (!_client) {
+    _client = createHttpClient(ENV.authBaseUrl, ENV.apiTimeout)
   }
+  return _client
 }
 
-// 避免 configStore 未使用的 lint 警告
-void useConfigStore
+export const authApi = {
+  /**
+   * 登錄
+   * POST /api/portal/oauth/login
+   * Body: { username, password }
+   * Response: { code, message, data: { user, token } }
+   */
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    const { data } = await getClient().post<LoginResponse>(
+      '/api/portal/oauth/login',
+      credentials
+    )
+    return data
+  }
+}

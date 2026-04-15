@@ -17,7 +17,7 @@
  */
 
 import { ref, onMounted, onUnmounted } from 'vue'
-import type { AppConfig, QuickMenuItem } from '../../src/types/config.types'
+import type { AppConfig, QuickMenuItem } from '@/types/config.types'
 
 /** 菜單是否可見 */
 const visible = ref(false)

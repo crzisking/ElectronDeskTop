@@ -1,65 +1,159 @@
 <script setup lang="ts">
 /**
- * 登錄頁面（預留占位）
+ * 登錄頁面
  *
- * 當前狀態：展示"開發中"占位頁面
- * 所有登錄接口已在 authStore 和 auth.api.ts 中預留
+ * 對接 Portal OAuth 登錄接口：
+ *   POST /api/portal/oauth/login
+ *   body: { userName, password }
  *
- * 後續實現步驟：
- *  1. 取消 src/router/index.ts 中的路由守衛注釋
- *  2. 實現 authStore.login() 方法
- *  3. 完善此頁面的表單 UI 和提交邏輯
- *
- * 預留的表單結構已在注釋中給出，方便後續快速實現。
+ * 登錄成功後跳轉到統一平台首頁。
  */
 
-// 預留：import { ref } from 'vue'
-// 預留：import { useAuthStore } from '@/stores/auth.store'
-// 預留：const authStore = useAuthStore()
-// 預留：const form = ref({ username: '', password: '' })
-// 預留：const loading = ref(false)
-// 預留：async function handleLogin() { ... }
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth.store'
+import type { FormInstance, FormRules } from 'element-plus'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+/** 開發環境自動登錄：將 env 值填入表單，再走正常登錄流程 */
+onMounted(() => {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEV_AUTO_LOGIN === 'true') {
+    const username = import.meta.env.VITE_DEV_USERNAME
+    const password = import.meta.env.VITE_DEV_PASSWORD
+    console.log('[Login] 開發環境自動填入帳號：', username)
+    if (username && password) {
+      form.userName = username
+      form.password = password
+      handleLogin()
+    }
+  }
+})
+
+/** 表單 ref（用於手動觸發驗證） */
+const formRef = ref<FormInstance>()
+
+/** 表單數據 */
+const form = reactive({
+  userName: '',
+  password: ''
+})
+
+/** 前端基礎校驗規則 */
+const rules: FormRules = {
+  userName: [
+    { required: true, message: '請輸入工號', trigger: 'blur' },
+    { min: 2, message: '工號格式不正確', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '請輸入密碼', trigger: 'blur' },
+    { min: 1, message: '密碼不能為空', trigger: 'blur' }
+  ]
+}
+
+/** 登錄中狀態（控制按鈕 loading） */
+const loading = ref(false)
+
+/** 錯誤提示（接口返回的錯誤信息） */
+const errorMsg = ref('')
+
+/**
+ * 提交登錄
+ * 1. 前端校驗
+ * 2. 調用 authStore.login()（調用後端接口 + 存 Token）
+ * 3. 成功跳轉，失敗顯示錯誤
+ */
+async function handleLogin() {
+  // 觸發 el-form 驗證，不通過則中止
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  loading.value = true
+  errorMsg.value = ''
+
+  try {
+    await authStore.login(form.userName, form.password)
+    // 登錄成功 → 跳轉首頁
+    await router.push({name: 'unified-platform'})
+  } catch (err: unknown) {
+    // 顯示後端返回的錯誤信息或通用提示
+    errorMsg.value = err instanceof Error
+      ? err.message
+      : '登錄失敗，請稍後再試'
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
   <div class="login-view">
     <div class="login-card">
-      <!-- 應用標識 -->
+      <!-- 品牌標識 -->
       <div class="login-brand">
         <img class="brand-icon" src="@/assets/logo.png" alt="ichia" />
         <h2 class="brand-name">ichiaDesktop</h2>
-        <p class="brand-desc">統一平台 · AI 助手 · 快速聯繫</p>
+        <p class="brand-desc">統一平台 · AI 助手 · 業務管理</p>
       </div>
 
-      <!-- 開發中提示 -->
-      <el-result
-        icon="info"
-        title="登錄功能開發中"
-        sub-title="認證模塊已完成架構預留，功能即將上線"
+      <!-- 登錄表單 -->
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        label-position="top"
+        size="large"
+        @submit.prevent="handleLogin"
       >
-        <template #extra>
-          <el-tag type="info" size="large">auth.store.ts · auth.api.ts · keytar 已就緒</el-tag>
-        </template>
-      </el-result>
+        <el-form-item label="工號" prop="userName">
+          <el-input
+            v-model="form.userName"
+            placeholder="請輸入工號，如 S2403279"
+            clearable
+            :prefix-icon="User"
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
 
-      <!--
-        預留登錄表單（取消注釋即可使用）：
+        <el-form-item label="密碼" prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="請輸入密碼"
+            show-password
+            :prefix-icon="Lock"
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
 
-        <el-form :model="form" label-position="top" @submit.prevent="handleLogin">
-          <el-form-item label="用戶名 / 郵箱" required>
-            <el-input v-model="form.username" placeholder="請輸入用戶名或郵箱" clearable />
-          </el-form-item>
-          <el-form-item label="密碼" required>
-            <el-input v-model="form.password" type="password" placeholder="請輸入密碼" show-password />
-          </el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" style="width:100%">
-            登錄
-          </el-button>
-        </el-form>
-      -->
+        <!-- 錯誤提示 -->
+        <el-alert
+          v-if="errorMsg"
+          :title="errorMsg"
+          type="error"
+          show-icon
+          :closable="false"
+          class="login-error"
+        />
+
+        <el-button
+          type="primary"
+          native-type="submit"
+          :loading="loading"
+          class="login-btn"
+        >
+          {{ loading ? '登錄中...' : '登 錄' }}
+        </el-button>
+      </el-form>
     </div>
   </div>
 </template>
+
+<script lang="ts">
+import { User, Lock } from '@element-plus/icons-vue'
+export default { components: { User, Lock } }
+</script>
 
 <style scoped>
 .login-view {
@@ -89,18 +183,31 @@
   border-radius: 16px;
   object-fit: contain;
   margin: 0 auto 16px;
+  display: block;
 }
 
 .brand-name {
   font-size: 22px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .brand-desc {
   font-size: 13px;
   color: var(--el-text-color-secondary);
   margin: 0;
+}
+
+.login-error {
+  margin-bottom: 16px;
+}
+
+.login-btn {
+  width: 100%;
+  margin-top: 8px;
+  height: 44px;
+  font-size: 15px;
+  letter-spacing: 4px;
 }
 </style>
