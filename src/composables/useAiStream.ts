@@ -51,7 +51,7 @@ export function useAiStream() {
     const configStore = useConfigStore()
     const authStore = useAuthStore()
 
-    const apiBaseUrl = configStore.aiConfig?.apiBaseUrl ?? ''
+    const apiBaseUrl = configStore.functionsConfig?.apiBaseUrl ?? ''
     if (!apiBaseUrl) {
       streamError.value = 'AI API 地址未配置'
       return

@@ -20,7 +20,7 @@
  *  - src/types/electron.d.ts：window.electronAPI.config.read() 的返回類型
  *  - src/components/layout/SidebarNav.vue：讀取 SidebarItem[] 渲染菜單
  *  - src/views/UnifiedPlatform/UnifiedPlatformView.vue：讀取 SystemLink[]
- *  - src/views/AiQuickFunctions/AiQuickFunctionsView.vue：讀取 AiTool[]
+ *  - src/views/InternalFunctions/InternalFunctionsView.vue：讀取 InternalTool[]
  *
  * ── interface 是什麼？ ────────────────────────────────────────────────
  * interface 是 TypeScript 的「結構類型描述符」，定義一個對象應該有哪些字段：
@@ -38,7 +38,7 @@
 //   "sidebar": { ... },
 //   "floatingBall": { ... },
 //   "unifiedPlatform": { ... },
-//   "aiQuickFunctions": { ... },
+//   "internalFunctions": { ... },
 //   "quickContact": { ... }
 // }
 export interface AppConfig {
@@ -80,11 +80,11 @@ export interface AppConfig {
   unifiedPlatform: UnifiedPlatformConfig
 
   /**
-   * AI 快捷功能配置
-   * 對應 JSON：{ "aiQuickFunctions": { "apiBaseUrl": "...", "tools": [...] } }
-   * 詳細結構見 AiQuickFunctionsConfig interface
+   * 內部功能配置
+   * 對應 JSON：{ "internalFunctions": { "apiBaseUrl": "...", "tools": [...] } }
+   * 詳細結構見 InternalFunctionsConfig interface
    */
-  aiQuickFunctions: AiQuickFunctionsConfig
+  internalFunctions: InternalFunctionsConfig
 
   /**
    * 業務安排與尋找功能配置
@@ -364,7 +364,7 @@ export interface QuickMenuItem {
  *
  * ── 對應 JSON 示例 ────────────────────────────────────────────────
  * { "type": "show-main-window" }
- * { "type": "navigate", "routeName": "ai-quick-functions" }
+ * { "type": "navigate", "routeName": "internal-functions" }
  * { "type": "open-url", "url": "https://example.com", "target": "browser" }
  * { "type": "quit-app" }
  *
@@ -459,52 +459,51 @@ export interface SystemLink {
   ssoTokenParam?: string
 }
 
-// ── AI 快捷功能 ────────────────────────────────────────────────────────
+// ── 內部功能 ────────────────────────────────────────────────────────
 // 對應 JSON：
-// "aiQuickFunctions": {
+// "internalFunctions": {
 //   "apiBaseUrl": "https://ai-api.company.internal/v1",
 //   "apiTimeout": 30000,
 //   "tools": [ { ... } ]
 // }
-export interface AiQuickFunctionsConfig {
+export interface InternalFunctionsConfig {
   /**
-   * AI 後端 API 基礎地址
+   * 後端 API 基礎地址（供 AI 類工具使用）
    * 所有 AI 請求的根 URL，具體接口路徑會在此之後拼接
    * 例如：apiBaseUrl = "https://ai-api.company.internal/v1"
-   *        文本處理請求：POST https://ai-api.company.internal/v1/text/process
    * 在哪裡用：src/api/ai.api.ts 中 axios 實例的 baseURL 配置
    */
   apiBaseUrl: string
 
   /**
    * 請求超時（毫秒）
-   * AI 處理可能耗時較長，設置合理超時避免用戶等待過久
    * 例如：30000 = 30 秒
    * 在哪裡用：axios 實例配置的 timeout 字段
    */
   apiTimeout: number
 
   /**
-   * AI 工具入口列表
-   * 每個工具對應一個功能卡片，config 驅動渲染（不需要改代碼就能增減工具）
+   * 功能入口列表（可同時放 AI 工具與公司內部功能）
+   * 每個條目對應一張功能卡片，config 驅動渲染，不需要改代碼就能增減
    */
-  tools: AiTool[]
+  tools: InternalTool[]
 }
 
 /**
- * 單個 AI 工具入口定義
+ * 單個內部功能入口定義
  * 對應 JSON：
  * {
- *   "id": "text-processor",
- *   "name": "文本處理",
- *   "description": "智能處理和改寫文本",
- *   "icon": "EditPen",
+ *   "id": "bpmUserFinder",
+ *   "name": "BPM 負責人查詢",
+ *   "description": "查找對應的 BPM 表單負責人",
+ *   "icon": "Edit",
  *   "enabled": true,
  *   "openMode": "page",
- *   "routeName": "ai-text-processor"
+ *   "routeName": "ai-bpm-finder",
+ *   "url": "http://..."
  * }
  */
-export interface AiTool {
+export interface InternalTool {
   /** 唯一標識符（列表 key，也可用於功能統計/埋點） */
   id: string
 

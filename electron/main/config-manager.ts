@@ -38,10 +38,10 @@ const DEFAULT_CONFIG: AppConfig = {
         enabled: true
       },
       {
-        id: 'ai-quick-functions',
-        label: 'AI 快捷功能',
-        icon: 'MagicStick',
-        routeName: 'ai-quick-functions',
+        id: 'internal-functions',
+        label: '內部功能',
+        icon: 'Grid',
+        routeName: 'internal-functions',
         enabled: true
       },
       {
@@ -67,10 +67,10 @@ const DEFAULT_CONFIG: AppConfig = {
         enabled: true
       },
       {
-        id: 'go-ai',
-        label: 'AI 快捷功能',
-        icon: 'MagicStick',
-        action: { type: 'navigate', routeName: 'ai-quick-functions' },
+        id: 'go-internal',
+        label: '內部功能',
+        icon: 'Grid',
+        action: { type: 'navigate', routeName: 'internal-functions' },
         enabled: true
       },
       {
@@ -99,7 +99,7 @@ const DEFAULT_CONFIG: AppConfig = {
   unifiedPlatform: {
     systems: []
   },
-  aiQuickFunctions: {
+  internalFunctions: {
     apiBaseUrl: 'https://ai-api.company.internal/v1',
     apiTimeout: 30000,
     tools: [

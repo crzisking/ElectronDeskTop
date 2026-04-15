@@ -6,7 +6,7 @@
  *  2. summarize    - 摘要生成
  *  3. qa（流式）   - 智能問答（SSE，見 useAiStream composable）
  *
- * baseURL 從 configStore.aiConfig.apiBaseUrl 讀取，
+ * baseURL 從 configStore.functionsConfig.apiBaseUrl 讀取，
  * 支持在 app-config.json 中切換到不同環境的 AI 服務。
  */
 
@@ -27,7 +27,7 @@ export function useAiApi() {
   const configStore = useConfigStore()
 
   // 從配置中讀取 AI API 地址（確保配置已加載）
-  const baseURL = configStore.aiConfig?.apiBaseUrl ?? 'https://ai-api.company.internal/v1'
+  const baseURL = configStore.functionsConfig?.apiBaseUrl ?? 'https://ai-api.company.internal/v1'
   const client = createHttpClient(baseURL, 30000) // AI 接口超時設長一點（30s）
 
   return {

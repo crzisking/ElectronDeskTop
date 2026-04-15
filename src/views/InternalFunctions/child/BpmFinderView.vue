@@ -3,7 +3,7 @@
  * BPM 負責人查詢頁面
  *
  * 將 Dify 聊天機器人以 iframe 形式嵌入，供使用者查詢 BPM 表單負責人。
- * Dify embed URL 由 app-config.json → aiQuickFunctions.tools[bpmUserFinder].url 管理，
+ * Dify embed URL 由 app-config.json → internalFunctions.tools[bpmUserFinder].url 管理，
  * 修改 URL 只需改配置文件，無需動代碼。
  */
 import { ArrowLeft, ChromeFilled } from '@element-plus/icons-vue'
@@ -17,11 +17,11 @@ const configStore = useConfigStore()
 
 /** 從 config 找到 bpmUserFinder 工具的 Dify embed URL */
 const difyUrl = computed<string | undefined>(
-  () => configStore.aiConfig?.tools.find((tool) => tool.id === 'bpmUserFinder')?.url
+  () => configStore.functionsConfig?.tools.find((tool) => tool.id === 'bpmUserFinder')?.url
 )
 
 function goBack() {
-  router.push({ name: 'ai-quick-functions' })
+  router.push({ name: 'internal-functions' })
 }
 
 function openInBrowser() {
@@ -48,7 +48,7 @@ function openInBrowser() {
 
       <el-empty
         v-else
-        description="尚未設定 Dify 網址，請在 app-config.json 的 aiQuickFunctions.tools[bpmUserFinder].url 中填入正確的 URL"
+        description="尚未設定 Dify 網址，請在 app-config.json 的 internalFunctions.tools[bpmUserFinder].url 中填入正確的 URL"
         :image-size="120"
       />
     </div>

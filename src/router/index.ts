@@ -11,7 +11,7 @@
  * /                         → 重定向到 /unified-platform
  * / (AppLayout 父路由)
  *   /unified-platform       → UnifiedPlatformView（統一平台）
- *   /ai-quick-functions     → AiQuickFunctionsView（AI 快捷功能）
+ *   /internal-functions     → InternalFunctionsView（內部功能）
  *   /business               → BusinessView（業務安排與尋找）
  * /:pathMatch(.*)*          → 所有未知路由重定向到 /unified-platform（404 處理）
  *
@@ -151,26 +151,26 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // ── AI 快捷功能 ──────────────────────────────────────────────
-      // 完整 URL：http://app/#/ai-quick-functions
-      // 這個頁面提供多個 AI 工具的入口（由 uiStore.activeAiTool 控制激活的 Tab）
+      // ── 內部功能 ────────────────────────────────────────────────
+      // 完整 URL：http://app/#/internal-functions
+      // 功能卡片入口頁，同時放 AI 工具與公司內部功能，由 config 驅動
       {
-        path: 'ai-quick-functions',
-        name: 'ai-quick-functions',
-        component: () => import('@/views/AiQuickFunctions/AiQuickFunctionsView.vue'),
+        path: 'internal-functions',
+        name: 'internal-functions',
+        component: () => import('@/views/InternalFunctions/InternalFunctionsView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'AI 快捷功能'
+          title: '內部功能'
         }
       },
 
-      // ── BPM 負責人查詢（AI 工具子頁面）────────────────────────────
+      // ── BPM 負責人查詢（內部功能子頁面）───────────────────────────
       // 完整 URL：http://app/#/ai-bpm-finder
       // 嵌入 Dify chatbot，URL 由 app-config.json 管理
       {
         path: 'ai-bpm-finder',
         name: 'ai-bpm-finder',
-        component: () => import('@/views/AiQuickFunctions/child/BpmFinderView.vue'),
+        component: () => import('@/views/InternalFunctions/child/BpmFinderView.vue'),
         meta: {
           requiresAuth: true,
           title: 'BPM 負責人查詢'
@@ -187,6 +187,19 @@ const routes: RouteRecordRaw[] = [
         meta: {
           requiresAuth: true,
           title: '業務安排與尋找'
+        }
+      },
+
+      // ── IT 報修工單 ─────────────────────────────────────────────
+      // 完整 URL：http://app/#/it-repair
+      // 用戶提交設備故障/IT 問題報修，查看自己的工單狀態
+      {
+        path: 'it-repair',
+        name: 'it-repair',
+        component: () => import('@/views/ITRepair/ITRepairView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'IT 報修'
         }
       }
     ]

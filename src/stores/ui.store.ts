@@ -7,7 +7,7 @@
  *
  * 管理的狀態：
  *  - 側邊欄展開/折疊（SidebarNav.vue 讀取，TitleBar 的漢堡按鈕切換）
- *  - 當前激活的 AI 工具 Tab（AiQuickFunctionsView 讀取）
+ *  - 當前激活的 AI 工具 Tab（InternalFunctionsView 讀取）
  *  - 主窗口是否最大化（App.vue 更新，TitleBar.vue 讀取以切換按鈕圖標）
  *  - 全局加載遮罩（應用啟動時顯示，初始化完成後隱藏）
  *
@@ -64,14 +64,14 @@ export const useUiStore = defineStore('ui', () => {
   /**
    * 當前激活的 AI 工具 Tab
    *
-   * 控制 AiQuickFunctionsView 中右側面板顯示哪個 AI 工具界面。
+   * 控制 InternalFunctionsView 中右側面板顯示哪個 AI 工具界面。
    * 類型是字面量聯合類型（Union Literal Type），只允許這三個字符串之一：
    *   'text-processor' ：文本處理工具
    *   'summarizer'     ：摘要生成工具
    *   'qa'             ：問答工具
    *
    * ── 在哪裡被讀取？ ─────────────────────────────────────────────────
-   * src/views/AiQuickFunctions/AiQuickFunctionsView.vue：
+   * src/views/InternalFunctions/InternalFunctionsView.vue：
    *   // Tab 切換的 v-model 或 :active-name 綁定
    *   <el-tabs :model-value="uiStore.activeAiTool" @tab-click="handleTabClick">
    *
@@ -189,7 +189,7 @@ export const useUiStore = defineStore('ui', () => {
    * 確保傳入的值一定是三個有效工具名之一。
    *
    * ── 在哪裡調用？ ──────────────────────────────────────────────────
-   * - AiQuickFunctionsView.vue：用戶點擊 Tab 時
+   * - InternalFunctionsView.vue：用戶點擊 Tab 時
    *   const handleTabClick = (tab: { name: string }) => {
    *     uiStore.setActiveAiTool(tab.name as 'text-processor' | 'summarizer' | 'qa')
    *   }
@@ -258,7 +258,7 @@ export const useUiStore = defineStore('ui', () => {
   return {
     // State（響應式狀態）
     sidebarCollapsed,     // SidebarNav.vue 讀取（CSS class 綁定）
-    activeAiTool,         // AiQuickFunctionsView.vue 讀取（Tab 狀態）
+    activeAiTool,         // InternalFunctionsView.vue 讀取（Tab 狀態）
     isWindowMaximized,    // TitleBar.vue 讀取（最大化按鈕圖標切換）
     globalLoading,        // App.vue 讀取（控制加載遮罩顯示/隱藏）
     // Actions（方法）

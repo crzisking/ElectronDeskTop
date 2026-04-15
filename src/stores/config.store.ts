@@ -53,8 +53,8 @@ export const useConfigStore = defineStore('config', () => {
     () => appConfig.value?.unifiedPlatform.systems ?? []
   )
 
-  /** AI 功能配置 */
-  const aiConfig = computed(() => appConfig.value?.aiQuickFunctions)
+  /** 內部功能配置 */
+  const functionsConfig = computed(() => appConfig.value?.internalFunctions)
 
   /** 業務安排與尋找配置 */
   const businessConfig = computed(() => appConfig.value?.business)
@@ -103,7 +103,7 @@ export const useConfigStore = defineStore('config', () => {
     floatingBallMenuItems,
     floatingBallConfig,
     platformSystems,
-    aiConfig,
+    functionsConfig,
     businessConfig,
     language,
     theme,

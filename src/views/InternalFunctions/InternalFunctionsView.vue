@@ -1,58 +1,79 @@
 <script setup lang="ts">
 /**
- * AI 快捷功能入口頁面
+ * 內部功能入口頁面
  *
- * 與「統一平台」設計一致：卡片網格，由 config 驅動。
- * 每張卡片對應一個 AI 工具入口（文本處理、摘要、問答等）。
+ * 卡片網格，由 config 驅動（app-config.json → internalFunctions.tools）。
+ * 可同時放 AI 工具與公司內部功能，每張卡片對應一個功能入口。
  * 點擊後根據 openMode：
- *  - 'page'    ：跳轉到對應子路由（後續自行開發子頁面）
+ *  - 'page'    ：跳轉到對應子路由
  *  - 'external'：外部瀏覽器打開
  *
- * 新增工具只需在 app-config.json 的 aiQuickFunctions.tools 中追加即可，
+ * 新增功能只需在 app-config.json 的 internalFunctions.tools 中追加即可，
  * 無需修改此組件。
  */
 
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConfigStore } from '@/stores/config.store'
-import type { AiTool } from '@/types/config.types'
+import type { InternalTool } from '@/types/config.types'
 
 const router = useRouter()
 const configStore = useConfigStore()
 
-/** 啟用的 AI 工具列表 */
-const tools = computed<AiTool[]>(
-  () => configStore.aiConfig?.tools.filter((t) => t.enabled) ?? []
+/** 搜索關鍵詞 */
+const searchKeyword = ref('')
+
+/** 所有啟用的功能 */
+const allTools = computed<InternalTool[]>(
+  () => configStore.functionsConfig?.tools.filter((t) => t.enabled) ?? []
 )
 
+/** 過濾後的功能列表 */
+const tools = computed<InternalTool[]>(() => {
+  const kw = searchKeyword.value.trim().toLowerCase()
+  if (!kw) return allTools.value
+  return allTools.value.filter(
+    (t) =>
+      t.name.toLowerCase().includes(kw) ||
+      t.description.toLowerCase().includes(kw)
+  )
+})
+
 /**
- * 點擊工具卡片
- * - openMode='page'     → 路由跳轉（子頁面由開發者自行實現）
+ * 點擊功能卡片
+ * - openMode='page'     → 路由跳轉
  * - openMode='external' → 外部瀏覽器
  */
-function handleOpen(tool: AiTool) {
+function handleOpen(tool: InternalTool) {
   if (tool.openMode === 'external' && tool.url) {
     window.open(tool.url, '_blank')
   } else if (tool.openMode === 'page' && tool.routeName) {
     router.push({ name: tool.routeName }).catch(() => {
-      // 子路由尚未創建時，給出提示
-      console.warn(`[AI] 路由 "${tool.routeName}" 尚未配置，請先在 router/index.ts 中添加對應路由`)
+      console.warn(`[InternalFunctions] 路由 "${tool.routeName}" 尚未配置，請先在 router/index.ts 中添加對應路由`)
     })
   }
 }
 </script>
 
 <template>
-  <div class="ai-view">
+  <div class="internal-functions-view">
     <!-- 頁面頭部 -->
     <div class="page-header">
       <div class="header-left">
-        <h2 class="page-title">AI 快捷功能</h2>
-        <p class="page-subtitle">選擇工具，開始智能輔助工作</p>
+        <h2 class="page-title">內部功能</h2>
+        <p class="page-subtitle">選擇功能，快速進入對應工具</p>
       </div>
+      <!-- 搜索框 -->
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索功能名稱或描述..."
+        :prefix-icon="Search"
+        clearable
+        style="width: 260px"
+      />
     </div>
 
-    <!-- 工具卡片網格 -->
+    <!-- 功能卡片網格 -->
     <div class="tools-grid">
       <div
         v-for="tool in tools"
@@ -80,11 +101,18 @@ function handleOpen(tool: AiTool) {
       </div>
     </div>
 
-    <!-- 空狀態 -->
+    <!-- 空狀態：未配置任何功能 -->
     <el-empty
-      v-if="tools.length === 0"
-      description="尚未配置任何 AI 工具，請在 app-config.json 的 aiQuickFunctions.tools 中添加"
+      v-if="tools.length === 0 && allTools.length === 0"
+      description="尚未配置任何功能，請在 app-config.json 的 internalFunctions.tools 中添加"
       :image-size="120"
+    />
+
+    <!-- 空狀態：搜索無結果 -->
+    <el-empty
+      v-else-if="tools.length === 0"
+      :description="`未找到包含「${searchKeyword}」的功能`"
+      :image-size="100"
     />
   </div>
 </template>
@@ -95,7 +123,7 @@ export default { components: { ArrowRight } }
 </script>
 
 <style scoped>
-.ai-view {
+.internal-functions-view {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -105,6 +133,9 @@ export default { components: { ArrowRight } }
 }
 
 .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   flex-shrink: 0;
 }
 

@@ -29,10 +29,10 @@
         "enabled": true
       },
       {
-        "id": "ai-quick-functions",
-        "label": "AI 快捷功能",
-        "icon": "MagicStick",
-        "routeName": "ai-quick-functions",
+        "id": "internal-functions",
+        "label": "內部功能",
+        "icon": "Grid",
+        "routeName": "internal-functions",
         "enabled": true
       },
       {
@@ -82,12 +82,12 @@
         "action": { "type": "navigate", "routeName": "unified-platform" }
       },
       {
-        "id": "menu-go-ai",
-        "label": "AI 快捷功能",
-        "icon": "MagicStick",
+        "id": "menu-go-internal",
+        "label": "內部功能",
+        "icon": "Grid",
         "enabled": true,
         "separator": false,
-        "action": { "type": "navigate", "routeName": "ai-quick-functions" }
+        "action": { "type": "navigate", "routeName": "internal-functions" }
       },
       {
         "id": "menu-go-business",
@@ -168,11 +168,11 @@
     ]
   },
 
-  "aiQuickFunctions": {
-    "_comment": "AI 快捷功能頁面配置",
-    "_comment_apiBaseUrl": "AI 後端 API 的基礎 URL，所有 AI 請求都發送到這個地址",
+  "internalFunctions": {
+    "_comment": "內部功能頁面配置 — 可同時放 AI 工具與公司內部系統功能入口",
+    "_comment_apiBaseUrl": "AI 類功能的後端 API 基礎 URL，非 AI 工具可忽略此欄位",
     "_comment_apiTimeout": "API 請求超時時間，單位為毫秒（ms）。例如 30000 = 30 秒",
-    "_comment_tools": "AI 工具列表陣列。每個工具：id（唯一標識）、name（顯示名稱）、description（功能描述）、icon（Element Plus 圖標名稱）、enabled（是否啟用）、openMode（目前僅 'page' 表示打開獨立頁面）、routeName（對應的 Vue Router 路由名稱）",
+    "_comment_tools": "功能入口列表陣列。每個條目：id（唯一標識）、name（顯示名稱）、description（功能描述）、icon（Element Plus 圖標名稱）、enabled（是否啟用）、openMode（'page' 跳轉子路由 / 'external' 外部瀏覽器）、routeName（page 模式對應的 Vue Router 路由名稱）、url（external 模式或 iframe 嵌入的網址）",
     "apiBaseUrl": "https://api.example.com/ai/v1",
     "apiTimeout": 30000,
     "tools": [
@@ -185,6 +185,15 @@
         "openMode": "page",
         "routeName": "ai-bpm-finder",
         "url": "http://192.168.19.62/chat/5NyfqoZ9lGUWfCf8"
+      },
+      {
+        "id": "itRepair",
+        "name": "IT 報修",
+        "description": "提交設備故障或 IT 問題，查看自己的工單狀態",
+        "icon": "Tools",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "it-repair"
       }
     ]
   },
