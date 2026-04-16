@@ -78,14 +78,6 @@ async function handleSave() {
     //   })
     // ══════════════════════════════════════════════════════════════
 
-    console.log('[PipelineEditor] 保存流水線數據:', {
-      name: pipelineName.value,
-      nodeCount: nodes.length,
-      edgeCount: edges.length,
-      nodes,
-      edges
-    })
-
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     hasUnsavedChanges.value = false

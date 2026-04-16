@@ -17,6 +17,12 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_BASE_URL?: string
   /** API 請求超時毫秒數（默認 30000） */
   readonly VITE_API_TIMEOUT?: string
+  /** IT 報修工單後端服務地址（開發 localhost:5247 / 正式 192.168.120.79:9004） */
+  readonly VITE_REPAIR_API_URL?: string
+  /** Dify AI 整理服務的 SSE 端點 */
+  readonly VITE_DIFY_URL?: string
+  /** Dify 應用 API Key（Authorization: Bearer） */
+  readonly VITE_DIFY_API_KEY?: string
   /** 開發環境自動登錄開關（'true' 時啟用） */
   readonly VITE_DEV_AUTO_LOGIN?: string
   /** 開發環境自動登錄工號 */

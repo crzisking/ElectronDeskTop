@@ -20,11 +20,18 @@ import { useAuthStore } from '@/stores/auth.store'
 import { repairApi } from '@/api/modules/repair.api'
 import type { RepairAttachment } from '@/types/api.types'
 
-/** Dify Chat API 的 SSE 串流端點 */
-const DIFY_URL = 'http://192.168.19.62/v1/chat-messages'
+/**
+ * Dify Chat API 的 SSE 串流端點。
+ * 從環境變量讀取，開發/正式分別由 .env.development / .env.production 提供，
+ * 避免將內網 IP 硬編碼到源碼中。
+ */
+const DIFY_URL = import.meta.env.VITE_DIFY_URL as string
 
-/** Dify 應用的 API Key，用於請求頭 Authorization: Bearer */
-const DIFY_API_KEY = 'app-aJSqbQXsd4NUHBtQUheWR1ST'
+/**
+ * Dify 應用的 API Key，用於請求頭 Authorization: Bearer。
+ * 從環境變量讀取，不在源碼中明文存放，防止 Key 隨二進製包外洩。
+ */
+const DIFY_API_KEY = import.meta.env.VITE_DIFY_API_KEY as string
 
 /**
  * 同一份描述允許 AI 整理的最大次數。
@@ -485,6 +492,14 @@ export function useRepairSubmit(onSubmitSuccess: () => void) {
       ElMessage.success(`報修提交成功！工單號：${result.requestNo}`)
 
       // 重置表單所有狀態，準備下一次提交
+
+      // 必須先用 quillInstance.setContents([]) 清空 Quill 的內部 Delta 狀態，
+      // 讓 Quill 同步清空 DOM（含圖片節點）。
+      // 單純賦值 submitForm.description = '' 只更新 Vue 響應式資料，
+      // 但 @vueup/vue-quill 的 v-model 是「編輯器→外部」的單向推送，
+      // 外部賦空字串並不會反向驅動 Quill 清除已有的 DOM 內容。
+      quillInstance?.setContents([])
+
       submitForm.title = ''
       submitForm.description = ''
       uploadedAttachments.value = []

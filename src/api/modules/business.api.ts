@@ -77,9 +77,6 @@ export function useBusinessApi() {
    *   return data
    */
   async function getPipelines(): Promise<PipelineListResponse> {
-    const config = getConfig()
-    console.log('[BusinessApi] GET', config.pipelineApiEndpoint)
-
     // 模擬返回空列表
     return { pipelines: [], total: 0 }
   }
@@ -97,9 +94,6 @@ export function useBusinessApi() {
    *   return data
    */
   async function getPipelineById(id: string): Promise<Pipeline> {
-    const config = getConfig()
-    console.log('[BusinessApi] GET', `${config.pipelineApiEndpoint}/${id}`)
-
     // 模擬返回
     return {
       id,
@@ -124,9 +118,6 @@ export function useBusinessApi() {
    *   return result
    */
   async function savePipeline(data: SavePipelineRequest): Promise<Pipeline> {
-    const config = getConfig()
-    console.log('[BusinessApi] POST', config.pipelineApiEndpoint, data)
-
     // 模擬返回
     return {
       id: `pipeline-${Date.now()}`,
@@ -153,9 +144,6 @@ export function useBusinessApi() {
    *   return result
    */
   async function updatePipeline(id: string, data: SavePipelineRequest): Promise<Pipeline> {
-    const config = getConfig()
-    console.log('[BusinessApi] PUT', `${config.pipelineApiEndpoint}/${id}`, data)
-
     return {
       id,
       name: data.name,
@@ -177,9 +165,8 @@ export function useBusinessApi() {
    *   const client = createHttpClient(config.pipelineApiEndpoint, 10000)
    *   await client.delete(`/${id}`)
    */
-  async function deletePipeline(id: string): Promise<void> {
-    const config = getConfig()
-    console.log('[BusinessApi] DELETE', `${config.pipelineApiEndpoint}/${id}`)
+  async function deletePipeline(_id: string): Promise<void> {
+    // TODO: 接入後端後實現刪除邏輯
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -200,10 +187,7 @@ export function useBusinessApi() {
    *   })
    *   return data
    */
-  async function searchOwners(keyword: string): Promise<BusinessOwnerSearchResponse> {
-    const config = getConfig()
-    console.log('[BusinessApi] GET', `${config.ownerSearchApiEndpoint}?q=${keyword}`)
-
+  async function searchOwners(_keyword: string): Promise<BusinessOwnerSearchResponse> {
     // 模擬返回
     return { owners: [], total: 0 }
   }

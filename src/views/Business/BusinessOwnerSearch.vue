@@ -93,8 +93,6 @@ async function doSearch() {
     // 目前使用模擬數據，方便開發調試和 UI 驗證
     // ══════════════════════════════════════════════════════════════
 
-    console.log('[BusinessOwnerSearch] 搜索關鍵詞:', kw)
-
     // 模擬 API 延遲
     await new Promise((resolve) => setTimeout(resolve, 500))
 
