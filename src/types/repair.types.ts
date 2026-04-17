@@ -88,7 +88,7 @@ export interface RepairListParams {
   /** 狀態過濾（不傳則查全部） */
   status?: RepairStatus
   /** 按處理人 ID 過濾 */
-  assignedTo?: number
+  assignedTo?: string
   /** 頁碼（從 1 開始） */
   pageIndex: number
   /** 每頁條數（默認 10） */
