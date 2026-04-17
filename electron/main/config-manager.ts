@@ -18,7 +18,16 @@ import { join, dirname } from 'path'
 import { logger } from './utils/logger'
 import type { AppConfig } from '../../src/types/config.types'
 
-/** 默認配置（代碼兜底，防止配置文件損壞或字段缺失） */
+/**
+ * 代碼兜底默認配置。
+ *
+ * 僅在以下情況使用：
+ *  1. 開發環境找不到 config/app-config.json
+ *  2. 生產環境 extraResources 複製失敗且 userData 也無配置
+ *
+ * ⚠️ 注意：生產環境正常情況下會直接讀取 app-config.json（見 load() 方法），
+ * 此處的值只作為最後兜底，保持與 app-config.json 同步即可。
+ */
 const DEFAULT_CONFIG: AppConfig = {
   version: '1.0.0',
   app: {
@@ -30,27 +39,9 @@ const DEFAULT_CONFIG: AppConfig = {
   sidebar: {
     defaultCollapsed: false,
     items: [
-      {
-        id: 'unified-platform',
-        label: '統一平台',
-        icon: 'Grid',
-        routeName: 'unified-platform',
-        enabled: true
-      },
-      {
-        id: 'internal-functions',
-        label: '內部功能',
-        icon: 'Grid',
-        routeName: 'internal-functions',
-        enabled: true
-      },
-      {
-        id: 'quick-contact',
-        label: '快速聯繫',
-        icon: 'User',
-        routeName: 'quick-contact',
-        enabled: true
-      }
+      { id: 'unified-platform',  label: '統一平台',      icon: 'Grid',     routeName: 'unified-platform',  enabled: true },
+      { id: 'internal-functions', label: '內部功能',     icon: 'Grid',     routeName: 'internal-functions', enabled: true },
+      { id: 'business',           label: '業務安排與尋找', icon: 'DataLine', routeName: 'business',           enabled: true }
     ]
   },
   floatingBall: {
@@ -59,58 +50,27 @@ const DEFAULT_CONFIG: AppConfig = {
     defaultPosition: { x: 100, y: 300 },
     snapToEdge: true,
     quickMenu: [
-      {
-        id: 'show-main',
-        label: '開啟主視窗',
-        icon: 'Monitor',
-        action: { type: 'show-main-window' },
-        enabled: true
-      },
-      {
-        id: 'go-internal',
-        label: '內部功能',
-        icon: 'Grid',
-        action: { type: 'navigate', routeName: 'internal-functions' },
-        enabled: true
-      },
-      {
-        id: 'go-contact',
-        label: '快速聯繫',
-        icon: 'User',
-        action: { type: 'navigate', routeName: 'quick-contact' },
-        enabled: true
-      },
-      {
-        id: 'sep-1',
-        label: '',
-        action: { type: 'show-main-window' },
-        enabled: true,
-        separator: true
-      },
-      {
-        id: 'quit',
-        label: '結束應用程式',
-        icon: 'CircleClose',
-        action: { type: 'quit-app' },
-        enabled: true
-      }
+      { id: 'show-main',    label: '打開主窗口',    icon: 'Monitor',     action: { type: 'show-main-window' },                       enabled: true  },
+      { id: 'sep-1',        label: '',              action: { type: 'show-main-window' },                                             enabled: true, separator: true },
+      { id: 'go-platform',  label: '統一平台',      icon: 'Grid',        action: { type: 'navigate', routeName: 'unified-platform' }, enabled: true  },
+      { id: 'go-internal',  label: '內部功能',      icon: 'Grid',        action: { type: 'navigate', routeName: 'internal-functions' }, enabled: true },
+      { id: 'go-business',  label: '業務安排與尋找', icon: 'DataLine',   action: { type: 'navigate', routeName: 'business' },         enabled: true  },
+      { id: 'sep-2',        label: '',              action: { type: 'show-main-window' },                                             enabled: true, separator: true },
+      { id: 'quit',         label: '退出應用',      icon: 'SwitchButton', action: { type: 'quit-app' },                              enabled: true  }
     ]
   },
-  unifiedPlatform: {
-    systems: []
-  },
+  unifiedPlatform: { systems: [] },
   internalFunctions: {
-    apiBaseUrl: 'https://ai-api.company.internal/v1',
+    apiBaseUrl: '',
     apiTimeout: 30000,
     tools: [
-      { id: 'text-processor', name: '文本處理', description: '翻譯、潤色、縮短、擴寫', icon: 'Edit', enabled: true, openMode: 'page', routeName: 'ai-text-processor' },
-      { id: 'summarizer',     name: '文章摘要', description: '快速生成結構化摘要',       icon: 'Document',     enabled: true, openMode: 'page', routeName: 'ai-summarizer' },
-      { id: 'qanda',          name: 'AI 問答',  description: '多輪對話智能問答',          icon: 'ChatDotRound', enabled: true, openMode: 'page', routeName: 'ai-qanda' }
+      { id: 'bpmUserFinder', name: 'bpm負責人查詢', description: '查找對應的bpm表單負責人', icon: 'Edit',  enabled: true, openMode: 'page', routeName: 'ai-bpm-finder', url: '' },
+      { id: 'itRepair',      name: 'IT 報修',       description: '提交設備故障或 IT 問題',  icon: 'Tools', enabled: true, openMode: 'page', routeName: 'it-repair' }
     ]
   },
-  quickContact: {
-    searchApiEndpoint: 'https://api.company.internal/v1/contacts/search',
-    emailApiEndpoint: 'https://api.company.internal/v1/email/send',
+  business: {
+    pipelineApiEndpoint: '',
+    ownerSearchApiEndpoint: '',
     maxSearchResults: 20
   }
 }
@@ -137,14 +97,16 @@ export class ConfigManager {
 
   /**
    * 加載配置文件
-   * 1. 生產環境：若 userData 無配置，從 extraResources 複製默認配置
+   * 1. 生產環境：每次啟動都從 extraResources 覆蓋 userData 配置（保證版本升級後配置與代碼同步）
    * 2. 讀取配置文件並解析 JSON
    * 3. 與默認配置深合並（確保新增字段有默認值）
    */
   async load(): Promise<void> {
     try {
-      // 生產環境下，首次啟動需複製默認配置到 userData
-      if (app.isPackaged && !existsSync(this.configFilePath)) {
+      // 生產環境下，每次啟動都從安裝包覆蓋 userData 配置，
+      // 確保版本升級後路由名稱、菜單等始終與當前代碼一致。
+      // （用戶不會手動編輯此文件，因此直接覆蓋是安全的。）
+      if (app.isPackaged) {
         await this.copyDefaultConfig()
       }
 
