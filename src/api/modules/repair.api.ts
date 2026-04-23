@@ -74,14 +74,21 @@ export const repairApi = {
   },
 
   /**
-   * 查詢工單詳情（含附件圖片列表）
-   * GET /api/repair/detail/{id}
+   * 查詢工單詳情（用戶端查看報修匯報響應）
+   * GET /api/repair/user-report/{id}
+   *
+   * 返回：
+   *  - 提問信息（標題、描述、提交人、提交時間）
+   *  - 用戶可見的匯報回覆（IsUserSee=1 的唯一一筆；未匯報時 resultContent/resultTime 為 null）
+   *  - 匯報附件列表（掛在用戶可見匯報記錄下）
+   *
+   * 註：內部匯報（IsUserSee=0）不會返回給用戶端。
    *
    * @param id 工單 ID
-   * @returns 工單完整信息 + 附件列表
+   * @returns 工單提問 + 匯報回覆 + 附件
    */
   async detail(id: number): Promise<RepairDetail> {
-    const { data } = await getClient().get(`/api/repair/detail/${id}`)
+    const { data } = await getClient().get(`/api/repair/user-report/${id}`)
     return data as RepairDetail
   },
 

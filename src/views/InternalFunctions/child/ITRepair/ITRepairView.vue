@@ -10,13 +10,29 @@
  *  - components/RepairDetailDialog 工單詳情彈窗 UI
  */
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import { MagicStick, View } from '@element-plus/icons-vue'
+import { ArrowLeft, MagicStick, View } from '@element-plus/icons-vue'
 import { useRepairSubmit } from './composables/useRepairSubmit'
 import { useRepairTickets, STATUS_LABELS, STATUS_TAG_TYPES } from './composables/useRepairTickets'
 import RepairPolishDialog from './components/RepairPolishDialog.vue'
 import RepairDetailDialog from './components/RepairDetailDialog.vue'
+
+const router = useRouter()
+
+/**
+ * 返回上一個頁面：優先使用瀏覽器歷史記錄；
+ * 當此頁為 session 首個路由（歷史為空）時，回退到內部功能首頁，
+ * 避免點擊返回後停在空白路由或外部頁面。
+ */
+function handleBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({ name: 'internal-functions' })
+  }
+}
 
 /** 當前激活的 Tab，控制 el-tabs 顯示哪個面板 */
 const activeTab = ref<'submit' | 'tickets'>('submit')
@@ -26,7 +42,7 @@ const activeTab = ref<'submit' | 'tickets'>('submit')
 const {
   ticketsLoading, tickets, ticketsTotal, ticketParams, loadTickets,
   handleStatusFilter, handlePageChange,
-  detailVisible, detailLoading, currentDetail, handleRowClick, previewUrls,
+  detailVisible, detailLoading, currentDetail, handleRowClick,
 } = useRepairTickets()
 
 /**
@@ -64,10 +80,17 @@ function onTabChange(name: string | number) {
 
 <template>
   <div class="it-repair-view">
-    <!-- 頁面頭部 -->
+    <!-- 頁面頭部：返回按鈕 + 標題區左右排列，視覺上更緊湊 -->
     <div class="page-header">
-      <h2 class="page-title">IT 報修</h2>
-      <p class="page-subtitle">提交設備故障或 IT 相關問題，IT 人員將儘快處理</p>
+      <el-tooltip content="返回" placement="bottom">
+        <button class="back-btn" aria-label="返回" @click="handleBack">
+          <el-icon :size="18"><ArrowLeft /></el-icon>
+        </button>
+      </el-tooltip>
+      <div class="header-text">
+        <h2 class="page-title">IT 報修</h2>
+        <p class="page-subtitle">提交設備故障或 IT 相關問題，IT 人員將儘快處理</p>
+      </div>
     </div>
 
     <!-- 主體 Tab -->
@@ -160,7 +183,7 @@ function onTabChange(name: string | number) {
       <el-tab-pane label="我的工單" name="tickets">
         <div class="tickets-toolbar">
           <el-radio-group v-model="ticketParams.status" @change="handleStatusFilter">
-            <el-radio-button :value="undefined">全部</el-radio-button>
+            <el-radio-button :value="0">全部</el-radio-button>
             <el-radio-button :value="1">已提交</el-radio-button>
             <el-radio-button :value="2">已分配</el-radio-button>
             <el-radio-button :value="3">已關閉</el-radio-button>
@@ -222,9 +245,6 @@ function onTabChange(name: string | number) {
       v-model="detailVisible"
       :loading="detailLoading"
       :detail="currentDetail"
-      :preview-urls="previewUrls"
-      :status-labels="STATUS_LABELS"
-      :status-tag-types="STATUS_TAG_TYPES"
     />
 
     <!-- ── AI 潤色彈窗 ────────────────────────────────────────── -->
@@ -250,7 +270,48 @@ function onTabChange(name: string | number) {
   gap: 16px;
 }
 
-.page-header { flex-shrink: 0; }
+/* 頁頭：返回按鈕與標題水平排列，icon 垂直居中對齊標題區 */
+.page-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-text {
+  min-width: 0;
+  flex: 1;
+}
+
+/*
+ * 返回按鈕：36x36 圓形底板，hover 顯示淺灰背景（Material 風格圖標按鈕）
+ * 使用原生 button 而非 el-button：避免 el-button 默認樣式覆蓋導致 padding/min-width 難調
+ */
+.back-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.back-btn:hover {
+  background-color: var(--el-fill-color);
+  color: var(--el-color-primary);
+}
+
+.back-btn:active {
+  background-color: var(--el-fill-color-darker);
+}
 
 .page-title {
   font-size: 22px;

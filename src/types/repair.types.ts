@@ -17,6 +17,19 @@ export interface RepairAttachment {
 }
 
 /**
+ * 匯報附件條目（IT_Repair_Result_Attachment）
+ * 對應後端 RepairResultAttachmentItem，用於工單詳情頁展示 IT 匯報附件。
+ */
+export interface RepairResultAttachment {
+  /** 附件 ID（若後端返回） */
+  id?: number
+  /** 原始文件名（可用於下載顯示） */
+  fileName?: string
+  /** OSS 可訪問的 URL（預覽或下載） */
+  fileUrl: string
+}
+
+/**
  * 提交報修請求體
  * POST /api/repair/create
  *
@@ -66,16 +79,37 @@ export interface RepairListItem {
 }
 
 /**
- * 工單詳情（含附件圖片列表）
- * GET /api/repair/detail/{id} 返回的 data 字段
+ * 工單詳情 — 用戶端查看報修工單匯報響應
+ * GET /api/repair/user-report/{id} 返回的 data 字段
+ *
+ * 對應後端 RepairUserReportResponse，包含：
+ *  1. 提問信息（來自 IT_Repair_Request）
+ *  2. 用戶可見的匯報回覆（來自 IT_Repair_Result，IsUserSee=1 那一筆）
+ *  3. 匯報附件列表（IT_Repair_Result_Attachment，掛在用戶可見匯報記錄下）
+ *
+ * 註：內部匯報（IsUserSee=0）不會返回給用戶端；尚未匯報時 resultContent/resultTime 為 null。
  */
-export interface RepairDetail extends RepairListItem {
-  /** 分配操作人姓名（管理員） */
-  assignerName?: string
-  /** 分配時間 */
-  assignTime?: string
-  /** 附件圖片列表（按 SortOrder 排序） */
-  attachments: RepairAttachment[]
+export interface RepairDetail {
+  /** 工單 ID */
+  id: number
+  /** 工單編號 */
+  requestNo: string
+  /** 問題標題 */
+  title: string
+  /** 問題描述（富文本 HTML，前端直接渲染） */
+  description: string
+  /** 提交人工號 */
+  userName: string
+  /** 提交時間 */
+  createTime: string
+
+  /** 匯報回覆內容（富文本 HTML）；尚未匯報時為 null */
+  resultContent: string | null
+  /** 匯報提交時間；尚未匯報時為 null */
+  resultTime: string | null
+
+  /** 匯報附件列表（按上傳順序排列，無附件或尚未匯報時為空陣列） */
+  attachments: RepairResultAttachment[]
 }
 
 /**

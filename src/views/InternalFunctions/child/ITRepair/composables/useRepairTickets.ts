@@ -13,7 +13,7 @@
  * 使用方：ITRepairView.vue
  */
 
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { repairApi } from '@/api/modules/repair.api'
 import type { RepairListItem, RepairDetail, RepairStatus } from '@/types/api.types'
@@ -60,16 +60,22 @@ export function useRepairTickets() {
    * 列表查詢參數（reactive 對象，字段變化時不需要手動解構）。
    *  - pageIndex: 當前頁碼（從 1 開始）
    *  - pageSize:  每頁條數（固定 10，與後端默認值一致）
-   *  - status:    狀態篩選（undefined = 全部，1/2/3 = 對應狀態）
+   *  - status:    狀態篩選（0 = 全部，1/2/3 = 對應狀態）
+   *
+   * 註：status 使用 0 作為「全部」哨兵值而非 undefined。
+   * 原因：el-radio-button 的 :value 若為 undefined 會觸發 Element Plus
+   *      "label act as value is about to be deprecated" 告警（內部會回退
+   *      到已廢棄的 label-as-value 路徑）。在 loadTickets 發起請求時
+   *      將 0 映射回 undefined，對後端仍是「不傳 status」的語義。
    */
   const ticketParams = reactive<{
     pageIndex: number
     pageSize: number
-    status: RepairStatus | undefined
+    status: RepairStatus | 0
   }>({
     pageIndex: 1,
     pageSize: 10,
-    status: undefined
+    status: 0
   })
 
   // ══════════════════════════════════════════════════════════════════
@@ -88,7 +94,8 @@ export function useRepairTickets() {
         userId: authStore.user!.userName,
         pageIndex: ticketParams.pageIndex,
         pageSize: ticketParams.pageSize,
-        status: ticketParams.status
+        // 0（全部）映射為 undefined，相當於不傳 status 給後端
+        status: ticketParams.status === 0 ? undefined : ticketParams.status
       })
       tickets.value = res.list
       ticketsTotal.value = res.total
@@ -150,15 +157,6 @@ export function useRepairTickets() {
     }
   }
 
-  /**
-   * 附件圖片 URL 列表（計算屬性）。
-   * 傳給 RepairDetailDialog 的 :preview-src-list，
-   * el-image 使用此列表實現點擊圖片後的大圖輪播預覽。
-   */
-  const previewUrls = computed<string[]>(
-    () => currentDetail.value?.attachments.map((a) => a.fileUrl) ?? []
-  )
-
   // ══════════════════════════════════════════════════════════════════
   // 對外暴露
   // ══════════════════════════════════════════════════════════════════
@@ -176,6 +174,5 @@ export function useRepairTickets() {
     detailLoading,       // 詳情載入中狀態
     currentDetail,       // 當前工單完整詳情
     handleRowClick,      // 行點擊開啟詳情
-    previewUrls,         // 附件圖片 URL 列表（大圖預覽用）
   }
 }
