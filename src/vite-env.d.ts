@@ -19,6 +19,10 @@ interface ImportMetaEnv {
   readonly VITE_API_TIMEOUT?: string
   /** IT 報修工單後端服務地址（開發 localhost:5247 / 正式 192.168.120.79:9004） */
   readonly VITE_REPAIR_API_URL?: string
+
+  /** AISOP 上傳文件 端點 */
+  readonly VITE_AI_SOP_URL?:string
+
   /** Dify AI 整理服務的 SSE 端點 */
   readonly VITE_DIFY_URL?: string
   /** Dify 應用 API Key（Authorization: Bearer） */
