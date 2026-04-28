@@ -31,7 +31,7 @@ import type { RouteRecordRaw } from 'vue-router'
  */
 const routes: RouteRecordRaw[] = [
 
-  // ── 默認重定向 ──────────────────────────────────────────────────
+  // ── 默認重定向
   // 訪問根路徑 / 時，自動跳轉到 /unified-platform
   // redirect 字段：值可以是字符串路徑，或 { name: 'route-name' }
   // 這個路由本身不渲染任何組件，只做跳轉
@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
     redirect: '/unified-platform'
   },
 
-  // ── 登錄頁（預留，功能待實現）────────────────────────────────────
+  // ── 登錄頁（預留，功能待實現）
   // 不需要認證的「公開頁面」，任何人都可以訪問
   {
     path: '/login',          // URL 路徑：http://app/#/login
@@ -59,7 +59,7 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
-  // ── 需要認證的頁面群組（AppLayout 作為父路由）───────────────────
+  // ── 需要認證的頁面群組（AppLayout 作為父路由）
   // 這個路由對象本身的 path 是 '/'，但它的作用是「提供共用佈局」
   // AppLayout 組件中有 <router-view>，子路由組件渲染在那個位置
   {
@@ -74,7 +74,7 @@ const routes: RouteRecordRaw[] = [
     // 最終 URL = 父路由 path + '/' + 子路由 path
     children: [
 
-      // ── 統一平台（默認首頁）──────────────────────────────────────
+      // ── 統一平台（默認首頁）
       // 完整 URL：http://app/#/unified-platform
       // 渲染位置：AppLayout 模板內的 <router-view>
       {
@@ -87,7 +87,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // ── 內部功能 ────────────────────────────────────────────────
+      // ── 內部功能
       // 完整 URL：http://app/#/internal-functions
       // 功能卡片入口頁，同時放 AI 工具與公司內部功能，由 config 驅動
       {
@@ -100,7 +100,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // ── BPM 負責人查詢（內部功能子頁面）───────────────────────────
+      // ── BPM 負責人查詢（內部功能子頁面）
       // 完整 URL：http://app/#/ai-bpm-finder
       // 嵌入 Dify chatbot，URL 由 app-config.json 管理
       {
@@ -113,20 +113,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // ── 業務安排與尋找 ──────────────────────────────────────────
-      // 完整 URL：http://app/#/business
-      // 提供業務流水線維護（X6 流程圖）和業務負責人查找功能
-      {
-        path: 'business',
-        name: 'business',
-        component: () => import('@/views/Business/BusinessView.vue'),
-        meta: {
-          requiresAuth: true,
-          title: '業務安排與尋找'
-        }
-      },
-
-      // ── IT 報修工單 ─────────────────────────────────────────────
+      // ── IT 報修工單
       // 完整 URL：http://app/#/it-repair
       // 用戶提交設備故障/IT 問題報修，查看自己的工單狀態
       {
@@ -137,11 +124,39 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: 'IT 報修'
         }
+      },
+
+      // ── AiSop
+      // 用戶提交設備故障/IT 問題報修，查看自己的工單狀態
+      {
+        path: 'ai-sop',
+        name: 'ai-sop',
+        component: () => import('@/views/InternalFunctions/child/AiSop/AiSopView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'AiSop'
+        }
+      },
+
+
+      // ── 業務安排與尋找
+      // 完整 URL：http://app/#/business
+      // 提供業務流水線維護（X6 流程圖）和業務負責人查找功能
+      {
+        path: 'business',
+        name: 'business',
+        component: () => import('@/views/Business/BusinessView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: '業務安排與尋找'
+        }
       }
+
+
     ]
   },
 
-  // ── 404 處理（通配符重定向）────────────────────────────────────
+  // ── 404 處理（通配符重定向
   // :pathMatch(.*)* 是 Vue Router 4 的通配符語法，匹配所有未定義路由
   // 例如訪問 /#/some-undefined-page → 重定向到 /unified-platform
   // 這個路由必須放在最後，因為路由是按順序匹配的

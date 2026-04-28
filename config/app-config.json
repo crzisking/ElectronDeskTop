@@ -187,6 +187,16 @@
         "url": "http://192.168.19.62/chat/5NyfqoZ9lGUWfCf8"
       },
       {
+        "id": "AiSop",
+        "name": "AiSop生成",
+        "description": "文字快速生成SOP",
+        "icon": "Document",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "ai-sop",
+        "url": "http://192.168.19.62/chatbot/3KWtcMfirFwJ50oC"
+      },
+      {
         "id": "itRepair",
         "name": "IT 報修",
         "description": "提交設備故障或 IT 問題，查看自己的工單狀態",
