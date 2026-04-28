@@ -61,21 +61,24 @@ function openInBrowser() {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
+  background: var(--app-bg-surface);
 }
 
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--app-border-subtle);
+  background: var(--app-bg-surface);
   flex-shrink: 0;
 }
 
 .toolbar-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--app-text-primary);
+  letter-spacing: -0.005em;
 }
 
 .toolbar-spacer {
@@ -86,5 +89,6 @@ function openInBrowser() {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  background: var(--app-bg-surface);
 }
 </style>

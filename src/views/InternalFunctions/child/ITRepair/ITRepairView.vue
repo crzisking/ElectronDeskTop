@@ -79,17 +79,15 @@ function onTabChange(name: string | number) {
 </script>
 
 <template>
-  <div class="it-repair-view">
-    <!-- 頁面頭部：返回按鈕 + 標題區左右排列，視覺上更緊湊 -->
-    <div class="page-header">
-      <el-tooltip content="返回" placement="bottom">
-        <button class="back-btn" aria-label="返回" @click="handleBack">
-          <el-icon :size="18"><ArrowLeft /></el-icon>
-        </button>
-      </el-tooltip>
-      <div class="header-text">
-        <h2 class="page-title">IT 報修</h2>
-        <p class="page-subtitle">提交設備故障或 IT 相關問題，IT 人員將儘快處理</p>
+  <div class="app-page it-repair-view">
+    <!-- 頁面頭部：僅返回按鈕 -->
+    <div class="app-page-header app-page-header--compact">
+      <div class="header-row">
+        <el-tooltip content="返回" placement="bottom">
+          <button class="app-icon-btn" aria-label="返回" @click="handleBack">
+            <el-icon :size="16"><ArrowLeft /></el-icon>
+          </button>
+        </el-tooltip>
       </div>
     </div>
 
@@ -262,68 +260,13 @@ function onTabChange(name: string | number) {
 
 <style scoped>
 .it-repair-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px;
-  box-sizing: border-box;
-  gap: 16px;
+  /* 繼承 .app-page 的 padding/gap */
 }
 
-/* 頁頭：返回按鈕與標題水平排列，icon 垂直居中對齊標題區 */
-.page-header {
-  flex-shrink: 0;
+.header-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.header-text {
-  min-width: 0;
-  flex: 1;
-}
-
-/*
- * 返回按鈕：36x36 圓形底板，hover 顯示淺灰背景（Material 風格圖標按鈕）
- * 使用原生 button 而非 el-button：避免 el-button 默認樣式覆蓋導致 padding/min-width 難調
- */
-.back-btn {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--el-text-color-regular);
-  cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
-}
-
-.back-btn:hover {
-  background-color: var(--el-fill-color);
-  color: var(--el-color-primary);
-}
-
-.back-btn:active {
-  background-color: var(--el-fill-color-darker);
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-  margin: 0 0 4px 0;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  margin: 0;
+  gap: 14px;
 }
 
 .repair-tabs {

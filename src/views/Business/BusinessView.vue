@@ -41,15 +41,9 @@ function goHome() {
 </script>
 
 <template>
-  <div class="business-view">
+  <div class="app-page business-view">
     <!-- ═══ 功能選擇首頁 ═══ -->
     <template v-if="activeView === 'home'">
-      <!-- 頁面標題 -->
-      <div class="page-header">
-        <h2 class="page-title">業務安排與尋找</h2>
-        <p class="page-subtitle">管理業務流程、查找業務負責人</p>
-      </div>
-
       <!-- 功能入口卡片 -->
       <div class="feature-cards">
         <!-- 卡片 1：維護業務流水線 -->
@@ -111,33 +105,11 @@ function goHome() {
 </template>
 
 <style scoped>
-/* ── 頁面容器 ─────────────────────────────────────────────────── */
 .business-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 24px;
-  box-sizing: border-box;
-  gap: 24px;
+  /* 繼承 .app-page 的 padding/gap */
 }
 
-/* ── 頁面標題 ─────────────────────────────────────────────────── */
-.page-header { flex-shrink: 0; }
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--el-text-color-primary);
-  margin: 0 0 4px;
-}
-
-.page-subtitle {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  margin: 0;
-}
-
-/* ── 功能卡片區域 ─────────────────────────────────────────────── */
+/* ── 功能卡片 ──────────────────────────────────────────────── */
 .feature-cards {
   display: flex;
   flex-direction: column;
@@ -147,43 +119,43 @@ function goHome() {
 .feature-card {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
-  background: #fff;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
+  gap: 22px;
+  padding: 26px;
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
 }
 
 .feature-card:hover {
-  border-color: var(--el-color-primary);
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
+  border-color: var(--app-border-default);
+  box-shadow: var(--app-shadow-card-hover);
   transform: translateY(-2px);
 }
 
-/* ── 功能圖標 ─────────────────────────────────────────────────── */
 .feature-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: var(--app-bg-elevated);
+  color: var(--app-text-primary);
 }
 
 .pipeline-icon {
-  background: linear-gradient(135deg, #ecf5ff, #d9ecff);
-  color: var(--el-color-primary);
+  background: #f0eee9;
 }
 
 .search-icon {
-  background: linear-gradient(135deg, #f0f9eb, #e1f3d8);
-  color: var(--el-color-success);
+  background: #f6e7d0;
+  color: var(--app-accent);
 }
 
-/* ── 功能信息 ─────────────────────────────────────────────────── */
 .feature-info {
   flex: 1;
   min-width: 0;
@@ -192,24 +164,31 @@ function goHome() {
 .feature-title {
   font-size: 17px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--app-text-primary);
   margin: 0 0 6px;
+  letter-spacing: -0.005em;
 }
 
 .feature-desc {
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--app-text-secondary);
   margin: 0;
   line-height: 1.6;
 }
 
 .feature-arrow {
-  color: var(--el-text-color-placeholder);
+  color: var(--app-text-muted);
   font-size: 20px;
   flex-shrink: 0;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
-/* ── 子頁面頂部 ───────────────────────────────────────────────── */
+.feature-card:hover .feature-arrow {
+  color: var(--app-text-primary);
+  transform: translateX(2px);
+}
+
+/* ── 子頁面頂部 ───────────────────────────────────────────── */
 .sub-page-header {
   display: flex;
   align-items: center;
@@ -220,6 +199,6 @@ function goHome() {
 .sub-page-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--app-text-primary);
 }
 </style>

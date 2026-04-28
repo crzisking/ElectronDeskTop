@@ -1,49 +1,152 @@
 /**
- * 全局樣式
+ * 全局樣式 — Warm Editorial Design System
  *
- * 作用：
- *  1. 覆蓋 Element Plus CSS 變量（主題色、圓角、字體等）
- *  2. body/html 基礎 reset（去除默認邊距、設置高度撐滿）
- *  3. 滾動條美化（Chromium 自定義滾動條）
- *  4. 全局工具類（可選）
+ * 設計風格：
+ *  - 米色/奶白色暖色背景，黑色強調，金色點綴
+ *  - 白色卡片 + 細邊框 + 柔和陰影
+ *  - 大號展示標題 + 小寫字母間距 eyebrow
+ *  - 整體克制、編輯雜誌風
  *
  * 引入順序（src/main.ts）：
  *  import 'element-plus/dist/index.css'   ← 先引入
- *  import './styles/global.css'           ← 後引入（覆蓋變量）
+ *  import './styles/global.css'           ← 後引入（覆蓋變量與基礎樣式）
  *
- * Element Plus CSS 變量參考：
- *  https://element-plus.org/zh-CN/guide/theming.html
+ * 設計 Token 命名規則：
+ *  --app-*   應用層通用 token（顏色、間距、圓角、陰影）
+ *  --el-*    Element Plus 內建變量（直接覆蓋以同步主題）
  */
 
-/* ── Element Plus 主題色覆蓋 ───────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   設計 Token（顏色、字體、間距、圓角、陰影）
+   ════════════════════════════════════════════════════════════════ */
 :root {
-  /* 主色：藍色（與浮球漸變色呼應） */
-  --el-color-primary: #409eff;
-  --el-color-primary-light-3: #79bbff;
-  --el-color-primary-light-5: #a0cfff;
-  --el-color-primary-light-7: #c6e2ff;
-  --el-color-primary-light-8: #d9ecff;
-  --el-color-primary-light-9: #ecf5ff;
-  --el-color-primary-dark-2: #337ecc;
+  /* ── 暖色基底（米色/奶白色階） ──────────────────────────── */
+  --app-bg-canvas:     #ebe5d8;   /* 整個應用最外層背景色 */
+  --app-bg-sidebar:    #f4eee2;   /* 側邊欄底色 */
+  --app-bg-surface:    #ffffff;   /* 卡片、面板表面色 */
+  --app-bg-elevated:   #faf6ec;   /* 略微高於底色的區塊（搜索框、tag） */
+  --app-bg-muted:      #efe9dc;   /* 比 canvas 略深的中性色，用於分區 */
 
-  /* 圓角：稍大，視覺更現代 */
-  --el-border-radius-base: 6px;
-  --el-border-radius-small: 4px;
-  --el-border-radius-round: 20px;
+  /* ── 文字顏色 ───────────────────────────────────────────── */
+  --app-text-primary:   #1a1a1a;   /* 主要文字、標題 */
+  --app-text-secondary: #5c5c5c;   /* 描述、副標題 */
+  --app-text-muted:     #8f8f8f;   /* 占位、輔助 */
+  --app-text-inverse:   #ffffff;   /* 深色背景上的文字 */
+
+  /* ── 邊框 ──────────────────────────────────────────────── */
+  --app-border-subtle:  rgba(26, 26, 26, 0.06);
+  --app-border-default: rgba(26, 26, 26, 0.10);
+  --app-border-strong:  rgba(26, 26, 26, 0.16);
+
+  /* ── 強調色 ────────────────────────────────────────────── */
+  --app-accent:         #b88860;   /* 金色點綴（標題斜體段） */
+  --app-accent-soft:    #e6cfb0;
+  --app-brand:          #1f5fbf;   /* 品牌藍（logo 字） */
+  --app-success:        #4f7d3a;   /* 暖綠 */
+  --app-warning:        #c98a3c;   /* 暖橙 */
+  --app-danger:         #a34b3c;   /* 暖紅 */
+
+  /* 黑/白翻轉（用於 active filter、active nav） */
+  --app-ink:            #1a1a1a;
+  --app-ink-soft:       #2a2a2a;
+
+  /* ── 圓角 ──────────────────────────────────────────────── */
+  --app-radius-xs:  4px;
+  --app-radius-sm:  8px;
+  --app-radius-md:  12px;
+  --app-radius-lg:  16px;
+  --app-radius-xl:  20px;
+  --app-radius-pill: 999px;
+
+  /* ── 陰影 ──────────────────────────────────────────────── */
+  --app-shadow-sm:  0 1px 2px rgba(26, 26, 26, 0.04);
+  --app-shadow-md:  0 1px 2px rgba(26, 26, 26, 0.04), 0 8px 24px rgba(26, 26, 26, 0.05);
+  --app-shadow-lg:  0 4px 12px rgba(26, 26, 26, 0.06), 0 20px 48px rgba(26, 26, 26, 0.08);
+  --app-shadow-card-hover: 0 2px 6px rgba(26, 26, 26, 0.06), 0 16px 36px rgba(26, 26, 26, 0.10);
+
+  /* ── 字體 ──────────────────────────────────────────────── */
+  --app-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                   'PingFang TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
+  --app-font-display: 'Playfair Display', 'Times New Roman', 'PingFang TC', serif;
+  --app-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+
+  /* ── 字號 ──────────────────────────────────────────────── */
+  --app-fs-xs:   11px;
+  --app-fs-sm:   12px;
+  --app-fs-base: 14px;
+  --app-fs-md:   15px;
+  --app-fs-lg:   17px;
+  --app-fs-xl:   20px;
+  --app-fs-2xl:  28px;
+  --app-fs-3xl:  40px;
+  --app-fs-display: 56px;
+
+  /* ── 佈局尺寸 ───────────────────────────────────────────── */
+  --sidebar-width:           240px;
+  --sidebar-width-collapsed: 72px;
+  --titlebar-height:         48px;
+
+  /* ════════════════════════════════════════════════════════
+     Element Plus 變量覆蓋（讓所有 el-* 組件自動跟隨主題）
+     ════════════════════════════════════════════════════════ */
+
+  /* 主色：用 ink 替代藍，整體偏黑 */
+  --el-color-primary:          #1a1a1a;
+  --el-color-primary-light-3:  #4a4a4a;
+  --el-color-primary-light-5:  #8f8f8f;
+  --el-color-primary-light-7:  #c4c4c4;
+  --el-color-primary-light-8:  #dcdcdc;
+  --el-color-primary-light-9:  #f0eee9;
+  --el-color-primary-dark-2:   #000000;
+
+  /* 強調色：金色（代替 success/warning 顏色） */
+  --el-color-warning:          #c98a3c;
+  --el-color-warning-light-9:  #faf2e6;
+  --el-color-success:          #4f7d3a;
+  --el-color-success-light-9:  #eff4ea;
+  --el-color-danger:           #a34b3c;
+  --el-color-danger-light-9:   #f5e9e6;
+  --el-color-info:             #6b6b6b;
+  --el-color-info-light-9:     #f1efe9;
+
+  /* 背景色 */
+  --el-bg-color:               #ffffff;
+  --el-bg-color-page:          var(--app-bg-canvas);
+  --el-bg-color-overlay:       #ffffff;
+
+  /* 文字色 */
+  --el-text-color-primary:     var(--app-text-primary);
+  --el-text-color-regular:     #3a3a3a;
+  --el-text-color-secondary:   var(--app-text-secondary);
+  --el-text-color-placeholder: var(--app-text-muted);
+  --el-text-color-disabled:    #c0c0c0;
+
+  /* 邊框 */
+  --el-border-color:           var(--app-border-default);
+  --el-border-color-light:     var(--app-border-default);
+  --el-border-color-lighter:   var(--app-border-subtle);
+  --el-border-color-extra-light: var(--app-border-subtle);
+  --el-border-color-darker:    var(--app-border-strong);
+
+  /* 填充色 */
+  --el-fill-color:         var(--app-bg-elevated);
+  --el-fill-color-light:   var(--app-bg-elevated);
+  --el-fill-color-lighter: #fbf8f1;
+  --el-fill-color-blank:   #ffffff;
+
+  /* 圓角 */
+  --el-border-radius-base:  10px;
+  --el-border-radius-small: 8px;
+  --el-border-radius-round: 999px;
 
   /* 字體 */
-  --el-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
-    'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
-  --el-font-size-base: 14px;
-
-  /* 側邊欄寬度（供 AppLayout 使用） */
-  --sidebar-width: 200px;
-
-  /* 標題欄高度（供 AppLayout 使用） */
-  --titlebar-height: 38px;
+  --el-font-family: var(--app-font-sans);
+  --el-font-size-base: var(--app-fs-base);
 }
 
-/* ── HTML/Body 基礎 Reset ──────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   HTML / Body Reset
+   ════════════════════════════════════════════════════════════════ */
 *,
 *::before,
 *::after {
@@ -56,23 +159,33 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  /* 禁止全局文字選中（表單內仍可選中，Element Plus 組件自帶 user-select: text） */
   user-select: none;
-  /* 防止頁面出現橫向滾動條 */
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Vue 掛載根元素撐滿全屏 */
 #app {
   width: 100%;
   height: 100%;
-  font-family: var(--el-font-family);
-  font-size: var(--el-font-size-base);
-  color: var(--el-text-color-primary);
-  background: var(--el-bg-color-page, #f2f3f5);
+  font-family: var(--app-font-sans);
+  font-size: var(--app-fs-base);
+  color: var(--app-text-primary);
+  background: var(--app-bg-canvas);
 }
 
-/* ── 滾動條美化（Chromium/Electron 適用） ──────────────── */
+/* 輸入框允許文字選中 */
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   滾動條（細，配合暖色調）
+   ════════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -83,41 +196,496 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--el-border-color-darker, #ccc);
+  background: rgba(26, 26, 26, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--el-color-primary-light-3);
+  background: rgba(26, 26, 26, 0.24);
 }
 
-/* ── 輸入框允許文字選中 ─────────────────────────────────── */
-input,
-textarea,
-[contenteditable] {
-  user-select: text;
-  -webkit-user-select: text;
+/* ════════════════════════════════════════════════════════════════
+   全局工具類（可複用的 layout primitives）
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── 頁面容器（所有頁面外層統一） ─────────────────────────── */
+.app-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 36px 48px 24px;
+  box-sizing: border-box;
+  gap: 28px;
+  overflow-y: auto;
+  background: var(--app-bg-canvas);
 }
 
-/* ── Element Plus 組件微調 ──────────────────────────────── */
+.app-page__scroll {
+  /* 內層滾動容器（當頁面整體不能滾動時用） */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ─── 頁面 Header（breadcrumb + 標題 + 副標題 + 右側操作） ── */
+.app-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+.app-page-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-page-header__right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ─── Eyebrow 小標籤（— SECTION · 中文） ─────────────────── */
+.app-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--app-fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--app-text-secondary);
+}
+
+.app-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 24px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.app-eyebrow__zh {
+  letter-spacing: 0.1em;
+  color: var(--app-text-secondary);
+  font-weight: 500;
+}
+
+/* ─── Display 標題（大標題） ──────────────────────────────── */
+.app-display-title {
+  font-family: var(--app-font-sans);
+  font-size: var(--app-fs-display);
+  line-height: 1.05;
+  font-weight: 700;
+  color: var(--app-text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.app-display-title__accent {
+  font-family: var(--app-font-display);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--app-accent);
+  margin: 0 0.08em;
+}
+
+.app-page-subtitle {
+  font-size: var(--app-fs-base);
+  color: var(--app-text-secondary);
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+/* ─── Section 標題（中等標題 + 計數） ───────────────────────── */
+.app-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.app-section-title__main {
+  font-size: var(--app-fs-xl);
+  font-weight: 700;
+  color: var(--app-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.app-section-title__count {
+  font-size: var(--app-fs-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--app-text-muted);
+}
+
+/* ─── 卡片基底 ────────────────────────────────────────────── */
+.app-card {
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+
+.app-card--interactive {
+  cursor: pointer;
+}
+
+.app-card--interactive:hover {
+  border-color: var(--app-border-default);
+  box-shadow: var(--app-shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.app-card--dashed {
+  border: 1.5px dashed var(--app-border-default);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ─── 圓形/膠囊按鈕（filter pill） ───────────────────────── */
+.app-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: var(--app-radius-pill);
+  border: 1px solid var(--app-border-default);
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  font-size: var(--app-fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.app-pill:hover {
+  color: var(--app-text-primary);
+  border-color: var(--app-border-strong);
+}
+
+.app-pill.is-active {
+  background: var(--app-ink);
+  border-color: var(--app-ink);
+  color: var(--app-text-inverse);
+}
+
+/* ─── Tag（卡片角標） ─────────────────────────────────────── */
+.app-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  font-size: var(--app-fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border-radius: var(--app-radius-pill);
+  background: var(--app-bg-elevated);
+  color: var(--app-text-secondary);
+  border: 1px solid var(--app-border-subtle);
+  white-space: nowrap;
+}
+
+.app-tag--accent {
+  background: #f6e7d0;
+  color: #8a5a24;
+  border-color: transparent;
+}
+
+.app-tag--ink {
+  background: var(--app-ink);
+  color: var(--app-text-inverse);
+  border-color: transparent;
+}
+
+.app-tag--brand {
+  background: #e6efff;
+  color: var(--app-brand);
+  border-color: transparent;
+}
+
+/* ─── 圓形圖標按鈕（用於返回、關閉等） ─────────────────────── */
+.app-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border-default);
+  background: var(--app-bg-surface);
+  color: var(--app-text-primary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.app-icon-btn:hover {
+  background: var(--app-ink);
+  color: var(--app-text-inverse);
+  border-color: var(--app-ink);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Element Plus 組件微調
+   ════════════════════════════════════════════════════════════════ */
 
 /* 表單標籤加粗 */
 .el-form-item__label {
   font-weight: 500;
+  color: var(--app-text-primary);
 }
 
 /* 抽屜底部固定樣式 */
 .el-drawer__footer {
-  border-top: 1px solid var(--el-border-color-lighter);
+  border-top: 1px solid var(--app-border-subtle);
   padding: 12px 20px;
 }
 
-/* 消息提示居中顯示（配合無原生標題欄的窗口） */
+/* 消息提示居中顯示（避開自定義標題欄） */
 .el-message {
-  top: 56px !important; /* 避免被自定義標題欄遮擋 */
+  top: 56px !important;
 }
 
-/* ── 過渡動畫工具類 ──────────────────────────────────────── */
+/* el-input：無底色容器、細邊框、暖色 */
+.el-input__wrapper {
+  background-color: var(--app-bg-surface) !important;
+  box-shadow: 0 0 0 1px var(--app-border-default) inset !important;
+  border-radius: var(--app-radius-pill);
+  padding: 0 16px;
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--app-border-strong) inset !important;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1.5px var(--app-ink) inset !important;
+}
+
+.el-input__inner {
+  height: 36px;
+  font-size: var(--app-fs-base);
+}
+
+/* 對 textarea/select 等不適用膠囊圓角的輸入恢復方角 */
+.el-textarea__inner,
+.el-input--large .el-input__wrapper,
+.el-select .el-input__wrapper {
+  border-radius: var(--app-radius-md);
+}
+
+.el-textarea__inner {
+  background-color: var(--app-bg-surface) !important;
+  box-shadow: 0 0 0 1px var(--app-border-default) inset !important;
+}
+
+/* el-button：圓角、大小調整 */
+.el-button {
+  border-radius: var(--app-radius-pill);
+  font-weight: 500;
+  height: 36px;
+  padding: 0 18px;
+}
+
+.el-button--small {
+  height: 30px;
+  padding: 0 14px;
+}
+
+.el-button--large {
+  height: 44px;
+  padding: 0 24px;
+  font-size: var(--app-fs-md);
+}
+
+.el-button--primary {
+  background: var(--app-ink);
+  border-color: var(--app-ink);
+  color: var(--app-text-inverse);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background: #000;
+  border-color: #000;
+  color: var(--app-text-inverse);
+}
+
+.el-button--default {
+  background: var(--app-bg-surface);
+  border-color: var(--app-border-default);
+  color: var(--app-text-primary);
+}
+
+.el-button--default:hover {
+  background: var(--app-bg-elevated);
+  border-color: var(--app-border-strong);
+  color: var(--app-text-primary);
+}
+
+.el-button.is-text:not(.is-disabled) {
+  color: var(--app-text-primary);
+}
+
+.el-button.is-text:not(.is-disabled):hover {
+  background: var(--app-bg-elevated);
+}
+
+/* el-tag：默認與我們的 .app-tag 統一外觀 */
+.el-tag {
+  border-radius: var(--app-radius-pill);
+  border: 1px solid var(--app-border-subtle);
+  background: var(--app-bg-elevated);
+  color: var(--app-text-secondary);
+  font-weight: 500;
+}
+
+.el-tag--primary {
+  background: var(--app-ink);
+  color: var(--app-text-inverse);
+  border-color: transparent;
+}
+
+.el-tag--warning {
+  background: #f6e7d0;
+  color: #8a5a24;
+  border-color: transparent;
+}
+
+.el-tag--success {
+  background: #e7eddc;
+  color: var(--app-success);
+  border-color: transparent;
+}
+
+.el-tag--info {
+  background: var(--app-bg-elevated);
+  color: var(--app-text-secondary);
+  border-color: transparent;
+}
+
+.el-tag--danger {
+  background: #f0d9d4;
+  color: var(--app-danger);
+  border-color: transparent;
+}
+
+/* el-card：去掉默認重邊框 */
+.el-card {
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
+}
+
+/* el-dialog：圓角 + 柔陰影 */
+.el-dialog {
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-lg);
+}
+
+.el-dialog__header {
+  padding: 20px 24px 12px;
+  margin-right: 0;
+  border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.el-dialog__title {
+  font-size: var(--app-fs-md);
+  font-weight: 600;
+  color: var(--app-text-primary);
+}
+
+.el-dialog__body {
+  padding: 20px 24px;
+}
+
+.el-dialog__footer {
+  padding: 12px 24px 20px;
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+/* el-radio-button：圓角 pill 群組 */
+.el-radio-group {
+  gap: 8px;
+}
+
+.el-radio-button__inner {
+  border-radius: var(--app-radius-pill) !important;
+  border: 1px solid var(--app-border-default) !important;
+  background: var(--app-bg-surface);
+  color: var(--app-text-secondary);
+  padding: 8px 16px;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+
+.el-radio-button__original-radio:checked + .el-radio-button__inner {
+  background: var(--app-ink) !important;
+  border-color: var(--app-ink) !important;
+  color: var(--app-text-inverse) !important;
+}
+
+.el-radio-button:first-child .el-radio-button__inner,
+.el-radio-button:last-child .el-radio-button__inner {
+  border-radius: var(--app-radius-pill) !important;
+}
+
+/* el-table：去掉太重的邊框，配合柔色 */
+.el-table {
+  --el-table-border-color: var(--app-border-subtle);
+  --el-table-border: 1px solid var(--app-border-subtle);
+  background: transparent;
+}
+
+.el-table th.el-table__cell {
+  background: transparent;
+  color: var(--app-text-secondary);
+  font-weight: 500;
+  font-size: var(--app-fs-sm);
+  letter-spacing: 0.04em;
+}
+
+.el-table tr {
+  background: transparent;
+}
+
+/* el-pagination */
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pager li {
+  background: transparent !important;
+  color: var(--app-text-secondary);
+  border-radius: 8px !important;
+}
+
+.el-pager li.is-active {
+  background: var(--app-ink) !important;
+  color: var(--app-text-inverse) !important;
+}
+
+/* el-divider：更細更淡 */
+.el-divider--horizontal {
+  border-top-color: var(--app-border-subtle);
+}
+
+/* el-empty 描述顏色 */
+.el-empty__description {
+  color: var(--app-text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   過渡動畫工具類
+   ════════════════════════════════════════════════════════════════ */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

@@ -93,7 +93,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const ALLOWED_CHANNELS = [
       IpcChannels.PUSH_CONFIG_CHANGED,
       IpcChannels.PUSH_TRAY_CLICKED,
-      IpcChannels.PUSH_WINDOW_MAXIMIZED
+      IpcChannels.PUSH_WINDOW_MAXIMIZED,
+      // 浮球/托盤右鍵菜單「導航到指定路由」推送
+      // 主進程在收到 BALL_MENU_ACTION 或托盤菜單點擊後，
+      // 通過 webContents.send('floating-ball:navigate', routeName) 推送到主窗口
+      'floating-ball:navigate'
     ] as string[]
 
     if (ALLOWED_CHANNELS.includes(channel)) {

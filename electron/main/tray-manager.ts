@@ -83,7 +83,8 @@ export class TrayManager {
               this.windowManager.showMainWindow()
               // 通知渲染進程導航到對應路由
               setTimeout(() => {
-                this.windowManager.sendToMainWindow('floating-ball:menu-action', item.routeName)
+                // 與浮球右鍵菜單統一頻道：主窗口 App.vue 監聽 'floating-ball:navigate'
+                this.windowManager.sendToMainWindow('floating-ball:navigate', item.routeName)
               }, 200) // 稍微延遲等待窗口顯示
             }
           }

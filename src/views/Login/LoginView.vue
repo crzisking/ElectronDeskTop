@@ -92,8 +92,16 @@ async function handleLogin() {
     <div class="login-card">
       <!-- 品牌標識 -->
       <div class="login-brand">
-        <img class="brand-icon" src="@/assets/logo.png" alt="ichia" />
-        <h2 class="brand-name">ichiaDesktop</h2>
+        <div class="brand-mark">
+          <span class="brand-mark__letter">i</span>
+        </div>
+        <div class="brand-eyebrow">
+          <span>ICHIA ENTERPRISE</span>
+          <span class="brand-eyebrow__zh">· 企業客戶端</span>
+        </div>
+        <h1 class="brand-title">
+          歡迎<span class="brand-title__accent">回來</span>
+        </h1>
         <p class="brand-desc">統一平台 · AI 助手 · 業務管理</p>
       </div>
 
@@ -161,42 +169,84 @@ export default { components: { User, Lock } }
   align-items: center;
   justify-content: center;
   height: 100%;
-  background: linear-gradient(135deg, var(--el-color-primary-light-9) 0%, var(--el-bg-color-page) 100%);
+  background: var(--app-bg-canvas);
 }
 
 .login-card {
-  width: 400px;
-  background: var(--el-bg-color);
-  border-radius: 16px;
-  padding: 40px 36px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  width: 420px;
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-lg);
+  padding: 44px 40px 36px;
+  box-shadow: var(--app-shadow-lg);
 }
 
 .login-brand {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
-.brand-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  object-fit: contain;
-  margin: 0 auto 16px;
-  display: block;
+.brand-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--app-bg-elevated);
+  border: 1px solid var(--app-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
-.brand-name {
-  font-size: 22px;
+.brand-mark__letter {
+  font-family: var(--app-font-display);
+  font-style: italic;
   font-weight: 600;
-  color: var(--el-text-color-primary);
-  margin: 0 0 6px;
+  font-size: 32px;
+  color: var(--app-brand);
+  line-height: 1;
+}
+
+.brand-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--app-text-secondary);
+}
+
+.brand-eyebrow__zh {
+  letter-spacing: 0.1em;
+  color: var(--app-text-muted);
+}
+
+.brand-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--app-text-primary);
+  margin: 4px 0 0;
+  letter-spacing: -0.02em;
+}
+
+.brand-title__accent {
+  font-family: var(--app-font-display);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--app-accent);
+  margin: 0 0.06em;
 }
 
 .brand-desc {
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: var(--app-text-secondary);
   margin: 0;
+  letter-spacing: 0.04em;
 }
 
 .login-error {
@@ -206,8 +256,8 @@ export default { components: { User, Lock } }
 .login-btn {
   width: 100%;
   margin-top: 8px;
-  height: 44px;
+  height: 46px;
   font-size: 15px;
-  letter-spacing: 4px;
+  letter-spacing: 0.4em;
 }
 </style>

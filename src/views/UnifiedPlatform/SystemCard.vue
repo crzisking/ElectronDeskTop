@@ -77,19 +77,20 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 12px;
+  padding: 18px;
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-subtle);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-shadow-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
   position: relative;
   overflow: hidden;
 }
 
 .system-card:hover {
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
+  border-color: var(--app-border-default);
+  box-shadow: var(--app-shadow-card-hover);
   transform: translateY(-2px);
 }
 
@@ -97,30 +98,12 @@ const emit = defineEmits<{
   transform: translateY(0);
 }
 
-/* 懸停時顯示左側高亮條 */
-.system-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--el-color-primary);
-  transform: scaleY(0);
-  transition: transform 0.2s;
-  border-radius: 0 2px 2px 0;
-}
-
-.system-card:hover::before {
-  transform: scaleY(1);
-}
-
 /* 系統圖標 */
 .card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--el-color-primary-light-9);
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--app-bg-elevated);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -135,9 +118,9 @@ const emit = defineEmits<{
 }
 
 .icon-text {
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--el-color-primary);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--app-text-primary);
 }
 
 /* 系統信息 */
@@ -149,14 +132,15 @@ const emit = defineEmits<{
 .card-name {
   font-size: 15px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
+  color: var(--app-text-primary);
   margin-bottom: 4px;
+  letter-spacing: -0.005em;
 }
 
 .card-desc {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
-  margin-bottom: 8px;
+  color: var(--app-text-secondary);
+  margin-bottom: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -164,19 +148,19 @@ const emit = defineEmits<{
 
 .card-tags {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 /* 箭頭圖標（懸停時顯示） */
 .card-action {
-  color: var(--el-color-primary);
-  opacity: 0;
-  transition: opacity 0.2s;
+  color: var(--app-text-muted);
+  transition: color 0.2s ease, transform 0.2s ease;
   flex-shrink: 0;
 }
 
 .system-card:hover .card-action {
-  opacity: 1;
+  color: var(--app-text-primary);
+  transform: translateX(2px);
 }
 </style>

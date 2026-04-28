@@ -50,10 +50,9 @@ function closeWindow() {
   <div class="title-bar">
     <!-- 拖動區域：flex 佔滿剩餘空間，設置 app-region: drag -->
     <div class="title-bar-drag">
-      <!-- 應用 Logo 和標題 -->
+      <!-- 應用 Logo（拖動區，無標題文字） -->
       <div class="title-bar-brand">
         <img class="app-icon" src="@/assets/logo.png" alt="ichia" />
-        <span class="app-title">ichiaDesktop</span>
       </div>
     </div>
 
@@ -94,11 +93,12 @@ function closeWindow() {
 .title-bar {
   display: flex;
   align-items: center;
-  height: 38px;
-  background: var(--el-color-primary);
-  color: #fff;
+  height: var(--titlebar-height);
+  background: var(--app-bg-canvas);
+  color: var(--app-text-primary);
   flex-shrink: 0;
   user-select: none;
+  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 /* 拖動區域：佔滿剩餘空間 */
@@ -107,29 +107,38 @@ function closeWindow() {
   display: flex;
   align-items: center;
   height: 100%;
-  /* 關鍵：此區域可拖動窗口 */
   -webkit-app-region: drag;
-  padding-left: 12px;
+  padding-left: 16px;
 }
 
 .title-bar-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .app-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   object-fit: contain;
 }
 
 .app-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  opacity: 0.95;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--app-text-secondary);
+}
+
+.app-title__brand {
+  color: var(--app-brand);
+  font-style: italic;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  margin-right: 4px;
 }
 
 /* 窗口控制按鈕組 */
@@ -137,32 +146,31 @@ function closeWindow() {
   display: flex;
   align-items: center;
   height: 100%;
-  /* 關鍵：按鈕區域不可拖動，確保點擊響應 */
   -webkit-app-region: no-drag;
 }
 
 .window-btn {
-  width: 46px;
+  width: 42px;
   height: 100%;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--app-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
   outline: none;
 }
 
 .window-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: var(--app-bg-muted);
+  color: var(--app-text-primary);
 }
 
-/* 關閉按鈕懸停時顯示紅色背景 */
+/* 關閉按鈕懸停時顯示暖紅色背景 */
 .close-btn:hover {
-  background: #e81123 !important;
+  background: var(--app-danger) !important;
   color: #fff !important;
 }
 </style>

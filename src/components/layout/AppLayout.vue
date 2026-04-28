@@ -49,7 +49,7 @@ import SidebarNav from './SidebarNav.vue'
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: var(--el-bg-color-page);
+  background: var(--app-bg-canvas);
 }
 
 /* 主體區域：水平排列（側邊欄 + 內容） */
@@ -57,31 +57,33 @@ import SidebarNav from './SidebarNav.vue'
   display: flex;
   flex: 1;
   overflow: hidden;
-  /* 去掉 TitleBar 的高度 */
-  height: calc(100vh - 38px);
+  height: calc(100vh - var(--titlebar-height));
+  padding: 12px;
+  gap: 12px;
 }
 
-/* 右側內容區域 */
+/* 右側內容區域：白色卡片化的主舞台 */
 .app-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--el-bg-color-page);
-  /* 內容區需要正常滾動，不繼承 no-drag */
+  background: var(--app-bg-surface);
+  border-radius: var(--app-radius-lg);
+  border: 1px solid var(--app-border-subtle);
+  box-shadow: var(--app-shadow-sm);
   -webkit-app-region: no-drag;
 }
 
-/* 自定義滾動條 */
 .app-content::-webkit-scrollbar {
   width: 6px;
 }
 
 .app-content::-webkit-scrollbar-thumb {
-  background: var(--el-border-color);
+  background: rgba(26, 26, 26, 0.12);
   border-radius: 3px;
 }
 
 .app-content::-webkit-scrollbar-thumb:hover {
-  background: var(--el-border-color-darker);
+  background: rgba(26, 26, 26, 0.24);
 }
 </style>
