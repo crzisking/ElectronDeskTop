@@ -105,7 +105,7 @@ export interface AppConfig {
 // 對應 JSON：
 // "update": {
 //   "enabled": true,
-//   "feedUrl": "http://192.168.120.135:505/",
+//   "feedUrl": "http://192.168.120.135:10001/",
 //   "channel": "latest",
 //   "dailyCheckTime": "11:00",
 //   "autoDownload": true,

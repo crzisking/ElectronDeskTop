@@ -227,7 +227,7 @@
     "_comment_autoDownload": "發現新版時是否自動下載（true 背景下載，false 先問用戶）",
     "_comment_autoInstallOnAppQuit": "下載完成後是否在應用退出時靜默安裝（true 下次退出自動裝，false 必須點立即重啟）",
     "enabled": true,
-    "feedUrl": "http://192.168.120.135:505/",
+    "feedUrl": "http://192.168.120.135:10001/",
     "channel": "latest",
     "dailyCheckTime": "11:00",
     "autoDownload": true,

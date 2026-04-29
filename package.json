@@ -1,6 +1,6 @@
 {
   "name": "enterprise-desktop-client",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "ichiaDesktop",
   "main": "out/main/index.js",
   "scripts": {
@@ -114,7 +114,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "http://192.168.120.135:505/",
+        "url": "http://192.168.120.135:10001/",
         "channel": "latest"
       }
     ]

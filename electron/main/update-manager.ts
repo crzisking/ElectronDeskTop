@@ -68,6 +68,9 @@ export class UpdateManager {
     // ── 1. 應用 autoUpdater 配置 ────────────────────────────────
     autoUpdater.autoDownload = cfg.autoDownload
     autoUpdater.autoInstallOnAppQuit = cfg.autoInstallOnAppQuit
+    // 服務端目前未提供 NSIS 差分更新所需的 .blockmap，直接關閉差分下載，
+    // 避免每次下載前先報 404 再 fallback 到完整安裝包。
+    autoUpdater.disableDifferentialDownload = true
     autoUpdater.channel = cfg.channel
     autoUpdater.setFeedURL({
       provider: 'generic',
