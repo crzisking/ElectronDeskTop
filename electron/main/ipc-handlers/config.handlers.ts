@@ -1,8 +1,6 @@
 /**
- * 配置文件 IPC Handler
- *
- * 處理渲染進程對 app-config.json 的讀寫請求。
- * 配置文件的讀寫操作必須在主進程中進行（涉及 Node.js 文件系統操作）。
+ * 配置文件 IPC Handler（讀/寫 app-config.json）。
+ * 用於：渲染進程讀寫配置；文件 IO 必須在主進程進行。
  */
 
 import { ipcMain } from 'electron'
@@ -12,18 +10,16 @@ import type { ConfigManager } from '../config-manager'
 import type { AppConfig } from '../../../src/types/config.types'
 
 /**
- * 注冊所有配置 IPC Handler
+ * 註冊所有配置 IPC Handler。
  * @param configManager 配置管理器實例
  */
 export function registerConfigHandlers(configManager: ConfigManager): void {
-  // ─── 讀取完整配置 ─────────────────────────────────────────────
   ipcMain.handle(IpcChannels.CONFIG_READ, () => {
     const config = configManager.getConfig()
     logger.debug('渲染進程請求讀取配置', 'IPC:config')
     return config
   })
 
-  // ─── 寫入部分配置 ─────────────────────────────────────────────
   ipcMain.handle(IpcChannels.CONFIG_WRITE, async (_event, partial: Partial<AppConfig>) => {
     try {
       await configManager.writeConfig(partial)

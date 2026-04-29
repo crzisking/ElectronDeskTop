@@ -1,61 +1,40 @@
 /**
- * 浮球窗口預加載腳本
- *
- * 浮球是獨立的 BrowserWindow，有自己的預加載腳本。
- * 暴露的 API 比主窗口更少（浮球不需要 auth、config 寫入等功能）。
- *
- * 主要職責：
- *  - 拖動控制（startDrag / stopDrag）
- *  - 顯示主窗口
- *  - 讀取配置（獲取 quickMenu 菜單項）
- *  - 通知主窗口進行路由導航（通過主進程中轉）
+ * 浮球窗口預加載腳本，暴露的 API 比主窗口少。
+ * 用於：浮球渲染進程；只需拖動、顯示主窗口、讀配置、轉發菜單導航。
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
 import { IpcChannels } from '../shared/ipc-channels'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // ─── 浮球自身控制 ──────────────────────────────────────────
   floatingBall: {
-    /**
-     * 開始拖動（在 mousedown 時調用）
-     * 主進程接管位置更新，以 60fps 輪詢游標位置
-     */
+    /** mousedown 時呼叫，主進程接管位置更新 ~60fps */
     startDrag: () => ipcRenderer.send(IpcChannels.BALL_START_DRAG),
 
-    /**
-     * 停止拖動（在 mouseup 時調用）
-     * 觸發邊緣吸附動畫
-     */
+    /** mouseup 時呼叫，觸發邊緣吸附動畫 */
     stopDrag: () => ipcRenderer.send(IpcChannels.BALL_STOP_DRAG)
   },
 
-  // ─── 主窗口控制 ────────────────────────────────────────────
   window: {
-    /** 顯示主窗口並帶到前台（浮球左鍵點擊時調用） */
+    /** 浮球左鍵點擊時呼叫，顯示主窗口並帶到前台 */
     show: () => ipcRenderer.send(IpcChannels.WINDOW_SHOW)
   },
 
-  // ─── 配置讀取 ──────────────────────────────────────────────
   config: {
-    /** 讀取應用配置（浮球需要 floatingBall.quickMenu 菜單項） */
+    /** 浮球需要 floatingBall.quickMenu */
     read: () => ipcRenderer.invoke(IpcChannels.CONFIG_READ)
   },
 
-  // ─── 原生右鍵菜單 ─────────────────────────────────────────
   /**
-   * 請求主進程彈出原生 context menu（不受浮球窗口 60×60 尺寸限制）
-   * 主進程根據 config.floatingBall.quickMenu 構建 Menu 並在光標位置顯示
+   * 請求主進程彈原生 context menu。
+   * 用原生而非 HTML 是因為浮球窗口只有 60×60，會把菜單裁掉。
    */
   showContextMenu: () => ipcRenderer.send('floating-ball:show-context-menu'),
 
-  // ─── 菜單操作 ──────────────────────────────────────────────
   /**
-   * 執行快捷菜單操作
-   * 根據 action.type 決定行為：
-   *  - show-main-window → 顯示主窗口
-   *  - navigate         → 顯示主窗口 + 導航到指定路由
-   *  - quit-app         → 退出應用
+   * 執行快捷菜單動作。
+   * navigate 類型走「先 show 主窗口 + 再 send routeName」兩步，
+   * 由主進程中轉到主窗口的 'floating-ball:navigate' 監聽。
    */
   executeMenuAction: (actionType: string, payload?: string) => {
     switch (actionType) {
@@ -64,14 +43,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         break
 
       case 'navigate':
-        // 先顯示主窗口，再通知主窗口渲染進程導航
         ipcRenderer.send(IpcChannels.WINDOW_SHOW)
-        // 通知主進程，主進程再轉發給主窗口渲染進程
+        // 主進程收到後轉發給主窗口渲染進程
         ipcRenderer.send(IpcChannels.BALL_MENU_ACTION, payload)
         break
 
       case 'quit-app':
-        // 通過主進程退出整個應用
         ipcRenderer.send('app:quit')
         break
     }

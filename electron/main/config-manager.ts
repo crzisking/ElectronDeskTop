@@ -1,15 +1,7 @@
 /**
- * 配置管理器
- *
- * 職責：
- *  1. 應用啟動時從磁盤讀取 app-config.json
- *  2. 若 userData 目錄不存在配置文件，自動從應用資源目錄複製默認配置
- *  3. 將配置解析並提供給 IPC Handler 使用
- *  4. （可選）監聽文件變化，熱更新時推送到渲染進程
- *
- * 配置文件路徑：
- *  - 開發環境：項目根目錄 config/app-config.json
- *  - 生產環境：{app.getPath('userData')}/app-config.json
+ * 應用配置讀寫管理（app-config.json）。
+ * 用於：electron/main/index.ts 啟動時 load() + ConfigHandlers IPC。
+ * 路徑：dev=專案根 config/app-config.json，prod=userData/app-config.json。
  */
 
 import { app } from 'electron'
@@ -20,13 +12,8 @@ import type { AppConfig } from '../../src/types/config.types'
 
 /**
  * 代碼兜底默認配置。
- *
- * 僅在以下情況使用：
- *  1. 開發環境找不到 config/app-config.json
- *  2. 生產環境 extraResources 複製失敗且 userData 也無配置
- *
- * ⚠️ 注意：生產環境正常情況下會直接讀取 app-config.json（見 load() 方法），
- * 此處的值只作為最後兜底，保持與 app-config.json 同步即可。
+ * 僅在 dev 缺檔 / prod 複製失敗且 userData 也無檔時使用。
+ * 注意：正常情況直接讀 app-config.json，此處保持與其同步即可。
  */
 const DEFAULT_CONFIG: AppConfig = {
   version: '1.0.0',
@@ -84,19 +71,16 @@ const DEFAULT_CONFIG: AppConfig = {
 }
 
 export class ConfigManager {
-  /** 當前加載的配置（初始化後永不為 null） */
+  /** 當前配置（初始化後永不為 null） */
   private config: AppConfig = DEFAULT_CONFIG
 
-  /** 配置文件在磁盤上的完整路徑 */
+  /** 配置文件磁盤路徑 */
   private readonly configFilePath: string
 
   constructor() {
-    // 開發環境：使用項目根目錄下的 config/ 文件夾
-    // 生產環境：使用 userData 目錄（每個系統用戶獨立的應用數據目錄）
     if (app.isPackaged) {
       this.configFilePath = join(app.getPath('userData'), 'app-config.json')
     } else {
-      // __dirname 在開發時指向 electron/main/，所以需要上兩級到達項目根
       this.configFilePath = join(app.getAppPath(), 'config', 'app-config.json')
     }
 
@@ -104,29 +88,23 @@ export class ConfigManager {
   }
 
   /**
-   * 加載配置文件
-   * 1. 生產環境：每次啟動都從 extraResources 覆蓋 userData 配置（保證版本升級後配置與代碼同步）
-   * 2. 讀取配置文件並解析 JSON
-   * 3. 與默認配置深合並（確保新增字段有默認值）
+   * 加載配置文件並與 DEFAULT_CONFIG 深合並。
+   * 生產環境每次啟動都從 extraResources 覆蓋 userData，確保版本升級後配置與代碼同步。
    */
   async load(): Promise<void> {
     try {
-      // 生產環境下，每次啟動都從安裝包覆蓋 userData 配置，
-      // 確保版本升級後路由名稱、菜單等始終與當前代碼一致。
-      // （用戶不會手動編輯此文件，因此直接覆蓋是安全的。）
+      // 用戶不會手動編輯此檔，直接覆蓋是安全的
       if (app.isPackaged) {
         await this.copyDefaultConfig()
       }
 
-      // 讀取並解析配置文件
       if (existsSync(this.configFilePath)) {
         const raw = readFileSync(this.configFilePath, 'utf-8')
         const parsed = JSON.parse(raw) as Partial<AppConfig>
-        // 深合並：用戶配置覆蓋默認值，確保缺失字段有默認值
+        // 深合並確保新增字段有默認值
         this.config = this.deepMerge(DEFAULT_CONFIG, parsed) as AppConfig
         logger.info('配置文件加載成功', 'ConfigManager')
       } else {
-        // 開發環境可能沒有配置文件，使用默認配置
         logger.warn('配置文件不存在，使用默認配置', 'ConfigManager')
         this.config = DEFAULT_CONFIG
       }
@@ -136,16 +114,14 @@ export class ConfigManager {
     }
   }
 
-  /** 獲取當前配置（只讀副本） */
+  /** 取當前配置 */
   getConfig(): AppConfig {
     return this.config
   }
 
   /**
-   * 獲取自動更新配置子集。
-   * 與直接讀 config.update 的差別：
-   *  - 對 update 節點缺失（舊版 app-config.json）做 fallback，避免 undefined
-   *  - UpdateManager 不需要關心整個 AppConfig，依賴面更窄
+   * 取自動更新子配置。
+   * 對舊版 app-config.json 缺 update 節點做 fallback，避免 undefined。
    */
   getUpdateConfig(): AppConfig['update'] {
     return this.config.update ?? {
@@ -159,13 +135,12 @@ export class ConfigManager {
   }
 
   /**
-   * 寫入部分配置（深合並後保存到磁盤）
+   * 寫入部分配置（深合並後保存到磁盤）。
    * @param partial 要更新的配置字段
    */
   async writeConfig(partial: Partial<AppConfig>): Promise<void> {
     try {
       this.config = this.deepMerge(this.config, partial) as AppConfig
-      // 確保目錄存在
       const dir = dirname(this.configFilePath)
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true })
@@ -178,10 +153,9 @@ export class ConfigManager {
     }
   }
 
-  /** 生產環境下，從 extraResources 複製默認配置到 userData */
+  /** 生產環境：從 extraResources 複製默認配置到 userData */
   private async copyDefaultConfig(): Promise<void> {
     try {
-      // process.resourcesPath 指向 electron-builder 打包的 resources 目錄
       const defaultConfigPath = join(process.resourcesPath, 'app-config.json')
       if (existsSync(defaultConfigPath)) {
         const dir = dirname(this.configFilePath)
@@ -197,9 +171,8 @@ export class ConfigManager {
   }
 
   /**
-   * 深合並工具函數
-   * 遞歸合並兩個對象，source 中的值覆蓋 target 中的值
-   * 數組不進行深合並（直接替換）
+   * 遞歸深合並，source 覆蓋 target。
+   * 數組直接替換，不深合並。
    */
   private deepMerge(target: unknown, source: unknown): unknown {
     if (source === null || source === undefined) return target

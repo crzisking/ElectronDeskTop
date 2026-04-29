@@ -1,8 +1,6 @@
 /**
- * 日誌相關的 IPC Handler。
- *
- *  - LOG_WRITE        渲染端日誌寫入請求（單向 send）
- *  - LOG_OPEN_FOLDER  打開日誌資料夾（雙向 invoke）
+ * 日誌 IPC Handler。
+ * 用於：渲染端日誌落地（LOG_WRITE 單向）、設定彈窗打開日誌資料夾（LOG_OPEN_FOLDER 雙向）。
  */
 
 import { ipcMain, shell } from 'electron'
@@ -21,10 +19,7 @@ interface RendererLogEntry {
 }
 
 export function registerLogHandlers(): void {
-  /**
-   * LOG_WRITE：用 ipcMain.on（單向）而非 handle，因為日誌寫入是「發了就忘」。
-   * 用 invoke 會白白增加渲染端 await 開銷。
-   */
+  // 用 on 而非 handle：日誌寫入「發了就忘」，避免渲染端多餘 await 開銷
   ipcMain.on(IpcChannels.LOG_WRITE, (_event, entry: RendererLogEntry) => {
     if (!entry || typeof entry.message !== 'string') return
     writeRendererLog(
@@ -35,10 +30,7 @@ export function registerLogHandlers(): void {
     )
   })
 
-  /**
-   * LOG_OPEN_FOLDER：在 OS 文件管理器中打開日誌目錄。
-   * shell.openPath 會處理跨平台差異（Windows: explorer，macOS: Finder，Linux: xdg-open）。
-   */
+  /** LOG_OPEN_FOLDER：shell.openPath 處理跨平台（explorer / Finder / xdg-open）。 */
   ipcMain.handle(IpcChannels.LOG_OPEN_FOLDER, async () => {
     const dir = getLogsDir()
     if (!dir) {

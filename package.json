@@ -1,5 +1,5 @@
 {
-  "name": "enterprise-desktop-client",
+  "name": "ichiaDesktop",
   "version": "1.0.2",
   "description": "ichiaDesktop",
   "main": "out/main/index.js",
@@ -109,7 +109,8 @@
         "en_US"
       ],
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}.${ext}"
     },
     "publish": [
       {

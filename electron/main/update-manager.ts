@@ -1,26 +1,7 @@
 /**
- * UpdateManager — 自動更新管理器（封裝 electron-updater）
- *
- * ── 職責 ─────────────────────────────────────────────────────────────
- * 1. 啟動時根據 ConfigManager.getUpdateConfig() 配置 autoUpdater
- * 2. 安排「每日定時檢查」（HH:MM，例如 11:00）+ 應用退出時清理 timer
- * 3. 監聽 autoUpdater 全部生命週期事件，廣播到主窗口渲染進程
- * 4. 對外暴露 check / download / quitAndInstall 給 IPC handler 呼叫
- *
- * ── 設計選擇 ─────────────────────────────────────────────────────────
- * - 走「依賴注入」風格，constructor 接收 ConfigManager 實例（與專案其他
- *   manager 一致：FloatingBallManager、TrayManager 都這樣寫）
- * - 不寫成 module-level singleton（如 export const updateMgr = ...），
- *   避免在 import 時就觸發 electron-updater 的副作用初始化
- * - 日誌復用專案現有 logger，不引入 electron-log（避免雙重日誌堆疊）
- *
- * ── 每日定時檢查實作 ─────────────────────────────────────────────────
- * 用 setTimeout 計算「現在 → 下一次到達 HH:MM」的毫秒差，到時間後
- * 觸發一次 check()，再用 setInterval 每 24 小時重複。
- *
- * 為什麼不用 setInterval 直接每 24 小時跑：
- *   無法保證對齊到 HH:MM；應用啟動時間隨用戶習慣，可能變成「每天用戶
- *   開機後 + 24h」，誤差會累積。
+ * 自動更新管理器（封裝 electron-updater）。
+ * 用於：electron/main/index.ts 末段 init(mainWindow)，搭配 update.handlers IPC。
+ * 設計：依賴注入而非 module-level singleton，避免 import 時觸發 autoUpdater 副作用。
  */
 
 import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater'
@@ -28,11 +9,14 @@ import { BrowserWindow, app } from 'electron'
 import { logger } from './utils/logger'
 import { IpcChannels } from '../shared/ipc-channels'
 import type { ConfigManager } from './config-manager'
+import type { WindowManager } from './window-manager'
+import type { FloatingBallManager } from './floating-ball'
+import type { TrayManager } from './tray-manager'
 
 const TAG = 'UpdateManager'
 
 export class UpdateManager {
-  /** 主窗口引用（用於 webContents.send 推送事件給渲染層） */
+  /** 主窗口（用於 webContents.send 推事件給渲染層） */
   private mainWindow: BrowserWindow | null = null
 
   /** 首次到達 HH:MM 的延時 timer */
@@ -41,15 +25,23 @@ export class UpdateManager {
   /** 之後每 24 小時觸發的 timer */
   private dailyTimer: NodeJS.Timeout | null = null
 
-  /** 是否已綁定 autoUpdater 事件，避免重複綁定 */
+  /** 防止重複綁定 autoUpdater 事件 */
   private listenersBound = false
 
-  constructor(private readonly configManager: ConfigManager) {}
+  /**
+   * quitAndInstall 流程需要主動清理 window/tray/floatingBall，
+   * 否則 hidden 主窗口 + 殘留 timer 會讓 app.quit() 卡住。
+   */
+  constructor(
+    private readonly configManager: ConfigManager,
+    private readonly windowManager: WindowManager,
+    private readonly floatingBallMgr: FloatingBallManager,
+    private readonly trayManager: TrayManager
+  ) {}
 
   /**
-   * 初始化自動更新管理器
+   * 初始化 autoUpdater + 綁定事件 + 排程定時檢查。
    * 必須在 BrowserWindow 創建後 + IPC handler 註冊後呼叫。
-   *
    * @param mainWindow 主窗口實例，用於推送事件到渲染進程
    */
   init(mainWindow: BrowserWindow): void {
@@ -61,15 +53,12 @@ export class UpdateManager {
       return
     }
 
-    // 開發模式下 electron-updater 默認跳過，這裡可放開做本機驗證：
-    // 啟用後需在 dist/ 同層放 dev-app-update.yml，或 forceDevUpdateConfig=true
+    // dev 想真實檢查需打開以下行 + 在 dist/ 同層放 dev-app-update.yml
     // autoUpdater.forceDevUpdateConfig = !app.isPackaged
 
-    // ── 1. 應用 autoUpdater 配置 ────────────────────────────────
     autoUpdater.autoDownload = cfg.autoDownload
     autoUpdater.autoInstallOnAppQuit = cfg.autoInstallOnAppQuit
-    // 服務端目前未提供 NSIS 差分更新所需的 .blockmap，直接關閉差分下載，
-    // 避免每次下載前先報 404 再 fallback 到完整安裝包。
+    // 服務端未提供 .blockmap，關閉差分下載避免每次先 404 fallback
     autoUpdater.disableDifferentialDownload = true
     autoUpdater.channel = cfg.channel
     autoUpdater.setFeedURL({
@@ -78,9 +67,7 @@ export class UpdateManager {
       channel: cfg.channel
     })
 
-    // 把 electron-updater 的 logger 接到專案 logger 上，所有更新流程日誌
-    // 都會走 utils/logger 的格式化通道。autoUpdater.logger 接口要求
-    // info/warn/error/debug 四個方法，shape 與我們的 logger 兼容。
+    // 把 autoUpdater 內部日誌接到專案 logger，所有更新流程進同一個檔
     autoUpdater.logger = {
       info: (msg: unknown) => logger.info(String(msg), TAG),
       warn: (msg: unknown) => logger.warn(String(msg), TAG),
@@ -88,7 +75,6 @@ export class UpdateManager {
       debug: (msg: unknown) => logger.debug(String(msg), TAG)
     }
 
-    // ── 2. 綁定生命週期事件（一次性） ────────────────────────
     if (!this.listenersBound) {
       this.bindAutoUpdaterListeners()
       this.listenersBound = true
@@ -100,20 +86,18 @@ export class UpdateManager {
       TAG
     )
 
-    // ── 3. 排程每日定時檢查 ─────────────────────────────────
     if (cfg.dailyCheckTime) {
       this.scheduleDailyCheck(cfg.dailyCheckTime)
     } else {
       logger.info('未配置 dailyCheckTime，僅支持手動檢查', TAG)
     }
 
-    // 應用退出前清理 timer + 監聽器
     app.once('before-quit', () => this.dispose())
   }
 
   /**
-   * 綁定 autoUpdater 生命週期事件，全部廣播到主窗口渲染進程。
-   * 渲染層通過 window.electronAPI.update.onXxx(...) 註冊回調。
+   * 綁定 autoUpdater 全部生命週期事件，廣播到主窗口渲染進程。
+   * 渲染層通過 window.electronAPI.on('push:update-*', ...) 訂閱。
    */
   private bindAutoUpdaterListeners(): void {
     autoUpdater.on('checking-for-update', () => {
@@ -155,11 +139,10 @@ export class UpdateManager {
   }
 
   /**
-   * 安排「每日 HH:MM 檢查更新」。
-   * 計算現在到下一次 HH:MM 的毫秒差，setTimeout 觸發後再用 setInterval
-   * 每 24 小時重複；夏令時切換等邊界情況忽略（內網企業環境影響可忽略）。
-   *
-   * @param hhmm 目標時刻字串，格式 "HH:MM"（24 小時制）
+   * 排程每日 HH:MM 檢查（setTimeout 對齊到時點 + setInterval 24h 重複）。
+   * 不直接 setInterval(24h) 是因為應用啟動時間隨用戶習慣，誤差會累積。
+   * 夏令時切換等邊界情況忽略（內網企業環境影響可忽略）。
+   * @param hhmm "HH:MM" 24 小時制
    */
   private scheduleDailyCheck(hhmm: string): void {
     const parsed = this.parseHHMM(hhmm)
@@ -172,7 +155,7 @@ export class UpdateManager {
     const now = new Date()
     const next = new Date(now)
     next.setHours(hour, minute, 0, 0)
-    // 已過今天的 HH:MM → 排到明天
+    // 已過今天的 HH:MM 就排到明天
     if (next.getTime() <= now.getTime()) {
       next.setDate(next.getDate() + 1)
     }
@@ -185,12 +168,11 @@ export class UpdateManager {
 
     this.firstCheckTimer = setTimeout(() => {
       this.check()
-      // 之後每 24 小時跑一次
       this.dailyTimer = setInterval(() => this.check(), 24 * 60 * 60 * 1000)
     }, delayMs)
   }
 
-  /** 解析 "HH:MM" 字串為 { hour, minute }；非法則回傳 null */
+  /** 解析 "HH:MM"，非法回傳 null */
   private parseHHMM(s: string): { hour: number; minute: number } | null {
     const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim())
     if (!m) return null
@@ -200,28 +182,14 @@ export class UpdateManager {
     return { hour, minute }
   }
 
-  // ─── 對外 API（由 IPC handler 呼叫） ─────────────────────────────
-
   /**
-   * 檢查是否有更新。
-   * autoDownload=true 時會自動進入下載階段；
-   * autoDownload=false 時觸發 update-available 後等用戶呼叫 download()。
-   *
-   * ── 開發模式特殊處理 ──────────────────────────────────────────────
-   * autoUpdater.checkForUpdates() 在 app.isPackaged === false 時
-   * 會直接 return null 並打印 "Skip checkForUpdates because application
-   * is not packed and dev update config is not forced"，**不會發任何事件**，
-   * 導致渲染端的「檢查中…」狀態永遠不會被清除（spinner 卡住）。
-   *
-   * 為了讓開發者能在 dev 環境測試 UI 流程，這裡顯式發送一個 ERROR 事件，
-   * 提示「開發模式下無法檢查更新」，UI 就能脫離 checking 狀態。
-   *
-   * 若想在 dev 真實檢查，需打開 update-manager.ts 中的
-   *   autoUpdater.forceDevUpdateConfig = !app.isPackaged
-   * 並在專案根目錄放 dev-app-update.yml。
+   * 觸發檢查更新。
+   * autoDownload=true 時自動進入下載；false 時等用戶呼叫 download()。
+   * dev 模式 autoUpdater.checkForUpdates() 直接 return null 不發任何事件，
+   * 會讓 UI checking spinner 卡住，這裡顯式補發 ERROR 解鎖 UI。
    */
   async check(): Promise<unknown> {
-    // dev 模式短路：autoUpdater 不發事件，這裡手動補一個 ERROR 讓 UI 解鎖
+    // dev 短路：autoUpdater 不發事件，手動補一個 ERROR 讓 UI 解鎖
     if (!app.isPackaged && !autoUpdater.forceDevUpdateConfig) {
       const message = '開發模式下無法檢查更新（請打包後測試，或啟用 forceDevUpdateConfig）'
       logger.warn(message, TAG)
@@ -235,8 +203,7 @@ export class UpdateManager {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       logger.error('checkForUpdates 失敗', TAG, err)
-      // 主動補發一個 ERROR 事件確保 UI 一定解鎖
-      // （autoUpdater 內部理論上會發 'error' 事件，這裡是雙保險）
+      // 雙保險：autoUpdater 內部理論上會發 'error'，這裡再補一次確保 UI 解鎖
       this.send(IpcChannels.PUSH_UPDATE_ERROR, { message })
       return undefined
     }
@@ -253,24 +220,42 @@ export class UpdateManager {
   }
 
   /**
-   * 立即退出並安裝。
-   * 配合 NSIS oneClick=true 模式，安裝過程無交互窗口，靜默完成後拉起新版。
+   * 立即退出並安裝新版本（NSIS oneClick 無交互）。
+   * 流程：setQuitting → 清理 tray/floatingBall/windows → 5s 保險強制 exit → quitAndInstall。
+   * 主動清理是必須的，否則 hidden 主窗口 + 殘留 timer 會卡住 app.quit()。
    */
   quitAndInstall(): void {
     logger.info('用戶確認重啟安裝新版本', TAG)
-    autoUpdater.quitAndInstall()
+
+    // 解除主窗口 close 攔截
+    this.windowManager.setQuitting(true)
+
+    try {
+      this.floatingBallMgr.dispose()
+      this.trayManager.destroy()
+      this.windowManager.destroyAll()
+    } catch (err) {
+      logger.error('quitAndInstall 清理階段出錯', TAG, err)
+    }
+
+    // 5 秒保險：autoUpdater 內部 app.quit() 卡住時強制 exit
+    setTimeout(() => {
+      logger.warn('quitAndInstall 5 秒內未退出，強制 app.exit(0)', TAG)
+      app.exit(0)
+    }, 5_000)
+
+    // 參數：isSilent（不顯示 NSIS 進度框）、isForceRunAfter（裝完自動拉起）
+    autoUpdater.quitAndInstall(true, true)
   }
 
-  // ─── 內部工具 ───────────────────────────────────────────────────
-
-  /** 推送事件到主窗口渲染進程（窗口已關閉/銷毀則靜默忽略） */
+  /** 推事件到主窗口；窗口已銷毀則靜默忽略 */
   private send(channel: string, payload?: unknown): void {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(channel, payload)
     }
   }
 
-  /** 釋放資源：清 timer + 移除事件 */
+  /** 釋放 timer + 移除事件監聽 */
   dispose(): void {
     if (this.firstCheckTimer) {
       clearTimeout(this.firstCheckTimer)

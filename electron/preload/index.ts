@@ -1,43 +1,21 @@
 /**
- * 主窗口預加載腳本（Preload Script）
- *
- * 這是渲染進程和主進程之間唯一的合法通信橋樑。
- *
- * 安全原則：
- *  - contextBridge.exposeInMainWorld：只暴露明確需要的 API
- *  - 不暴露 ipcRenderer 本身（防止渲染進程任意發送 IPC）
- *  - 每個暴露的方法都有明確的參數和返回值類型
- *  - 對傳入參數進行基本校驗（防止惡意代碼注入）
- *
- * 本腳本運行在：
- *  - Node.js 環境（可以 require）
- *  - 但被 contextIsolation 隔離（不污染渲染進程的 window）
+ * 主窗口預加載腳本，渲染進程 ↔ 主進程的唯一通信橋樑。
+ * 用於：window.electronAPI.* 暴露給 src/ 渲染層使用。
+ * 不暴露 ipcRenderer 本身，所有 channel 走白名單避免任意監聽/發送。
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
 import { IpcChannels } from '../shared/ipc-channels'
 
-/**
- * 通過 contextBridge 將 electronAPI 安全暴露到渲染進程的 window 對象
- * 渲染進程通過 window.electronAPI.xxx() 調用
- */
 contextBridge.exposeInMainWorld('electronAPI', {
-  // ─── 配置管理 ──────────────────────────────────────────────
   config: {
-    /**
-     * 讀取應用配置
-     * @returns Promise<AppConfig>
-     */
+    /** @returns Promise<AppConfig> */
     read: () => ipcRenderer.invoke(IpcChannels.CONFIG_READ),
 
-    /**
-     * 寫入部分配置
-     * @param config Partial<AppConfig>
-     */
+    /** @param config Partial<AppConfig> */
     write: (config: unknown) => ipcRenderer.invoke(IpcChannels.CONFIG_WRITE, config)
   },
 
-  // ─── 窗口控制 ──────────────────────────────────────────────
   window: {
     minimize: () => ipcRenderer.send(IpcChannels.WINDOW_MINIMIZE),
     maximize: () => ipcRenderer.send(IpcChannels.WINDOW_MAXIMIZE),
@@ -47,16 +25,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isMaximized: () => ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED),
 
     /**
-     * 在新的 Electron 子窗口中打開指定 URL
-     * 用於 openMode 為 'electron-window' 的系統
-     * @param url   系統的訪問 URL
-     * @param title 子窗口標題（顯示在任務欄）
+     * 在新 Electron 子窗口打開系統 URL（openMode='electron-window' 用）。
+     * @param url   系統訪問 URL
+     * @param title 子窗口標題
      */
     openChild: (url: string, title: string) =>
       ipcRenderer.invoke(IpcChannels.OPEN_CHILD_WINDOW, url, title)
   },
 
-  // ─── 浮球控制 ──────────────────────────────────────────────
   floatingBall: {
     show:      () => ipcRenderer.send(IpcChannels.BALL_SHOW),
     hide:      () => ipcRenderer.send(IpcChannels.BALL_HIDE),
@@ -64,12 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     stopDrag:  () => ipcRenderer.send(IpcChannels.BALL_STOP_DRAG),
 
     /**
-     * 監聽浮球菜單操作（從浮球渲染進程中選擇菜單項後導航到主窗口對應路由）
-     * 主進程收到浮球的菜單選擇後，通過此推送通知主窗口渲染進程
-     * @param callback 接收 routeName 的回調
+     * 訂閱浮球菜單操作（浮球選單項 → 主窗口導航）。
+     * 用於：主窗口 App.vue；先 removeAllListeners 防止重複註冊。
+     * @param callback 接收 routeName
      */
     onMenuAction: (callback: (routeName: string) => void) => {
-      // 移除舊監聽器防止重複
       ipcRenderer.removeAllListeners(IpcChannels.BALL_MENU_ACTION)
       ipcRenderer.on(IpcChannels.BALL_MENU_ACTION, (_event, routeName: string) => {
         callback(routeName)
@@ -77,19 +52,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-  // ─── Auth Token ────────────────────────────────────────────
   auth: {
     getToken:    () => ipcRenderer.invoke(IpcChannels.AUTH_GET_TOKEN),
     setToken:    (token: string) => ipcRenderer.invoke(IpcChannels.AUTH_SET_TOKEN, token),
     deleteToken: () => ipcRenderer.invoke(IpcChannels.AUTH_DELETE_TOKEN)
   },
 
-  // ─── 日誌（渲染進程 → 主進程文件） ───────────────────────
   /**
-   * 寫一條日誌到主進程的文件（單向，無返回值）。
-   * 渲染端通常不直接呼叫此方法，而是用 src/utils/logger.ts 封裝後的 logger.info/warn/error。
-   *
-   * 開日誌資料夾：用 invoke 雙向呼叫，主進程用 shell.openPath 打開資源管理器
+   * 渲染端日誌寫到主進程文件 + 打開日誌資料夾。
+   * 渲染端通常用 src/utils/logger.ts 封裝後呼叫，不直接用此 API。
    */
   log: {
     write: (entry: {
@@ -105,14 +76,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }>
   },
 
-  // ─── 自動更新 ──────────────────────────────────────────────
   /**
-   * 自動更新 API：
-   *  - check / download / quitAndInstall：主動指令（雙向 invoke）
-   *  - 更新狀態事件：通過上方的通用 electronAPI.on(channel, cb) 訂閱
-   *    （已在白名單放行 push:update-* 系列頻道）
-   *
-   * 範例：
+   * 自動更新主動指令；事件訂閱走 electronAPI.on('push:update-*', cb)。
+   * @example
    *   await window.electronAPI.update.check()
    *   window.electronAPI.on('push:update-available', (info) => { ... })
    */
@@ -122,21 +88,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     quitAndInstall: () => ipcRenderer.invoke(IpcChannels.UPDATE_QUIT_AND_INSTALL)
   },
 
-  // ─── 通用事件監聽 ──────────────────────────────────────────
   /**
-   * 監聽主進程推送事件
-   * 允許的頻道列表（白名單，防止監聽任意頻道）
+   * 訂閱主進程推送事件。
+   * 走白名單避免渲染端監聽任意 channel。
    */
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const ALLOWED_CHANNELS = [
       IpcChannels.PUSH_CONFIG_CHANGED,
       IpcChannels.PUSH_TRAY_CLICKED,
       IpcChannels.PUSH_WINDOW_MAXIMIZED,
-      // 浮球/托盤右鍵菜單「導航到指定路由」推送
-      // 主進程在收到 BALL_MENU_ACTION 或托盤菜單點擊後，
-      // 通過 webContents.send('floating-ball:navigate', routeName) 推送到主窗口
+      // 浮球/托盤右鍵菜單導航推送（主進程 webContents.send 到主窗口）
       'floating-ball:navigate',
-      // 自動更新生命週期事件（由 UpdateManager 廣播）
+      // UpdateManager 廣播的更新生命週期事件
       IpcChannels.PUSH_UPDATE_CHECKING,
       IpcChannels.PUSH_UPDATE_AVAILABLE,
       IpcChannels.PUSH_UPDATE_NOT_AVAILABLE,
@@ -150,9 +113,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
 
-  /**
-   * 取消監聽主進程推送事件
-   */
+  /** 取消訂閱主進程推送事件 */
   off: (channel: string, callback: (...args: unknown[]) => void) => {
     ipcRenderer.off(channel, callback as never)
   }

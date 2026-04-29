@@ -1,19 +1,7 @@
-﻿/**
- * 浮球拖動管理器
- *
- * 負責浮球窗口的拖動邏輯和邊緣吸附動畫。
- *
- * 拖動原理：
- *  1. 渲染進程在 mousedown 時發送 BALL_START_DRAG 到主進程
- *  2. 主進程記錄拖動偏移量（游標位置 - 窗口位置）
- *  3. 以 ~60fps 的間隔輪詢 screen.getCursorScreenPoint()
- *  4. 計算新窗口位置 = 游標位置 - 偏移量，並限制在屏幕邊界內
- *  5. 渲染進程在 mouseup 時發送 BALL_STOP_DRAG，停止輪詢
- *  6. 停止後，根據配置決定是否執行邊緣吸附動畫
- *
- * 為什麼不用 -webkit-app-region: drag？
- *  因為它會吞噬 click/contextmenu 等鼠標事件，
- *  導致右鍵菜單和左鍵點擊無法觸發。
+/**
+ * 浮球拖動 + 邊緣吸附動畫管理器。
+ * 用於：electron/main/index.ts 建構後注入給 IPC ball.handlers。
+ * 不用 -webkit-app-region:drag 是因為它會吞 click/contextmenu 事件。
  */
 
 import { screen } from 'electron'
@@ -21,33 +9,38 @@ import { logger } from './utils/logger'
 import type { WindowManager } from './window-manager'
 
 export class FloatingBallManager {
-  /** 拖動定時器（null 表示當前未在拖動） */
+  /** 拖動位置輪詢 timer */
   private dragInterval: ReturnType<typeof setInterval> | null = null
 
-  /** 拖動時：游標相對於浮球窗口左上角的偏移量 */
+  /** 邊緣吸附動畫 timer（dispose 時要 clear） */
+  private animInterval: ReturnType<typeof setInterval> | null = null
+
+  /** 拖動時游標相對浮球左上角的偏移 */
   private dragOffset = { x: 0, y: 0 }
 
-  /** 浮球大小（從配置讀取，默認 60） */
+  /** 浮球直徑（從配置讀取） */
   private ballSize = 60
+
+  /** dispose 後不再啟動任何動畫，避免操作已銷毀的窗口 */
+  private disposed = false
 
   constructor(
     private readonly windowManager: WindowManager,
-    /** 是否啟用邊緣吸附（從配置讀取） */
     private snapToEdge: boolean = true
   ) {}
 
   /**
-   * 開始拖動
-   * 記錄初始偏移量，啟動位置更新定時器
+   * 開始拖動。
+   * 記錄初始偏移並啟動 ~60fps 位置更新 timer。
    */
   startDrag(): void {
-    // 如果已在拖動中，先停止（防止重複啟動）
+    if (this.disposed) return
+    // 防止重複啟動
     if (this.dragInterval) this.stopDrag()
 
     const ballWindow = this.windowManager.getFloatingBallWindow()
     if (!ballWindow) return
 
-    // 獲取浮球當前位置和游標當前位置，計算偏移量
     const [winX, winY] = ballWindow.getPosition()
     const cursor = screen.getCursorScreenPoint()
     this.dragOffset = {
@@ -55,7 +48,6 @@ export class FloatingBallManager {
       y: cursor.y - winY
     }
 
-    // 以 ~60fps（16ms）的間隔更新浮球位置
     this.dragInterval = setInterval(() => {
       this.updateBallPosition()
     }, 16)
@@ -64,8 +56,8 @@ export class FloatingBallManager {
   }
 
   /**
-   * 停止拖動
-   * 清除定時器，根據配置執行邊緣吸附
+   * 停止拖動，依配置觸發吸附動畫。
+   * dispose 後跳過動畫，避免在已銷毀窗口上 tick。
    */
   stopDrag(): void {
     if (this.dragInterval) {
@@ -73,18 +65,14 @@ export class FloatingBallManager {
       this.dragInterval = null
     }
 
-    // 停止後執行邊緣吸附
-    if (this.snapToEdge) {
+    if (this.snapToEdge && !this.disposed) {
       this.animateSnapToEdge()
     }
 
     logger.debug('停止拖動', 'FloatingBall')
   }
 
-  /**
-   * 更新浮球位置（在拖動定時器中調用）
-   * 基於游標當前位置減去初始偏移量計算目標位置
-   */
+  /** 拖動 timer 每 tick 更新一次浮球位置（含邊界 clamp） */
   private updateBallPosition(): void {
     const ballWindow = this.windowManager.getFloatingBallWindow()
     if (!ballWindow) {
@@ -95,21 +83,17 @@ export class FloatingBallManager {
     const cursor = screen.getCursorScreenPoint()
     const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    // 目標位置 = 游標位置 - 初始偏移量
     let targetX = cursor.x - this.dragOffset.x
     let targetY = cursor.y - this.dragOffset.y
 
-    // 邊界限制：確保浮球完全在屏幕工作區內
+    // 確保浮球完全在屏幕工作區內
     targetX = Math.max(0, Math.min(targetX, width - this.ballSize))
     targetY = Math.max(0, Math.min(targetY, height - this.ballSize))
 
     ballWindow.setPosition(Math.round(targetX), Math.round(targetY))
   }
 
-  /**
-   * 邊緣吸附動畫
-   * 計算離哪條邊最近，然後平滑移動到該邊緣
-   */
+  /** 找最近的邊，呼叫 smoothMove 平滑移動過去 */
   private animateSnapToEdge(): void {
     const ballWindow = this.windowManager.getFloatingBallWindow()
     if (!ballWindow) return
@@ -117,13 +101,11 @@ export class FloatingBallManager {
     const [currentX, currentY] = ballWindow.getPosition()
     const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-    // 計算到四條邊的距離
     const distLeft = currentX
     const distRight = width - currentX - this.ballSize
     const distTop = currentY
     const distBottom = height - currentY - this.ballSize
 
-    // 找到最小距離對應的邊
     const minDist = Math.min(distLeft, distRight, distTop, distBottom)
 
     let targetX = currentX
@@ -139,7 +121,7 @@ export class FloatingBallManager {
       targetY = height - this.ballSize
     }
 
-    // 執行平滑移動動畫（20 步，約 200ms）
+    // 20 步 × 10ms ≈ 200ms
     this.smoothMove(currentX, currentY, targetX, targetY, 20, 10)
 
     logger.debug(
@@ -149,7 +131,7 @@ export class FloatingBallManager {
   }
 
   /**
-   * 平滑移動動畫（緩動函數：easeOut）
+   * easeOut 緩動平滑移動。
    * @param fromX 起始 X
    * @param fromY 起始 Y
    * @param toX   目標 X
@@ -165,33 +147,70 @@ export class FloatingBallManager {
     steps: number,
     intervalMs: number
   ): void {
+    if (this.disposed) return
+
     const ballWindow = this.windowManager.getFloatingBallWindow()
     if (!ballWindow) return
 
+    // 清掉舊動畫避免重疊
+    if (this.animInterval) {
+      clearInterval(this.animInterval)
+      this.animInterval = null
+    }
+
     let step = 0
-    const animInterval = setInterval(() => {
-      step++
-      if (step >= steps) {
-        clearInterval(animInterval)
-        ballWindow.setPosition(Math.round(toX), Math.round(toY))
+    this.animInterval = setInterval(() => {
+      // dispose 或窗口銷毀後主動停止
+      const win = this.windowManager.getFloatingBallWindow()
+      if (this.disposed || !win || win.isDestroyed()) {
+        if (this.animInterval) {
+          clearInterval(this.animInterval)
+          this.animInterval = null
+        }
         return
       }
 
-      // easeOut 緩動：t = step/steps，position = from + (to-from) * (1-(1-t)^2)
+      step++
+      if (step >= steps) {
+        clearInterval(this.animInterval!)
+        this.animInterval = null
+        win.setPosition(Math.round(toX), Math.round(toY))
+        return
+      }
+
+      // easeOut: position = from + (to-from) * (1-(1-t)^2)
       const t = step / steps
       const ease = 1 - Math.pow(1 - t, 2)
       const x = Math.round(fromX + (toX - fromX) * ease)
       const y = Math.round(fromY + (toY - fromY) * ease)
-      ballWindow.setPosition(x, y)
+      win.setPosition(x, y)
     }, intervalMs)
   }
 
-  /** 更新 snapToEdge 配置（配置熱更新時調用） */
+  /**
+   * 釋放 timer 並標記 disposed。
+   * 用於：app before-quit、UpdateManager.quitAndInstall 前清理。
+   * dispose 後再呼叫 startDrag/smoothMove 都會立即返回。
+   */
+  dispose(): void {
+    this.disposed = true
+    if (this.dragInterval) {
+      clearInterval(this.dragInterval)
+      this.dragInterval = null
+    }
+    if (this.animInterval) {
+      clearInterval(this.animInterval)
+      this.animInterval = null
+    }
+    logger.debug('FloatingBallManager 已釋放', 'FloatingBall')
+  }
+
+  /** 配置熱更新時呼叫 */
   setSnapToEdge(snap: boolean): void {
     this.snapToEdge = snap
   }
 
-  /** 更新浮球大小（配置熱更新時調用） */
+  /** 配置熱更新時呼叫 */
   setBallSize(size: number): void {
     this.ballSize = size
   }
