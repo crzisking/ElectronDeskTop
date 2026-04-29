@@ -92,6 +92,69 @@ export interface AppConfig {
    * 詳細結構見 BusinessConfig interface
    */
   business: BusinessConfig
+
+  /**
+   * 自動更新配置
+   * 對應 JSON：{ "update": { "enabled": true, "feedUrl": "...", ... } }
+   * 詳細結構見 UpdateConfig interface
+   */
+  update: UpdateConfig
+}
+
+// ── 自動更新 ──────────────────────────────────────────────────────────
+// 對應 JSON：
+// "update": {
+//   "enabled": true,
+//   "feedUrl": "http://192.168.120.135:505/",
+//   "channel": "latest",
+//   "dailyCheckTime": "11:00",
+//   "autoDownload": true,
+//   "autoInstallOnAppQuit": false
+// }
+export interface UpdateConfig {
+  /**
+   * 自動更新總開關
+   * false 時整個 update-manager 不會啟動，相當於關閉自動更新功能
+   */
+  enabled: boolean
+
+  /**
+   * 更新源（內網靜態服務器，結尾必須帶 "/"）
+   * 服務器需提供 latest.yml + 安裝包 + blockmap
+   */
+  feedUrl: string
+
+  /**
+   * 發布通道：對應服務器上的 latest.yml / beta.yml / alpha.yml
+   * 一般生產環境用 "latest"；灰度測試可用 "beta"
+   */
+  channel: 'latest' | 'beta' | 'alpha'
+
+  /**
+   * 每日定時檢查時刻（24 小時制，HH:MM 格式，如 "11:00"）
+   * 應用啟動時會計算「下一次到達該時刻的時間差」並安排首次檢查；
+   * 之後每 24 小時觸發一次。設為空字串則不啟用定時檢查（仍可手動觸發）。
+   *
+   * 範例：
+   *   "11:00" → 每天中午 11 點檢查
+   *   "03:30" → 每天凌晨 3:30 檢查
+   *   ""     → 不定時檢查
+   */
+  dailyCheckTime: string
+
+  /**
+   * 發現新版時是否自動下載
+   * true：背景自動下載完，等用戶在彈窗點「立即重啟」
+   * false：先彈通知問用戶要不要下載
+   */
+  autoDownload: boolean
+
+  /**
+   * 下載完成後是否在應用退出時靜默安裝
+   * true：用戶下次關閉應用時自動安裝，無需主動點重啟
+   * false：必須用戶主動點「立即重啟」才安裝
+   */
+  autoInstallOnAppQuit: boolean
 }
 
 // ── 全局設置 ──────────────────────────────────────────────────────────

@@ -133,6 +133,20 @@ import { registerAuthHandlers } from './auth.handlers'
 import { registerConfigHandlers } from './config.handlers'
 
 /**
+ * `registerUpdateHandlers`：注冊自動更新相關的 IPC Handler。
+ * 來自：./update.handlers（electron/main/ipc-handlers/update.handlers.ts）
+ * 處理：UPDATE_CHECK、UPDATE_DOWNLOAD、UPDATE_QUIT_AND_INSTALL
+ */
+import { registerUpdateHandlers } from './update.handlers'
+
+/**
+ * `registerLogHandlers`：注冊日誌相關的 IPC Handler。
+ * 來自：./log.handlers（electron/main/ipc-handlers/log.handlers.ts）
+ * 處理：LOG_WRITE（渲染端日誌落地）、LOG_OPEN_FOLDER（打開日誌目錄）
+ */
+import { registerLogHandlers } from './log.handlers'
+
+/**
  * `logger`：自定義日誌工具。
  *            來自：../utils/logger（electron/main/utils/logger.ts）
  */
@@ -154,6 +168,7 @@ import { logger } from '../utils/logger'
 import type { WindowManager } from '../window-manager'
 import type { ConfigManager } from '../config-manager'
 import type { FloatingBallManager } from '../floating-ball'
+import type { UpdateManager } from '../update-manager'
 
 /**
  * registerAllHandlers()：注冊所有 IPC Handler 的入口函數。
@@ -177,7 +192,8 @@ import type { FloatingBallManager } from '../floating-ball'
 export function registerAllHandlers(
   windowManager: WindowManager,
   configManager: ConfigManager,
-  floatingBallMgr: FloatingBallManager
+  floatingBallMgr: FloatingBallManager,
+  updateMgr: UpdateManager
 ): void {
 
   // ─── 各模塊的 Handler（委託給子模塊注冊） ───────────────────────────────
@@ -201,6 +217,20 @@ export function registerAllHandlers(
    * 觸發來源：主窗口設置頁面、初始化時讀取配置
    */
   registerConfigHandlers(configManager)
+
+  /**
+   * 自動更新 Handler（UPDATE_CHECK、UPDATE_DOWNLOAD、UPDATE_QUIT_AND_INSTALL）
+   * 定義位置：electron/main/ipc-handlers/update.handlers.ts
+   * 觸發來源：渲染層手動檢查更新、用戶確認重啟安裝
+   */
+  registerUpdateHandlers(updateMgr)
+
+  /**
+   * 日誌 Handler（LOG_WRITE、LOG_OPEN_FOLDER）
+   * 定義位置：electron/main/ipc-handlers/log.handlers.ts
+   * 觸發來源：渲染端 src/utils/logger.ts、設定彈窗的「打開日誌資料夾」按鈕
+   */
+  registerLogHandlers()
 
   // ─── 浮球 IPC Handler（邏輯簡單，直接在此注冊） ─────────────────────────
 

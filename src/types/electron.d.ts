@@ -97,6 +97,42 @@ declare global {
         deleteToken: () => Promise<void>
       }
 
+      // ─── 日誌（渲染進程 → 主進程文件） ────────────────────────
+      /**
+       * 渲染端日誌 API。
+       * 通常透過 src/utils/logger.ts 封裝後使用，不直接呼叫此處。
+       */
+      log: {
+        /** 寫一條日誌到 <userData>/logs/renderer-YYYY-MM-DD.log */
+        write: (entry: {
+          level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+          message: string
+          module?: string
+          args?: unknown[]
+        }) => void
+        /** 在 OS 檔案總管中打開日誌資料夾，返回路徑 */
+        openFolder: () => Promise<{ ok: boolean; dir: string }>
+      }
+
+      // ─── 自動更新（electron-updater） ─────────────────────────
+      /**
+       * 自動更新主動 API。
+       * 更新「狀態事件」通過 electronAPI.on(channel, cb) 訂閱，頻道：
+       *   push:update-checking / push:update-available / push:update-not-available
+       *   push:update-progress / push:update-downloaded / push:update-error
+       *
+       * 渲染層通常透過 useUpdate composable（src/composables/useUpdate.ts）
+       * 統一封裝這些事件監聽 + 對應 UI 提示，不直接呼叫此處的方法。
+       */
+      update: {
+        /** 手動觸發檢查更新（例如「關於」頁面的按鈕） */
+        check: () => Promise<unknown>
+        /** 手動觸發下載（autoDownload=false 時使用） */
+        download: () => Promise<unknown>
+        /** 用戶確認後立即重啟並安裝新版（NSIS oneClick 模式靜默完成） */
+        quitAndInstall: () => Promise<void>
+      }
+
       // ─── 浮球原生右鍵菜單 ─────────────────────────────────
       /**
        * 請求主進程在光標位置彈出原生 context menu

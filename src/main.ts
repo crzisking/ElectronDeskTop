@@ -106,3 +106,9 @@ for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
 // '#app' 對應 src/index.html 中的 <div id="app"></div>
 // 掛載後，App.vue 的模板替換這個 div，Vue 接管整個頁面
 app.mount('#app')
+
+// 第七步：啟用全局未捕獲異常 / Promise rejection 自動寫日誌
+// 任何沒被 try/catch 的錯誤都會自動進 renderer-YYYY-MM-DD.log，
+// 生產環境用戶遇到問題不需要打開 DevTools 也能還原現場
+import { installGlobalErrorHandlers } from './utils/logger'
+installGlobalErrorHandlers()

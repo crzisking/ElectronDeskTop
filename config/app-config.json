@@ -216,5 +216,21 @@
     "pipelineApiEndpoint": "https://api.example.com/business/pipeline",
     "ownerSearchApiEndpoint": "https://api.example.com/business/owner/search",
     "maxSearchResults": 20
+  },
+
+  "update": {
+    "_comment": "自動更新配置（electron-updater）",
+    "_comment_enabled": "自動更新總開關，false 時 update-manager 不啟動",
+    "_comment_feedUrl": "更新源（內網靜態服務器，結尾必須帶 /），需提供 latest.yml + 安裝包 + blockmap",
+    "_comment_channel": "發布通道：對應服務器上的 latest.yml / beta.yml / alpha.yml",
+    "_comment_dailyCheckTime": "每日定時檢查時刻（24 小時制 HH:MM）。空字串 '' 則不啟用定時檢查",
+    "_comment_autoDownload": "發現新版時是否自動下載（true 背景下載，false 先問用戶）",
+    "_comment_autoInstallOnAppQuit": "下載完成後是否在應用退出時靜默安裝（true 下次退出自動裝，false 必須點立即重啟）",
+    "enabled": true,
+    "feedUrl": "http://192.168.120.135:505/",
+    "channel": "latest",
+    "dailyCheckTime": "11:00",
+    "autoDownload": true,
+    "autoInstallOnAppQuit": false
   }
 }

@@ -137,7 +137,9 @@ function openEditDialog(nodeId: string) {
 function confirmEdit() {
   if (!editingNodeId.value) return
 
-  const node = nodes.value.find(n => n.id === editingNodeId.value)
+  const list = nodes.value as unknown as Array<{ id: string; data: FlowNodeData }>
+  const found = list.find((n) => n.id === editingNodeId.value)
+  const node = found as unknown as Node | undefined
   if (node) {
     node.data = {
       ...node.data,

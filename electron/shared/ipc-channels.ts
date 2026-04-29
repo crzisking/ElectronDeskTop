@@ -405,7 +405,70 @@ export const IpcChannels = {
    * 傳入數據：url（string，系統的訪問地址）+ title（string，窗口標題）
    * 通信類型：invoke/handle（雙向，等待窗口創建完成）
    */
-  OPEN_CHILD_WINDOW: 'window:open-child'
+  OPEN_CHILD_WINDOW: 'window:open-child',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 自動更新（electron-updater）
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * UPDATE_CHECK：手動觸發更新檢查（雙向）。
+   * 渲染側：window.electronAPI.update.check()
+   * 主進程：UpdateManager.check() → autoUpdater.checkForUpdates()
+   */
+  UPDATE_CHECK: 'update:check',
+
+  /**
+   * UPDATE_DOWNLOAD：手動觸發下載（autoDownload=false 時使用）。
+   */
+  UPDATE_DOWNLOAD: 'update:download',
+
+  /**
+   * UPDATE_QUIT_AND_INSTALL：用戶在「下載完成」彈窗點擊「立即重啟」後呼叫。
+   * 主進程：autoUpdater.quitAndInstall() → 退出應用並執行新版本安裝。
+   */
+  UPDATE_QUIT_AND_INSTALL: 'update:quit-and-install',
+
+  /** PUSH_UPDATE_CHECKING：開始檢查（顯示「檢查中…」可選 UI） */
+  PUSH_UPDATE_CHECKING: 'push:update-checking',
+
+  /** PUSH_UPDATE_AVAILABLE：發現新版（payload：{ version, releaseNotes? }） */
+  PUSH_UPDATE_AVAILABLE: 'push:update-available',
+
+  /** PUSH_UPDATE_NOT_AVAILABLE：當前已是最新版（手動檢查時可給用戶提示） */
+  PUSH_UPDATE_NOT_AVAILABLE: 'push:update-not-available',
+
+  /** PUSH_UPDATE_PROGRESS：下載進度（payload：{ percent, bytesPerSecond, transferred, total }） */
+  PUSH_UPDATE_PROGRESS: 'push:update-progress',
+
+  /** PUSH_UPDATE_DOWNLOADED：下載完成、等待安裝（payload：{ version }） */
+  PUSH_UPDATE_DOWNLOADED: 'push:update-downloaded',
+
+  /** PUSH_UPDATE_ERROR：更新流程出錯（payload：{ message }） */
+  PUSH_UPDATE_ERROR: 'push:update-error',
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 日誌（渲染進程 → 主進程文件落地）
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * LOG_WRITE：渲染進程寫一條日誌到主進程的文件（單向，無返回值）。
+   *
+   * payload: {
+   *   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+   *   message: string
+   *   module?: string
+   *   args?: unknown[]
+   * }
+   */
+  LOG_WRITE: 'log:write',
+
+  /**
+   * LOG_OPEN_FOLDER：在系統檔案總管中打開日誌資料夾（雙向）。
+   * 用於設定彈窗的「打開日誌資料夾」按鈕，方便用戶把日誌發給技術支援。
+   * 返回：日誌目錄絕對路徑（給 UI 顯示提示用）
+   */
+  LOG_OPEN_FOLDER: 'log:open-folder'
 
 } as const
 

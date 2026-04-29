@@ -17,12 +17,13 @@
  * 系統分組固定（設定 / 幫助與回饋）。
  */
 
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useConfigStore } from '@/stores/config.store'
 import { useUiStore } from '@/stores/ui.store'
 import { useAuthStore } from '@/stores/auth.store'
 import SidebarNavItem from './SidebarNavItem.vue'
-import { ArrowLeftBold } from '@element-plus/icons-vue'
+import SettingsDialog from '@/views/Settings/SettingsDialog.vue'
+import { ArrowLeftBold, Setting } from '@element-plus/icons-vue'
 import type { SidebarItem } from '@/types/config.types'
 
 const configStore = useConfigStore()
@@ -66,6 +67,17 @@ const userInitial = computed(() => userName.value.charAt(0))
 function toggleCollapse() {
   uiStore.toggleSidebar()
 }
+
+// ── 設置彈窗 ────────────────────────────────────────────────────
+/**
+ * 設置彈窗顯示狀態（v-model 綁定到 SettingsDialog）。
+ * 由用戶名旁邊的齒輪按鈕觸發。
+ */
+const settingsVisible = ref(false)
+
+function openSettings() {
+  settingsVisible.value = true
+}
 </script>
 
 <template>
@@ -86,13 +98,25 @@ function toggleCollapse() {
       </nav>
     </div>
 
-    <!-- ── 底部：用戶卡片（僅頭像 + 姓名） ────────────────── -->
+    <!-- ── 底部：用戶卡片（頭像 + 姓名 + 設置按鈕） ────────── -->
     <div class="sidebar-spacer" />
     <div class="sidebar-user">
       <div class="user-avatar">{{ userInitial }}</div>
       <div v-show="!collapsed" class="user-info">
         <div class="user-name">{{ userName }}</div>
       </div>
+      <!--
+        設置按鈕：折疊狀態下也保留（小屏依然能進設定），
+        完全隱藏會讓收合後找不到設定入口
+      -->
+      <button
+        type="button"
+        class="settings-btn"
+        :title="'設定'"
+        @click="openSettings"
+      >
+        <el-icon :size="16"><Setting /></el-icon>
+      </button>
     </div>
 
     <!-- ── 收合按鈕 ───────────────────────────────────────── -->
@@ -102,6 +126,9 @@ function toggleCollapse() {
       </el-icon>
       <span v-show="!collapsed" class="collapse-label">收合側邊欄</span>
     </button>
+
+    <!-- 設置彈窗（透過 Teleport 渲染到 body，不受側邊欄裁剪） -->
+    <SettingsDialog v-model="settingsVisible" />
   </aside>
 </template>
 
@@ -282,6 +309,32 @@ function toggleCollapse() {
 .user-more:hover {
   background: var(--app-bg-elevated);
   color: var(--app-text-primary);
+}
+
+/* ── 用戶名旁的設置按鈕 ─────────────────────────────────────── */
+.settings-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--app-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.18s;
+  flex-shrink: 0;
+}
+
+.settings-btn:hover {
+  background: var(--app-bg-surface);
+  color: var(--app-text-primary);
+  transform: rotate(60deg);
+}
+
+.settings-btn:active {
+  transform: rotate(60deg) scale(0.95);
 }
 
 /* ── 收合按鈕 ────────────────────────────────────────────── */

@@ -84,6 +84,44 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteToken: () => ipcRenderer.invoke(IpcChannels.AUTH_DELETE_TOKEN)
   },
 
+  // ─── 日誌（渲染進程 → 主進程文件） ───────────────────────
+  /**
+   * 寫一條日誌到主進程的文件（單向，無返回值）。
+   * 渲染端通常不直接呼叫此方法，而是用 src/utils/logger.ts 封裝後的 logger.info/warn/error。
+   *
+   * 開日誌資料夾：用 invoke 雙向呼叫，主進程用 shell.openPath 打開資源管理器
+   */
+  log: {
+    write: (entry: {
+      level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+      message: string
+      module?: string
+      args?: unknown[]
+    }) => ipcRenderer.send(IpcChannels.LOG_WRITE, entry),
+
+    openFolder: () => ipcRenderer.invoke(IpcChannels.LOG_OPEN_FOLDER) as Promise<{
+      ok: boolean
+      dir: string
+    }>
+  },
+
+  // ─── 自動更新 ──────────────────────────────────────────────
+  /**
+   * 自動更新 API：
+   *  - check / download / quitAndInstall：主動指令（雙向 invoke）
+   *  - 更新狀態事件：通過上方的通用 electronAPI.on(channel, cb) 訂閱
+   *    （已在白名單放行 push:update-* 系列頻道）
+   *
+   * 範例：
+   *   await window.electronAPI.update.check()
+   *   window.electronAPI.on('push:update-available', (info) => { ... })
+   */
+  update: {
+    check:          () => ipcRenderer.invoke(IpcChannels.UPDATE_CHECK),
+    download:       () => ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD),
+    quitAndInstall: () => ipcRenderer.invoke(IpcChannels.UPDATE_QUIT_AND_INSTALL)
+  },
+
   // ─── 通用事件監聽 ──────────────────────────────────────────
   /**
    * 監聽主進程推送事件
@@ -97,7 +135,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       // 浮球/托盤右鍵菜單「導航到指定路由」推送
       // 主進程在收到 BALL_MENU_ACTION 或托盤菜單點擊後，
       // 通過 webContents.send('floating-ball:navigate', routeName) 推送到主窗口
-      'floating-ball:navigate'
+      'floating-ball:navigate',
+      // 自動更新生命週期事件（由 UpdateManager 廣播）
+      IpcChannels.PUSH_UPDATE_CHECKING,
+      IpcChannels.PUSH_UPDATE_AVAILABLE,
+      IpcChannels.PUSH_UPDATE_NOT_AVAILABLE,
+      IpcChannels.PUSH_UPDATE_PROGRESS,
+      IpcChannels.PUSH_UPDATE_DOWNLOADED,
+      IpcChannels.PUSH_UPDATE_ERROR
     ] as string[]
 
     if (ALLOWED_CHANNELS.includes(channel)) {

@@ -65,6 +65,13 @@ import { TrayManager } from './tray-manager'
 import { ConfigManager } from './config-manager'
 
 /**
+ * `UpdateManager`：自定義類，負責 electron-updater 的封裝與每日定時檢查。
+ *                  來自：./update-manager（即 electron/main/update-manager.ts）
+ *                  職責：init()（綁定事件 + 排程定時檢查）、check()、quitAndInstall()
+ */
+import { UpdateManager } from './update-manager'
+
+/**
  * `registerAllHandlers`：函數，注冊所有 IPC（進程間通信）頻道的處理器。
  *                         來自：./ipc-handlers（即 electron/main/ipc-handlers/index.ts）
  *                         職責：讓渲染進程（Vue 組件）可以通過 IPC 調用主進程功能
@@ -77,6 +84,12 @@ import { registerAllHandlers } from './ipc-handlers'
  *            職責：logger.info()、logger.error()、logger.debug() 等
  */
 import { logger } from './utils/logger'
+
+/**
+ * `initLogFileWriter`：初始化日誌文件寫入器（按日輪轉 + 清理舊檔）。
+ * 必須在 app.whenReady 之後、任何 logger 呼叫前先 init，否則寫文件部分會被靜默丟棄。
+ */
+import { initLogFileWriter } from './utils/log-file-writer'
 
 // ─── 模塊實例（在 whenReady 後初始化） ──────────────────────────────────────
 // 【為什麼用 let 而不在這裡直接 new？】
@@ -97,6 +110,9 @@ let trayManager: TrayManager
 /** configManager：負責從磁盤讀取和寫入應用配置（如浮球位置、是否靜默啟動等） */
 let configManager: ConfigManager
 
+/** updateMgr：自動更新管理器（封裝 electron-updater + 每日定時檢查） */
+let updateMgr: UpdateManager
+
 // ─── 應用就緒 ──────────────────────────────────────────────────────────────
 /**
  * app.whenReady()：
@@ -109,6 +125,14 @@ let configManager: ConfigManager
  *     是因為 whenReady() 返回的是 Promise，用 .then() 是標準寫法。
  */
 app.whenReady().then(async () => {
+
+  // ─── Step 0：初始化日誌文件寫入 ───────────────────────────────────
+  /**
+   * 必須最先執行。後續所有 logger.info/warn/error 都會同步寫到
+   * <userData>/logs/main-YYYY-MM-DD.log，方便生產環境排查問題。
+   * 同時會清理超過 14 天的舊日誌文件。
+   */
+  initLogFileWriter()
 
   // ─── 前置設置：開發工具 & 應用 ID ────────────────────────────────────
 
@@ -235,7 +259,11 @@ app.whenReady().then(async () => {
    * 調用位置：本文件，在 windowManager、configManager、floatingBallMgr 都初始化後調用。
    * 定義位置：electron/main/ipc-handlers/index.ts
    */
-  registerAllHandlers(windowManager, configManager, floatingBallMgr)
+  // 自動更新管理器：在註冊 IPC handler 前就創建好，
+  // 因為 update.handlers 需要它的引用（依賴注入）
+  updateMgr = new UpdateManager(configManager)
+
+  registerAllHandlers(windowManager, configManager, floatingBallMgr, updateMgr)
 
   // ─── Step 5：初始化系統托盤 ──────────────────────────────────────
   /**
@@ -265,6 +293,20 @@ app.whenReady().then(async () => {
     // 靜默啟動：直接顯示浮球，不顯示主窗口
     windowManager.hideMainWindow()
     logger.info('靜默啟動模式，直接顯示浮球', 'App')
+  }
+
+  // ─── Step 7：啟用自動更新 ──────────────────────────────────────
+  /**
+   * 必須在主窗口創建後再 init，因為 UpdateManager 需要把更新事件
+   * 推送到主窗口的渲染進程；同時放在啟動模式判斷之後，避免靜默啟動時
+   * 立刻彈出更新提示打擾用戶（更新事件仍會在後台處理，UI 提示由
+   * 渲染層 useUpdate composable 控制）。
+   */
+  const mainWindow = windowManager.getMainWindow()
+  if (mainWindow) {
+    updateMgr.init(mainWindow)
+  } else {
+    logger.warn('主窗口尚未就緒，自動更新未啟動', 'App')
   }
 
   logger.info('應用初始化完成', 'App')

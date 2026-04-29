@@ -23,6 +23,7 @@ import { ElMessage } from 'element-plus'
 import { useConfigStore } from '@/stores/config.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
+import { useUpdate } from '@/composables/useUpdate'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -88,6 +89,9 @@ onMounted(async () => {
   window.electronAPI.on('push:window-maximized', onWindowMaximized)
   window.electronAPI.on('push:config-changed', onConfigChanged)
   window.electronAPI.on('floating-ball:navigate', onMenuNavigate)
+
+  // 4. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
+  useUpdate().bootstrap()
 })
 
 onUnmounted(() => {

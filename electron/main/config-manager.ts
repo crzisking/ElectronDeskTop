@@ -72,6 +72,14 @@ const DEFAULT_CONFIG: AppConfig = {
     pipelineApiEndpoint: '',
     ownerSearchApiEndpoint: '',
     maxSearchResults: 20
+  },
+  update: {
+    enabled: false,
+    feedUrl: 'http://192.168.120.135:505/',
+    channel: 'latest',
+    dailyCheckTime: '11:00',
+    autoDownload: true,
+    autoInstallOnAppQuit: false
   }
 }
 
@@ -131,6 +139,23 @@ export class ConfigManager {
   /** 獲取當前配置（只讀副本） */
   getConfig(): AppConfig {
     return this.config
+  }
+
+  /**
+   * 獲取自動更新配置子集。
+   * 與直接讀 config.update 的差別：
+   *  - 對 update 節點缺失（舊版 app-config.json）做 fallback，避免 undefined
+   *  - UpdateManager 不需要關心整個 AppConfig，依賴面更窄
+   */
+  getUpdateConfig(): AppConfig['update'] {
+    return this.config.update ?? {
+      enabled: false,
+      feedUrl: 'http://192.168.120.135:505/',
+      channel: 'latest',
+      dailyCheckTime: '11:00',
+      autoDownload: true,
+      autoInstallOnAppQuit: false
+    }
   }
 
   /**
