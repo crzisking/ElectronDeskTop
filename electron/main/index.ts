@@ -4,15 +4,15 @@
  * 模塊順序受依賴關係限制（IPC handler 需要各 manager 已建構）。
  */
 
-import { app } from 'electron'
-import { WindowManager } from './window-manager'
-import { FloatingBallManager } from './floating-ball'
-import { TrayManager } from './tray-manager'
-import { ConfigManager } from './config-manager'
-import { UpdateManager } from './update-manager'
-import { registerAllHandlers } from './ipc-handlers'
-import { logger } from './utils/logger'
-import { initLogFileWriter } from './utils/log-file-writer'
+import {app} from 'electron'
+import {WindowManager} from './window-manager'
+import {FloatingBallManager} from './floating-ball'
+import {TrayManager} from './tray-manager'
+import {ConfigManager} from './config-manager'
+import {UpdateManager} from './update-manager'
+import {registerAllHandlers} from './ipc-handlers'
+import {logger} from './utils/logger'
+import {initLogFileWriter} from './utils/log-file-writer'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -27,7 +27,7 @@ app.whenReady().then(async () => {
   initLogFileWriter()
 
   // Windows 任務欄分組 / 通知所需的 AppUserModelId
-  app.setAppUserModelId('com.company.enterprise-desktop-client')
+  app.setAppUserModelId('com.ichia.desktop.client')
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
   if (!app.isPackaged) {
