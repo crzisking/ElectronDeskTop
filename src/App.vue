@@ -12,6 +12,7 @@ import { useConfigStore } from '@/stores/config.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiStore } from '@/stores/ui.store'
 import { useUpdate } from '@/composables/useUpdate'
+import {logger} from "@/utils/logger";
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -52,7 +53,7 @@ onMounted(async () => {
   try {
     await configStore.loadConfig()
   } catch (err) {
-    console.error('[App] 配置加載失敗:', err)
+    logger.error('應用配置加載失敗，部分功能可能不可用', 'App.Vue', err)
     ElMessage.error('應用配置加載失敗，部分功能可能不可用')
   }
 
@@ -60,7 +61,7 @@ onMounted(async () => {
   try {
     await authStore.restoreSession()
   } catch (err) {
-    console.warn('[App] 會話恢復失敗（可能未曾登錄）:', err)
+    logger.warn('會話恢復失敗（可能未曾登錄）', 'App.Vue', err)
   }
 
   // 3. 注冊主進程推送事件監聽

@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { UserProfile } from '@/types/api.types'
 import { authApi } from '@/api/modules/auth.api'
+import {logger} from "@/utils/logger";
 
 export const useAuthStore = defineStore('auth', () => {
 
@@ -57,7 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 無 token：保持未登入，路由守衛會導向 /login
     } catch (err) {
-      console.error('[AuthStore] 會話恢復失敗:', err)
+      logger.error('會話恢復失敗',"auth.store.ts/restoreSession",err)
     } finally {
       isRestoringSession.value = false
     }
@@ -90,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await window.electronAPI.auth.deleteToken()
     } catch (err) {
-      console.warn('[AuthStore] 刪除 Token 失敗:', err)
+      logger.error('刪除 Token 失敗',"auth.store.ts/logout",err)
     } finally {
       accessToken.value = null
       user.value = null
