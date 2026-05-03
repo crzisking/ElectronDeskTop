@@ -5,13 +5,13 @@
  * 佈局由路由配置的 AppLayout 渲染，這裡只負責全局副作用。
  */
 
-import { onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { useConfigStore } from '@/stores/config.store'
-import { useAuthStore } from '@/stores/auth.store'
-import { useUiStore } from '@/stores/ui.store'
-import { useUpdate } from '@/composables/useUpdate'
+import {onMounted, onUnmounted} from 'vue'
+import {useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {useConfigStore} from '@/stores/config.store'
+import {useAuthStore} from '@/stores/auth.store'
+import {useUiStore} from '@/stores/ui.store'
+import {useUpdate} from '@/composables/useUpdate'
 import {logger} from "@/utils/logger";
 
 const router = useRouter()
@@ -71,6 +71,9 @@ onMounted(async () => {
 
   // 4. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
   useUpdate().bootstrap()
+
+  // 5. 初始化完成，隱藏全屏加載遮罩
+  uiStore.hideGlobalLoading()
 })
 
 onUnmounted(() => {

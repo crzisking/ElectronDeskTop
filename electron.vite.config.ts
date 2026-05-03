@@ -43,6 +43,11 @@ export default defineConfig({
       // 預加載腳本同樣不打包 node_modules
       externalizeDepsPlugin()
     ],
+    resolve: {
+      alias: {
+        '@shared': resolve('electron/shared')
+      }
+    },
     build: {
       rollupOptions: {
         input: {

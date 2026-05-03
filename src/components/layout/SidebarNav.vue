@@ -17,14 +17,14 @@
  * 系統分組固定（設定 / 幫助與回饋）。
  */
 
-import { ref, computed } from 'vue'
-import { useConfigStore } from '@/stores/config.store'
-import { useUiStore } from '@/stores/ui.store'
-import { useAuthStore } from '@/stores/auth.store'
+import {computed, ref} from 'vue'
+import {useConfigStore} from '@/stores/config.store'
+import {useUiStore} from '@/stores/ui.store'
+import {useAuthStore} from '@/stores/auth.store'
 import SidebarNavItem from './SidebarNavItem.vue'
 import SettingsDialog from '@/views/Settings/SettingsDialog.vue'
-import { ArrowLeftBold, Setting } from '@element-plus/icons-vue'
-import type { SidebarItem } from '@/types/config.types'
+import {ArrowLeftBold, Setting} from '@element-plus/icons-vue'
+import type {SidebarItem} from '@/types/config.types'
 
 const configStore = useConfigStore()
 const uiStore = useUiStore()
@@ -47,9 +47,6 @@ const workspaceItems = computed<SidebarItem[]>(() => {
         break
       case 'internal-functions':
         badge = pad2((configStore.functionsConfig?.tools?.length ?? 0))
-        break
-      case 'business':
-        badge = '03'
         break
     }
     return badge ? { ...item, badge } : item
@@ -152,60 +149,6 @@ function openSettings() {
   padding: 22px 10px 14px;
 }
 
-/* ── Brand ───────────────────────────────────────────────── */
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 6px 16px;
-  border-bottom: 1px solid var(--app-border-subtle);
-  margin-bottom: 18px;
-  flex-shrink: 0;
-}
-
-.brand-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: var(--app-bg-surface);
-  border: 1px solid var(--app-border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: var(--app-shadow-sm);
-}
-
-.brand-logo__letter {
-  font-family: var(--app-font-display);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 22px;
-  color: var(--app-brand);
-  line-height: 1;
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.brand-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--app-text-primary);
-  letter-spacing: 0.02em;
-}
-
-.brand-version {
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  color: var(--app-text-muted);
-  text-transform: lowercase;
-}
-
 /* ── Section ─────────────────────────────────────────────── */
 .sidebar-section {
   display: flex;
@@ -281,34 +224,6 @@ function openSettings() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.user-role {
-  font-size: 11px;
-  color: var(--app-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-more {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  color: var(--app-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-
-.user-more:hover {
-  background: var(--app-bg-elevated);
-  color: var(--app-text-primary);
 }
 
 /* ── 用戶名旁的設置按鈕 ─────────────────────────────────────── */

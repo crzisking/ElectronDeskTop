@@ -17,10 +17,18 @@
 
 import TitleBar from './TitleBar.vue'
 import SidebarNav from './SidebarNav.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import {useUiStore} from '@/stores/ui.store'
+
+const uiStore = useUiStore()
 </script>
 
 <template>
   <div class="app-layout">
+    <!-- 全屏初始化加載遮罩：配置載入、會話恢復期間顯示 -->
+    <LoadingSpinner v-if="uiStore.globalLoading" fullscreen text="應用初始化中..."/>
+
+    <template v-else>
     <!-- 自定義標題欄（frameless 窗口，替代原生標題欄） -->
     <TitleBar/>
 
@@ -38,6 +46,7 @@ import SidebarNav from './SidebarNav.vue'
         <router-view />
       </main>
     </div>
+    </template>
   </div>
 </template>
 

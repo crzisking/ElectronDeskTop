@@ -10,12 +10,12 @@
  *  2. 啟動器視圖：iframe 嵌入指定系統
  */
 
-import { ref, computed } from 'vue'
-import { useConfigStore } from '@/stores/config.store'
+import {computed, ref} from 'vue'
+import {useConfigStore} from '@/stores/config.store'
 import SystemCard from './SystemCard.vue'
 import SystemLauncher from './SystemLauncher.vue'
-import type { SystemLink } from '@/types/config.types'
-import { Search } from '@element-plus/icons-vue'
+import type {SystemLink} from '@/types/config.types'
+import {Search} from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()
 
@@ -107,22 +107,6 @@ function handleBack() {
 
 .search-input :deep(.el-input__wrapper) {
   height: 40px;
-}
-
-.search-shortcut {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--app-bg-elevated);
-  border: 1px solid var(--app-border-subtle);
-  color: var(--app-text-muted);
-  pointer-events: none;
 }
 
 .section-bar {

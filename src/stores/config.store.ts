@@ -51,9 +51,6 @@ export const useConfigStore = defineStore('config', () => {
   /** 內部功能配置 */
   const functionsConfig = computed(() => appConfig.value?.internalFunctions)
 
-  /** 業務安排與尋找配置 */
-  const businessConfig = computed(() => appConfig.value?.business)
-
   /** 當前語言設置 */
   const language = computed(() => appConfig.value?.app.language ?? 'zh-TW')
 
@@ -99,7 +96,6 @@ export const useConfigStore = defineStore('config', () => {
     floatingBallConfig,
     platformSystems,
     functionsConfig,
-    businessConfig,
     language,
     theme,
     // Actions

@@ -87,13 +87,6 @@ export interface AppConfig {
   internalFunctions: InternalFunctionsConfig
 
   /**
-   * 業務安排與尋找功能配置
-   * 對應 JSON：{ "business": { "pipelineApiEndpoint": "...", ... } }
-   * 詳細結構見 BusinessConfig interface
-   */
-  business: BusinessConfig
-
-  /**
    * 自動更新配置
    * 對應 JSON：{ "update": { "enabled": true, "feedUrl": "...", ... } }
    * 詳細結構見 UpdateConfig interface
@@ -609,43 +602,4 @@ export interface InternalTool {
    * 例如："https://chat.openai.com"
    */
   url?: string
-}
-
-// ── 業務安排與尋找 ────────────────────────────────────────────────────
-// 對應 JSON：
-// "business": {
-//   "pipelineApiEndpoint": "https://api.company.internal/business/pipeline",
-//   "ownerSearchApiEndpoint": "https://api.company.internal/business/owner/search",
-//   "maxSearchResults": 20
-// }
-export interface BusinessConfig {
-  /**
-   * 業務流水線 CRUD API 端點
-   *
-   * 支持的操作：
-   *  - GET    ${endpoint}           → 獲取所有流水線列表
-   *  - GET    ${endpoint}/:id       → 獲取單條流水線詳情（含節點和邊數據）
-   *  - POST   ${endpoint}           → 新增流水線
-   *  - PUT    ${endpoint}/:id       → 更新流水線（含 X6 圖的節點/邊 JSON）
-   *  - DELETE ${endpoint}/:id       → 刪除流水線
-   *
-   * 在哪裡用：BusinessView 和 PipelineEditor 中的流水線增刪改查
-   */
-  pipelineApiEndpoint: string
-
-  /**
-   * 業務負責人搜索 API 端點
-   *
-   * 支持 GET 查詢：${endpoint}?q={keyword}&limit={maxSearchResults}
-   * 返回匹配的業務負責人列表
-   *
-   * 在哪裡用：BusinessOwnerSearch 組件的搜索功能
-   */
-  ownerSearchApiEndpoint: string
-
-  /**
-   * 搜索結果最多顯示條數
-   * 限制列表高度，避免過多結果導致 UI 溢出
-   */
-  maxSearchResults: number
 }

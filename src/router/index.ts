@@ -1,7 +1,6 @@
-
-import { createRouter, createWebHashHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.store'
-import type { RouteRecordRaw } from 'vue-router'
+import type {RouteRecordRaw} from 'vue-router'
+import {createRouter, createWebHashHistory} from 'vue-router'
+import {useAuthStore} from '@/stores/auth.store'
 
 /**
  * 應用路由表。
@@ -87,20 +86,7 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: 'AiSop'
         }
-      },
-
-
-      // 業務安排與尋找：流水線維護（X6 流程圖）+ 業務負責人查找
-      {
-        path: 'business',
-        name: 'business',
-        component: () => import('@/views/Business/BusinessView.vue'),
-        meta: {
-          requiresAuth: true,
-          title: '業務安排與尋找'
-        }
       }
-
 
     ]
   },

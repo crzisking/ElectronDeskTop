@@ -34,13 +34,6 @@
         "icon": "Grid",
         "routeName": "internal-functions",
         "enabled": true
-      },
-      {
-        "id": "business",
-        "label": "業務安排與尋找",
-        "icon": "DataLine",
-        "routeName": "business",
-        "enabled": true
       }
     ]
   },
@@ -88,14 +81,6 @@
         "enabled": true,
         "separator": false,
         "action": { "type": "navigate", "routeName": "internal-functions" }
-      },
-      {
-        "id": "menu-go-business",
-        "label": "業務安排與尋找",
-        "icon": "DataLine",
-        "enabled": true,
-        "separator": false,
-        "action": { "type": "navigate", "routeName": "business" }
       },
       {
         "id": "menu-sep-2",
@@ -206,16 +191,6 @@
         "routeName": "it-repair"
       }
     ]
-  },
-
-  "business": {
-    "_comment": "業務安排與尋找功能配置",
-    "_comment_pipelineApiEndpoint": "業務流水線 CRUD API 端點地址（GET 獲取列表、POST 新增、PUT 更新、DELETE 刪除）",
-    "_comment_ownerSearchApiEndpoint": "尋找業務負責人的搜索 API 端點地址（GET，query 參數 q=關鍵詞）",
-    "_comment_maxSearchResults": "業務負責人搜索結果最多顯示數量",
-    "pipelineApiEndpoint": "https://api.example.com/business/pipeline",
-    "ownerSearchApiEndpoint": "https://api.example.com/business/owner/search",
-    "maxSearchResults": 20
   },
 
   "update": {

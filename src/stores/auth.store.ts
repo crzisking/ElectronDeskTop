@@ -35,9 +35,6 @@ export const useAuthStore = defineStore('auth', () => {
   /** 用戶顯示名（user 為 null 時返回空字串） */
   const displayName = computed(() => user.value?.name ?? '')
 
-  /** 用戶頭像：後端暫無頭像字段，UI 以姓名首字取代顯示 */
-  const avatarUrl = computed(() => '')
-
   // ─── Actions ──────────────────────────────────────────────
 
   /**
@@ -118,7 +115,6 @@ export const useAuthStore = defineStore('auth', () => {
     isRestoringSession,
     // Getters
     displayName,
-    avatarUrl,
     // Actions
     restoreSession,
     login,
