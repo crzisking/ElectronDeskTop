@@ -12,13 +12,13 @@
  * 使用方：ITRepairView.vue
  * @param onSubmitSuccess 提交成功後由父層執行的回調，負責切換 Tab 和刷新列表
  */
-import { ref, reactive, computed, onBeforeUnmount } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { FormInstance } from 'element-plus'
-import { QuillEditor } from '@vueup/vue-quill'
-import { useAuthStore } from '@/stores/auth.store'
-import { repairApi } from '@/api/modules/repair.api'
-import type { RepairAttachment } from '@/types/api.types'
+import {computed, onBeforeUnmount, reactive, ref} from 'vue'
+import type {FormInstance} from 'element-plus'
+import {ElMessage} from 'element-plus'
+import {QuillEditor} from '@vueup/vue-quill'
+import {useAuthStore} from '@/stores/auth.store'
+import {repairApi} from '@/api/modules/repair.api'
+import type {RepairAttachment} from '@/types/api.types'
 
 /**
  * Dify Chat API 的 SSE 串流端點。
@@ -467,8 +467,8 @@ export function useRepairSubmit(onSubmitSuccess: () => void) {
     syncAttachmentsFromDescription(submitForm.description)
 
     try {
-      // validate() 校驗所有 prop 對應的規則，任一不通過則拋出異常
-      await submitFormRef.value!.validate()
+      if (!submitFormRef.value) return
+      await submitFormRef.value.validate()
     } catch {
       // Element Plus 已在輸入框下方顯示紅色錯誤文字，這裡只需靜默阻止後續邏輯
       return
@@ -585,29 +585,42 @@ export function useRepairSubmit(onSubmitSuccess: () => void) {
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
 
-      // 持續讀取串流直到結束
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break  // 串流正常結束
+      /** SSE 行緩衝區：累積跨 chunk 的不完整行，避免數據丟失 */
+      let lineBuffer = ''
 
-        // 一個 chunk 可能包含多個 SSE 事件，按換行符切分後逐行處理
-        for (const line of decoder.decode(value, { stream: true }).split('\n')) {
-          // SSE 格式：'data: {...json...}'，跳過非 data 行（如空行、注釋行）
-          if (!line.startsWith('data: ')) continue
-          const raw = line.slice(6).trim()  // 移除 'data: ' 前綴
-          if (!raw) continue
+      /**
+       * 處理單行 SSE 數據
+       * 提取 'data: ' 前綴的內容，解析 Dify 事件格式
+       */
+      function processLine(line: string): void {
+        if (!line.startsWith('data: ')) return
+        const raw = line.slice(6).trim()
+        if (!raw) return
 
-          try {
-            const parsed = JSON.parse(raw) as { event: string; answer?: string }
-            // Dify 普通 Chat App → event: 'message'
-            // Dify Agent Chat App → event: 'agent_message'
-            // 兩種類型都需要處理，取 answer 字段追加到結果
-            if ((parsed.event === 'message' || parsed.event === 'agent_message') && parsed.answer) {
-              polishResult.value += parsed.answer
-            }
-          } catch {
-            // JSON 解析失敗忽略（可能是 SSE 心跳包 [DONE] 等非 JSON 內容）
+        try {
+          const parsed = JSON.parse(raw) as { event: string; answer?: string }
+          if ((parsed.event === 'message' || parsed.event === 'agent_message') && parsed.answer) {
+            polishResult.value += parsed.answer
           }
+        } catch {
+          // JSON 解析失敗忽略（可能是 SSE 心跳包等非 JSON 內容）
+        }
+      }
+
+      while (true) {
+        const {done, value} = await reader.read()
+        if (done) {
+          if (lineBuffer) processLine(lineBuffer)
+          break
+        }
+
+        // 將新數據拼接到緩衝區，再按換行符切分
+        // 最後一段可能是不完整的行，保留在緩衝區等待下一個 chunk
+        const parts = (lineBuffer + decoder.decode(value, {stream: true})).split('\n')
+        lineBuffer = parts.pop() ?? ''
+
+        for (const line of parts) {
+          processLine(line)
         }
       }
     } catch (e) {

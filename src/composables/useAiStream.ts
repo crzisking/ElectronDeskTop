@@ -16,10 +16,10 @@
  *  data: [DONE]\n\n  （流結束標誌）
  */
 
-import { ref } from 'vue'
-import { useConfigStore } from '@/stores/config.store'
-import { useAuthStore } from '@/stores/auth.store'
-import type { QaRequest } from '@/types/api.types'
+import {ref} from 'vue'
+import {useConfigStore} from '@/stores/config.store'
+import {useAuthStore} from '@/stores/auth.store'
+import type {QaRequest} from '@/types/api.types'
 
 export function useAiStream() {
   // ─── State ──────────────────────────────────────────────────
@@ -93,38 +93,53 @@ export function useAiStream() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
 
-      while (true) {
-        const { done, value } = await reader.read()
+        /** SSE 行緩衝區：累積跨 chunk 的不完整行，避免數據丟失 */
+        let lineBuffer = ''
 
-        if (done) break
-
-        // 解碼二進制數據為字符串
-        const chunk = decoder.decode(value, { stream: true })
-
-        // 解析 SSE 格式，提取 data 字段
-        const lines = chunk.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
+        /**
+         * 處理單行 SSE 數據
+         * 提取 'data: ' 前綴的內容，解析 JSON 並追加到回答文本
+         */
+        function processLine(line: string): void {
+            if (!line.startsWith('data: ')) return
             const dataStr = line.slice(6).trim()
+            if (!dataStr) return
 
-            // 流結束標誌
             if (dataStr === '[DONE]') {
-              isStreaming.value = false
-              return
+                isStreaming.value = false
+                return
             }
 
-            // 解析 JSON 數據並追加到回答文本
             try {
-              const parsed = JSON.parse(dataStr) as { text?: string; content?: string }
-              const text = parsed.text ?? parsed.content ?? ''
-              if (text) {
-                answerText.value += text
-              }
+                const parsed = JSON.parse(dataStr) as { text?: string; content?: string }
+                const text = parsed.text ?? parsed.content ?? ''
+                if (text) answerText.value += text
             } catch {
-              // 非 JSON 格式，直接追加原始文本
-              if (dataStr) answerText.value += dataStr
+                if (dataStr) answerText.value += dataStr
             }
-          }
+        }
+
+        while (true) {
+            const {done, value} = await reader.read()
+
+            if (done) {
+                // 串流結束時處理緩衝區中殘留的數據
+                if (lineBuffer) {
+                    processLine(lineBuffer)
+                }
+                break
+            }
+
+            // 解碼二進制數據，stream: true 確保多位元組字符跨 chunk 正確拼接
+            const chunk = decoder.decode(value, {stream: true})
+
+            // 將新數據拼接到緩衝區，再按換行符切分
+            // 最後一段可能是不完整的行，保留在緩衝區等待下一個 chunk
+            const parts = (lineBuffer + chunk).split('\n')
+            lineBuffer = parts.pop() ?? ''
+
+            for (const line of parts) {
+                processLine(line)
         }
       }
     } catch (err) {

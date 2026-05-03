@@ -8,12 +8,12 @@
  *
  * 輸出目錄：out/main / out/preload / out/renderer
  */
-import { resolve } from 'path'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import {resolve} from 'path'
+import {defineConfig, externalizeDepsPlugin} from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import {ElementPlusResolver} from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
   // ─── 主進程配置 ────────────────────────────────────────────────
@@ -63,7 +63,10 @@ export default defineConfig({
     resolve: {
       alias: {
         // @ 指向 src 目錄，所有渲染進程代碼通用
-        '@': resolve('src')
+        '@': resolve('src'),
+        // @shared 指向 electron/shared 目錄，讓渲染進程直接引用主進程的 IPC 頻道常量，
+        // 避免維護兩份手動同步的副本
+        '@shared': resolve('electron/shared')
       }
     },
     build: {

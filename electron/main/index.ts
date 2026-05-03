@@ -21,6 +21,21 @@ let trayManager: TrayManager
 let configManager: ConfigManager
 let updateMgr: UpdateManager
 
+/**
+ * 統一的退出前清理函數。
+ * 集中管理所有資源清理邏輯，避免在 tray-manager / update-manager / index.ts 三處重複。
+ * 各退出入口（托盤菜單退出、更新安裝退出、系統信號退出）都應呼叫此函數。
+ */
+function gracefulShutdown(): void {
+  logger.info('應用即將退出，清理資源...', 'App')
+  // 進入退出狀態，主窗口 close 不再 preventDefault（讓 quit 正常完成）
+  windowManager?.setQuitting(true)
+  trayManager?.destroy()
+  floatingBallMgr?.dispose()
+  updateMgr?.dispose()
+  windowManager?.destroyAll()
+}
+
 app.whenReady().then(async () => {
 
   // 必須最先 init，後續 logger.error 才能落地到 <userData>/logs/main-YYYY-MM-DD.log
@@ -67,8 +82,14 @@ app.whenReady().then(async () => {
   // TrayManager 作為 UpdateManager 的依賴注入；init() 延後到 IPC 註冊後
   trayManager = new TrayManager(windowManager, configManager)
 
+  // 注入統一的退出清理函數，避免 tray-manager 中重複退出邏輯
+  trayManager.setQuitCallback(gracefulShutdown)
+
   // 必須在 registerAllHandlers 前建構，因 update.handlers 需要它的引用
   updateMgr = new UpdateManager(configManager, windowManager, floatingBallMgr, trayManager)
+
+  // 注入統一的退出清理函數，避免 update-manager 中重複退出邏輯
+  updateMgr.setQuitCallback(gracefulShutdown)
 
   registerAllHandlers(windowManager, configManager, floatingBallMgr, updateMgr)
 
@@ -110,15 +131,10 @@ app.on('activate', () => {
 })
 
 /**
- * 退出前清理：托盤圖標、浮球 timer。
- * 不清會殘留托盤圖標 / setInterval 在已銷毀窗口上 tick 報錯。
+ * 退出前清理：呼叫統一的 gracefulShutdown。
  */
 app.on('before-quit', () => {
-  logger.info('應用即將退出，清理資源...', 'App')
-  // 進入退出狀態，主窗口 close 不再 preventDefault（讓 quit 正常完成）
-  windowManager?.setQuitting(true)
-  trayManager?.destroy()
-  floatingBallMgr?.dispose()
+  gracefulShutdown()
 })
 
 // 主進程未捕獲異常 / 未處理 Promise rejection：只記錄日誌，不退出

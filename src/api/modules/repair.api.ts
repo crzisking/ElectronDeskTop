@@ -49,14 +49,13 @@ export const repairApi = {
    * POST /api/repair/create
    *
    * 調用前應先通過 uploadFile() 上傳所有圖片，拿到 URL 後再調用此接口。
+   * 攔截器已返回 data（業務數據），泛型直接對應 RepairCreateResponse。
    *
    * @param payload 報修信息（提交人 ID/姓名 + 問題描述 + 附件 URL 列表）
    * @returns 工單 ID 和工單號
    */
   async create(payload: RepairCreateRequest): Promise<RepairCreateResponse> {
-    // 攔截器已返回 response.data（完整 JSON body），解構取 data 字段
-    const { data } = await getClient().post('/api/repair/create', payload)
-    return data as RepairCreateResponse
+    return await getClient().post<RepairCreateResponse>('/api/repair/create', payload)
   },
 
   /**
@@ -64,32 +63,26 @@ export const repairApi = {
    * GET /api/repair/list?userId=xxx&status=1&pageIndex=1&pageSize=10
    *
    * 列表不含附件圖片，詳情接口才帶圖片（避免列表數據過重）。
+   * 攔截器已返回 data（業務數據），泛型直接對應 RepairListResponse。
    *
    * @param params 查詢參數（userId、status、pageIndex、pageSize）
    * @returns 分頁結果（total + list）
    */
   async list(params: RepairListParams): Promise<RepairListResponse> {
-    const { data } = await getClient().get('/api/repair/list', { params })
-    return data as RepairListResponse
+    return await getClient().get<RepairListResponse>('/api/repair/list', {params})
   },
 
   /**
    * 查詢工單詳情（用戶端查看報修匯報響應）
    * GET /api/repair/user-report/{id}
    *
-   * 返回：
-   *  - 提問信息（標題、描述、提交人、提交時間）
-   *  - 用戶可見的匯報回覆（IsUserSee=1 的唯一一筆；未匯報時 resultContent/resultTime 為 null）
-   *  - 匯報附件列表（掛在用戶可見匯報記錄下）
-   *
-   * 註：內部匯報（IsUserSee=0）不會返回給用戶端。
+   * 攔截器已返回 data（業務數據），泛型直接對應 RepairDetail。
    *
    * @param id 工單 ID
    * @returns 工單提問 + 匯報回覆 + 附件
    */
   async detail(id: number): Promise<RepairDetail> {
-    const { data } = await getClient().get(`/api/repair/user-report/${id}`)
-    return data as RepairDetail
+    return await getClient().get<RepairDetail>(`/api/repair/user-report/${id}`)
   },
 
   /**
@@ -99,6 +92,7 @@ export const repairApi = {
    *
    * el-upload 的 http-request 自定義函數中調用此方法。
    * 上傳成功後將返回的 { fileUrl, fileName } 追加到表單的 attachments 列表。
+   * 攔截器已返回 data（業務數據），泛型直接對應 RepairUploadResponse。
    *
    * @param file 要上傳的圖片文件
    * @returns OSS 可訪問的 URL 和原始文件名
@@ -106,9 +100,7 @@ export const repairApi = {
   async uploadFile(file: File): Promise<RepairUploadResponse> {
     const form = new FormData()
     form.append('file', file)
-    // 攔截器已返回 response.data（完整 JSON body），其中 data 欄位才是實際 URL
-    const result = await getClient().post('/api/repair/upload', form)
-    return { fileUrl: result.data as string }
+    return await getClient().post<RepairUploadResponse>('/api/repair/upload', form)
   },
 
   /**

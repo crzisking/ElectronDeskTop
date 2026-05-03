@@ -53,7 +53,7 @@
     "_comment_snapToEdge": "鬆開滑鼠後浮球是否自動吸附到最近的螢幕邊緣",
     "_comment_quickMenu": "浮球右鍵快捷菜單項目陣列。每個項目：id（唯一標識）、label（顯示文字）、icon（Element Plus 圖標名稱，可選）、enabled（是否啟用）、separator（true 時渲染為分隔線，忽略其他欄位）、action（點擊動作）",
     "_comment_action_types": "action.type 可選值：'show-main-window'（顯示主窗口）、'navigate'（跳轉路由，需搭配 action.routeName）、'quit-app'（退出應用）、'open-url'（用默認瀏覽器打開連結，需搭配 action.url）",
-    "size": 60,
+    "size": 80,
     "opacity": 0.9,
     "defaultPosition": { "x": 100, "y": 300 },
     "snapToEdge": true,

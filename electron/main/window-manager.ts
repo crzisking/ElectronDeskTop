@@ -4,9 +4,9 @@
  * 狀態：主窗口顯示 ←→ 主窗口隱藏 + 浮球顯示。
  */
 
-import { app, BrowserWindow, screen, shell } from 'electron'
-import { join } from 'path'
-import { logger } from './utils/logger'
+import {app, BrowserWindow, screen, shell} from 'electron'
+import {join} from 'path'
+import {logger} from './utils/logger'
 
 const isDev = !app.isPackaged
 
@@ -204,9 +204,9 @@ export class WindowManager {
    * 設置浮球位置（會 clamp 到屏幕工作區內）。
    * @param x 目標 X 座標
    * @param y 目標 Y 座標
-   * @param ballSize 浮球大小（用於計算邊界）
+   * @param ballSize 浮球大小（用於計算邊界，默認 80 與窗口/CSS 一致）
    */
-  setFloatingBallPosition(x: number, y: number, ballSize = 60): void {
+  setFloatingBallPosition(x: number, y: number, ballSize = 80): void {
     if (!this.floatingBallWindow) return
 
     const { width, height } = screen.getPrimaryDisplay().workAreaSize
@@ -220,10 +220,12 @@ export class WindowManager {
   /**
    * 在新 Electron 子窗口打開指定 URL（openMode='electron-window' 用）。
    * 不受 iframe X-Frame-Options 限制；保持在應用內；關閉時自動銷毀。
-   * @param url   要加載的系統 URL
-   * @param title 窗口標題
+   * 安全：只允許加載白名單域名內的 URL，防止渲染進程打開任意網址。
+   * @param url            要加載的系統 URL
+   * @param title          窗口標題
+   * @param allowedDomains 允許加載的域名白名單（從 app-config.json 的系統列表提取）
    */
-  openChildWindow(url: string, title: string): BrowserWindow {
+  openChildWindow(url: string, title: string, allowedDomains: string[] = []): BrowserWindow {
     const child = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -243,6 +245,23 @@ export class WindowManager {
     // 徹底去掉 File/Edit 系統菜單
     child.setMenuBarVisibility(false)
     child.removeMenu()
+
+    // 安全校驗：解析 URL 並檢查域名是否在白名單內
+    // 白名單為空時拒絕所有 URL（防止未配置白名單時的安全漏洞）
+    let parsedUrl: URL
+    try {
+      parsedUrl = new URL(url)
+    } catch {
+      logger.warn(`子窗口 URL 格式無效，拒絕打開: ${url}`, 'WindowManager')
+      child.close()
+      return child
+    }
+
+    if (!allowedDomains.includes(parsedUrl.hostname)) {
+      logger.warn(`子窗口 URL 域名不在白名單內，拒絕打開: ${parsedUrl.hostname}`, 'WindowManager')
+      child.close()
+      return child
+    }
 
     child.loadURL(url)
 

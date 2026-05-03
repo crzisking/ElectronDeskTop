@@ -4,9 +4,9 @@
  * 不用 -webkit-app-region:drag 是因為它會吞 click/contextmenu 事件。
  */
 
-import { screen } from 'electron'
-import { logger } from './utils/logger'
-import type { WindowManager } from './window-manager'
+import {screen} from 'electron'
+import {logger} from './utils/logger'
+import type {WindowManager} from './window-manager'
 
 export class FloatingBallManager {
   /** 拖動位置輪詢 timer */
@@ -19,7 +19,7 @@ export class FloatingBallManager {
   private dragOffset = { x: 0, y: 0 }
 
   /** 浮球直徑（從配置讀取） */
-  private ballSize = 60
+  private ballSize = 80
 
   /** dispose 後不再啟動任何動畫，避免操作已銷毀的窗口 */
   private disposed = false

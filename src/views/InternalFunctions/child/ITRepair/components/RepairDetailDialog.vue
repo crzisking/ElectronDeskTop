@@ -28,8 +28,9 @@
  *  @emit update:modelValue  點擊關閉按鈕時通知父層更新 visible 狀態
  */
 
-import { Document } from '@element-plus/icons-vue'
-import type { RepairDetail, RepairResultAttachment } from '@/types/api.types'
+import {Document} from '@element-plus/icons-vue'
+import DOMPurify from 'dompurify'
+import type {RepairDetail, RepairResultAttachment} from '@/types/api.types'
 
 defineProps<{
   modelValue: boolean
@@ -53,6 +54,27 @@ function attachmentLabel(att: RepairResultAttachment): string {
   } catch {
     return last
   }
+}
+
+/**
+ * HTML 消毒：使用 DOMPurify 清洗後端返回的富文本 HTML，
+ * 移除 <script>、事件處理器（onclick/onerror 等）等危險內容，
+ * 防止 XSS 攻擊。僅保留安全的格式標籤和屬性。
+ * @param html 後端返回的原始 HTML 字符串
+ * @returns 清洗後的安全 HTML 字符串
+ */
+function sanitize(html: string): string {
+  return DOMPurify.sanitize(html, {
+    // 允許的標籤：覆蓋富文本編輯器常用的格式標籤
+    ALLOWED_TAGS: [
+      'p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'img',
+      'ul', 'ol', 'li', 'span', 'div', 'h1', 'h2', 'h3',
+      'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td'
+    ],
+    // 允許的屬性：僅保留安全的展示屬性
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'style', 'target', 'rel']
+  })
 }
 </script>
 
@@ -90,7 +112,7 @@ function attachmentLabel(att: RepairResultAttachment): string {
         <!-- 使用 v-html 渲染後端存儲的富文本 HTML，包含文字格式和圖片 -->
         <div class="section">
           <div class="section-title">問題描述</div>
-          <div class="section-body rich-text" v-html="detail.description"></div>
+          <div class="section-body rich-text" v-html="sanitize(detail.description)"></div>
         </div>
 
         <!-- ── IT 匯報回覆（富文本） ─────────────────────────────── -->
@@ -105,7 +127,7 @@ function attachmentLabel(att: RepairResultAttachment): string {
               {{ detail.resultTime }}
             </span>
           </div>
-          <div v-if="detail.resultContent" class="section-body rich-text" v-html="detail.resultContent"></div>
+          <div v-if="detail.resultContent" class="section-body rich-text" v-html="sanitize(detail.resultContent)"></div>
           <div v-else class="section-body section-empty">
             IT 尚未提交匯報回覆
           </div>

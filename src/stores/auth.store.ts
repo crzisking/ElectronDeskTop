@@ -4,10 +4,10 @@
  * Token 持久化在 OS 鑰匙串（透過 window.electronAPI.auth），記憶體只保留副本供攔截器讀取。
  */
 
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { UserProfile } from '@/types/api.types'
-import { authApi } from '@/api/modules/auth.api'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import type {UserProfile} from '@/types/api.types'
+import {authApi} from '@/api/modules/auth.api'
 import {logger} from "@/utils/logger";
 
 export const useAuthStore = defineStore('auth', () => {
@@ -66,13 +66,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   /**
    * 登錄：呼叫後端、寫鑰匙串、更新內存狀態。
+   * 攔截器已返回 data（業務數據），authApi.login 直接返回 LoginResponse，
+   * 其中包含 token 和 user 字段，無需額外類型斷言。
    * @param userName 工號（如 "S2403279"）
    * @param password 密碼
    * @throws 登錄失敗時拋出錯誤（由 LoginView 捕獲顯示給用戶）
    */
   async function login(userName: string, password: string): Promise<void> {
-    // authApi 已剝掉外層 code/message，這裡直接拿 { token, user }
-    const { token, user: userInfo } = await authApi.login({ username: userName, password }) as unknown as { token: string; user: UserProfile }
+    const {token, user: userInfo} = await authApi.login({username: userName, password})
 
     // 持久化到 OS 鑰匙串（下次啟動可自動恢復）
     await window.electronAPI.auth.setToken(token)

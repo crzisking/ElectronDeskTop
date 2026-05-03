@@ -6,8 +6,8 @@
  * 此模塊只負責 HTTP 層的登錄請求。
  */
 
-import { createHttpClient, ENV } from '../http-client'
-import type { LoginCredentials, LoginResponse } from '@/types/api.types'
+import {createHttpClient, ENV} from '../http-client'
+import type {LoginCredentials, LoginResponse} from '@/types/api.types'
 
 /**
  * Auth API 模塊
@@ -34,13 +34,15 @@ export const authApi = {
    * 登錄
    * POST /api/portal/oauth/login
    * Body: { username, password }
-   * Response: { code, message, data: { user, token } }
+   * 後端原始響應: { code, message, data: { user, token } }
+   *
+   * 攔截器已返回 data（即 { user, token }），泛型使用 LoginResponse['data']
+   * 直接對應業務數據類型 { user: UserProfile, token: string }。
    */
-  async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const { data } = await getClient().post<LoginResponse>(
+  async login(credentials: LoginCredentials): Promise<LoginResponse['data']> {
+    return await getClient().post<LoginResponse['data']>(
       '/api/portal/oauth/login',
       credentials
     )
-    return data
   }
 }

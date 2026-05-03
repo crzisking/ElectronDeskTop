@@ -9,10 +9,11 @@
  * 登錄成功後跳轉到統一平台首頁。
  */
 
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth.store'
-import type { FormInstance, FormRules } from 'element-plus'
+import {onMounted, reactive, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {useAuthStore} from '@/stores/auth.store'
+import {Lock, User} from '@element-plus/icons-vue'
+import type {FormInstance, FormRules} from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -157,11 +158,6 @@ async function handleLogin() {
     </div>
   </div>
 </template>
-
-<script lang="ts">
-import { User, Lock } from '@element-plus/icons-vue'
-export default { components: { User, Lock } }
-</script>
 
 <style scoped>
 .login-view {

@@ -17,7 +17,12 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@shared/*": [
+        "electron/shared/*"
+      ]
     }
   },
   "include": [

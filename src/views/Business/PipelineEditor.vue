@@ -27,8 +27,9 @@
  * 後端實現後，只需在 business.api.ts 中填入真實的 HTTP 請求即可。
  */
 
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import {onBeforeUnmount, ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {onBeforeRouteLeave} from 'vue-router'
 import VueFlowChart from '@/components/VueFlowChart/VueFlowChart.vue'
 
 // ── 組件引用 ──────────────────────────────────────────────────────
@@ -99,6 +100,35 @@ function handleZoomToFit() {
 function handleChange() {
   hasUnsavedChanges.value = true
 }
+
+/**
+ * 離開頁面保護：有未保存變更時彈出確認提示
+ * 覆蓋 Vue Router 導航和瀏覽器關閉/刷新兩種場景
+ */
+onBeforeRouteLeave(async () => {
+  if (!hasUnsavedChanges.value) return true
+  try {
+    await ElMessageBox.confirm(
+        '當前流水線有未保存的變更，離開後將丟失。是否繼續？',
+        '未保存的變更',
+        {confirmButtonText: '離開', cancelButtonText: '留下', type: 'warning'}
+    )
+    return true
+  } catch {
+    return false
+  }
+})
+
+/** 瀏覽器關閉/刷新時的 beforeunload 保護 */
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (!hasUnsavedChanges.value) return
+  event.preventDefault()
+}
+
+window.addEventListener('beforeunload', onBeforeUnload)
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+})
 </script>
 
 <template>

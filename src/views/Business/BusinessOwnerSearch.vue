@@ -24,9 +24,10 @@
  * 後端實現後，只需在 business.api.ts 中填入真實的 HTTP 請求即可。
  */
 
-import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import type { BusinessOwner } from '@/types/api.types'
+import {ref} from 'vue'
+import {ElMessage} from 'element-plus'
+import {Loading, Message, Phone, Search} from '@element-plus/icons-vue'
+import type {BusinessOwner} from '@/types/api.types'
 
 // ── 狀態 ──────────────────────────────────────────────────────────
 /** 搜索關鍵詞 */
@@ -223,15 +224,6 @@ function getAvatarText(name: string): string {
     </div>
   </div>
 </template>
-
-<script lang="ts">
-/**
- * 導入 Element Plus 圖標組件
- * 在 <template> 中直接使用 <Search />、<Loading /> 等圖標組件名稱
- */
-import { Search, Loading, Message, Phone } from '@element-plus/icons-vue'
-export default { components: { Search, Loading, Message, Phone } }
-</script>
 
 <style scoped>
 /* ── 搜索容器 ──────────────────────────────────────────── */

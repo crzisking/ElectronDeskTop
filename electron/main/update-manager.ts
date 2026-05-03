@@ -4,14 +4,14 @@
  * 設計：依賴注入而非 module-level singleton，避免 import 時觸發 autoUpdater 副作用。
  */
 
-import { autoUpdater, type UpdateInfo, type ProgressInfo } from 'electron-updater'
-import { BrowserWindow, app } from 'electron'
-import { logger } from './utils/logger'
-import { IpcChannels } from '../shared/ipc-channels'
-import type { ConfigManager } from './config-manager'
-import type { WindowManager } from './window-manager'
-import type { FloatingBallManager } from './floating-ball'
-import type { TrayManager } from './tray-manager'
+import {autoUpdater, type ProgressInfo, type UpdateInfo} from 'electron-updater'
+import {app, BrowserWindow} from 'electron'
+import {logger} from './utils/logger'
+import {IpcChannels} from '../shared/ipc-channels'
+import type {ConfigManager} from './config-manager'
+import type {WindowManager} from './window-manager'
+import type {FloatingBallManager} from './floating-ball'
+import type {TrayManager} from './tray-manager'
 
 const TAG = 'UpdateManager'
 
@@ -27,6 +27,21 @@ export class UpdateManager {
 
   /** 防止重複綁定 autoUpdater 事件 */
   private listenersBound = false
+
+  /**
+   * 退出清理回調，由 index.ts 注入 gracefulShutdown。
+   * 避免在 update-manager 中重複退出邏輯，統一由 gracefulShutdown 管理。
+   */
+  private quitCallback: (() => void) | null = null
+
+  /**
+   * 注入退出清理回調。
+   * 由 index.ts 在建構後呼叫，注入 gracefulShutdown 函數。
+   * @param callback 退出前清理函數（gracefulShutdown）
+   */
+  setQuitCallback(callback: () => void): void {
+    this.quitCallback = callback
+  }
 
   /**
    * quitAndInstall 流程需要主動清理 window/tray/floatingBall，
@@ -221,21 +236,29 @@ export class UpdateManager {
 
   /**
    * 立即退出並安裝新版本（NSIS oneClick 無交互）。
-   * 流程：setQuitting → 清理 tray/floatingBall/windows → 5s 保險強制 exit → quitAndInstall。
+   * 流程：gracefulShutdown（統一清理）→ 5s 保險強制 exit → quitAndInstall。
    * 主動清理是必須的，否則 hidden 主窗口 + 殘留 timer 會卡住 app.quit()。
    */
   quitAndInstall(): void {
     logger.info('用戶確認重啟安裝新版本', TAG)
 
-    // 解除主窗口 close 攔截
-    this.windowManager.setQuitting(true)
-
-    try {
-      this.floatingBallMgr.dispose()
-      this.trayManager.destroy()
-      this.windowManager.destroyAll()
-    } catch (err) {
-      logger.error('quitAndInstall 清理階段出錯', TAG, err)
+    // 呼叫統一的退出清理函數，避免重複退出邏輯
+    if (this.quitCallback) {
+      try {
+        this.quitCallback()
+      } catch (err) {
+        logger.error('quitAndInstall 清理階段出錯', TAG, err)
+      }
+    } else {
+      // 回退：如果未注入回調，直接執行基本退出流程
+      this.windowManager.setQuitting(true)
+      try {
+        this.floatingBallMgr.dispose()
+        this.trayManager.destroy()
+        this.windowManager.destroyAll()
+      } catch (err) {
+        logger.error('quitAndInstall 清理階段出錯', TAG, err)
+      }
     }
 
     // 5 秒保險：autoUpdater 內部 app.quit() 卡住時強制 exit

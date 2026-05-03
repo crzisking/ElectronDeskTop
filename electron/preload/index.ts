@@ -4,8 +4,16 @@
  * 不暴露 ipcRenderer 本身，所有 channel 走白名單避免任意監聽/發送。
  */
 
-import { contextBridge, ipcRenderer } from 'electron'
-import { IpcChannels } from '../shared/ipc-channels'
+import {contextBridge, ipcRenderer} from 'electron'
+import {IpcChannels} from '@shared/ipc-channels'
+
+/**
+ * 原始 callback → 包裝函數的映射表。
+ * 用於解決 on/off 配對問題：on 註冊的是包裝函數（剝離 _event 參數），
+ * off 時需要用同一個包裝函數引用才能正確移除監聽器。
+ * 使用 WeakMap 避免阻止 callback 被垃圾回收。
+ */
+const listenerMap = new WeakMap<Function, (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void>()
 
 contextBridge.exposeInMainWorld('electronAPI', {
   config: {
@@ -91,6 +99,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /**
    * 訂閱主進程推送事件。
    * 走白名單避免渲染端監聽任意 channel。
+   *
+   * 修復：使用 WeakMap 保存「原始 callback → 包裝函數」的映射，
+   * off 時通過映射找到 on 時註冊的真正包裝函數來移除，解決內存泄漏問題。
    */
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const ALLOWED_CHANNELS = [
@@ -109,12 +120,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ] as string[]
 
     if (ALLOWED_CHANNELS.includes(channel)) {
-      ipcRenderer.on(channel, (_event, ...args) => callback(...args))
+      // 創建包裝函數，剝離 Electron 的 _event 參數
+      const wrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
+      // 保存映射：原始 callback → 包裝函數，off 時需要用包裝函數來移除
+      listenerMap.set(callback, wrapper)
+      ipcRenderer.on(channel, wrapper)
     }
   },
 
-  /** 取消訂閱主進程推送事件 */
+  /**
+   * 取消訂閱主進程推送事件。
+   * 通過 WeakMap 找到 on 時註冊的包裝函數，正確移除監聽器。
+   */
   off: (channel: string, callback: (...args: unknown[]) => void) => {
-    ipcRenderer.off(channel, callback as never)
+    const wrapper = listenerMap.get(callback)
+    if (wrapper) {
+      ipcRenderer.off(channel, wrapper)
+      listenerMap.delete(callback)
+    }
   }
 })

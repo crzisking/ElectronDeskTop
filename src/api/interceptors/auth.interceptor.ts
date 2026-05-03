@@ -10,9 +10,9 @@
  *  - 語言從 authStore.user.lang 讀取（與 Portal 的 OAuthStore 對應）
  */
 
-import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
-import { ElMessage, ElMessageBox, type Action } from 'element-plus'
-import { useAuthStore } from '@/stores/auth.store'
+import type {AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig} from 'axios'
+import {type Action, ElMessage, ElMessageBox} from 'element-plus'
+import {useAuthStore} from '@/stores/auth.store'
 import router from '@/router'
 
 // ── 多語言錯誤訊息 ────────────────────────────────────────────────────
@@ -95,19 +95,24 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
   )
 
   // ── 響應攔截器：業務碼 + HTTP 錯誤 ─────────────────────────────────
+    // 約定：後端返回格式為 { code, message, data }，攔截器直接返回 data（業務數據），
+    // 這樣 API 模塊的泛型 T 直接對應業務類型，不需要額外解構或 as 斷言。
   instance.interceptors.response.use(
     (response: AxiosResponse) => {
-      const { code, message } = response?.data ?? {}
+        const {code, message, data} = response?.data ?? {}
 
       // HTTP 200 但業務碼異常（後端返回了錯誤業務碼）
       if (response.status === 200) {
         if (code && code !== 200) {
           ElMessage.error(`${code} - ${message}`)
+            // 業務碼錯誤時 reject，調用方不會拿到錯誤數據
+            return Promise.reject(new Error(`${code} - ${message}`))
         }
-        return response.data
+          // 直接返回業務數據，API 模塊的泛型 T 對應此值
+          return data
       }
 
-      // 二進制流（Excel 導出等），直接透傳
+        // 二進制流（Excel 導出等），直接透傳完整 response
       if (response.data instanceof ArrayBuffer) {
         return response
       }

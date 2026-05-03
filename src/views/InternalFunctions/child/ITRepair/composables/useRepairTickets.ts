@@ -13,10 +13,10 @@
  * 使用方：ITRepairView.vue
  */
 
-import { ref, reactive } from 'vue'
-import { useAuthStore } from '@/stores/auth.store'
-import { repairApi } from '@/api/modules/repair.api'
-import type { RepairListItem, RepairDetail, RepairStatus } from '@/types/api.types'
+import {reactive, ref} from 'vue'
+import {useAuthStore} from '@/stores/auth.store'
+import {repairApi} from '@/api/modules/repair.api'
+import type {RepairDetail, RepairListItem, RepairStatus} from '@/types/api.types'
 
 // ── 狀態顯示映射（模塊級常量，直接 export 供模板使用） ────────────
 
@@ -88,10 +88,16 @@ export function useRepairTickets() {
    * 請求成功後更新 tickets 和 ticketsTotal。
    */
   async function loadTickets() {
+    const userName = authStore.user?.userName
+    if (!userName) {
+      console.warn('[useRepairTickets] 用戶未登入，無法載入工單')
+      return
+    }
+
     ticketsLoading.value = true
     try {
       const res = await repairApi.list({
-        userId: authStore.user!.userName,
+        userId: userName,
         pageIndex: ticketParams.pageIndex,
         pageSize: ticketParams.pageSize,
         // 0（全部）映射為 undefined，相當於不傳 status 給後端

@@ -12,46 +12,87 @@
  *  - 不包含 allow-top-navigation：防止 iframe 劫持主窗口導航
  *  - 不包含 allow-modals：防止 iframe 顯示原生 alert/confirm
  *
+ * 超時機制：
+ *  iframe 不會觸發 error 事件，加載失敗時只會顯示空白。
+ *  因此加入超時定時器，超過指定時間仍未 load 時顯示錯誤狀態。
+ *
  * 使用場景：統一平台頁面中的系統嵌入
  */
 
-import { ref, watch } from 'vue'
-import {Loading} from "@element-plus/icons-vue";
+import {onBeforeUnmount, ref, watch} from 'vue'
+import {Loading} from '@element-plus/icons-vue'
 
-const props = defineProps<{
-  /** iframe 加載的 URL */
-  src: string
-  /** iframe 標題（無障礙屬性） */
-  title: string
-  /** 是否允許全屏（默認 true） */
-  allowFullscreen?: boolean
-}>()
+/** 默認載入超時時間（毫秒） */
+const DEFAULT_TIMEOUT = 15_000
+
+const props = withDefaults(
+    defineProps<{
+      /** iframe 加載的 URL */
+      src: string
+      /** iframe 標題（無障礙屬性） */
+      title: string
+      /** 是否允許全屏（默認 true） */
+      allowFullscreen?: boolean
+      /** 載入超時時間（毫秒），默認 15 秒 */
+      timeout?: number
+    }>(),
+    {timeout: DEFAULT_TIMEOUT}
+)
 
 /** iframe 是否正在加載中 */
 const isLoading = ref(true)
 /** 加載是否失敗 */
 const loadError = ref(false)
+/** 超時定時器 ID */
+let timeoutTimer: ReturnType<typeof setTimeout> | null = null
 
-/** 當 src 變化時重置加載狀態 */
+/** 啟動超時定時器 */
+function startTimeout() {
+  clearTimeoutTimer()
+  timeoutTimer = setTimeout(() => {
+    if (isLoading.value) {
+      isLoading.value = false
+      loadError.value = true
+    }
+  }, props.timeout)
+}
+
+/** 清除超時定時器 */
+function clearTimeoutTimer() {
+  if (timeoutTimer !== null) {
+    clearTimeout(timeoutTimer)
+    timeoutTimer = null
+  }
+}
+
+/** 當 src 變化時重置加載狀態並重新啟動超時 */
 watch(
   () => props.src,
   () => {
     isLoading.value = true
     loadError.value = false
-  }
+    startTimeout()
+  },
+    {immediate: true}
 )
 
 /** iframe load 事件：加載完成 */
 function onLoad() {
+  clearTimeoutTimer()
   isLoading.value = false
   loadError.value = false
 }
 
-/** iframe error 事件：加載失敗（如網絡不通、CSP 阻止等） */
+/** iframe error 事件：加載失敗（大部分瀏覽器不會觸發，保留作為後備） */
 function onError() {
+  clearTimeoutTimer()
   isLoading.value = false
   loadError.value = true
 }
+
+onBeforeUnmount(() => {
+  clearTimeoutTimer()
+})
 </script>
 
 <template>
@@ -96,7 +137,6 @@ function onError() {
   background: var(--el-bg-color-page);
 }
 
-/* 加載中遮罩 */
 .iframe-loading {
   position: absolute;
   inset: 0;
@@ -119,7 +159,6 @@ function onError() {
   to { transform: rotate(360deg); }
 }
 
-/* 加載失敗提示 */
 .iframe-error {
   position: absolute;
   inset: 0;
@@ -128,7 +167,6 @@ function onError() {
   justify-content: center;
 }
 
-/* iframe 元素 */
 .system-iframe {
   width: 100%;
   height: 100%;
@@ -137,7 +175,6 @@ function onError() {
   transition: opacity 0.3s;
 }
 
-/* 加載中時隱藏 iframe（避免白閃） */
 .iframe-hidden {
   opacity: 0;
 }

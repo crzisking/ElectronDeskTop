@@ -9,13 +9,13 @@
  *  - components/RepairPolishDialog AI 整理彈窗 UI
  *  - components/RepairDetailDialog 工單詳情彈窗 UI
  */
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { QuillEditor } from '@vueup/vue-quill'
+import {ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {QuillEditor} from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
-import { ArrowLeft, MagicStick, View } from '@element-plus/icons-vue'
-import { useRepairSubmit } from './composables/useRepairSubmit'
-import { useRepairTickets, STATUS_LABELS, STATUS_TAG_TYPES } from './composables/useRepairTickets'
+import {ArrowLeft, MagicStick, View} from '@element-plus/icons-vue'
+import {useRepairSubmit} from './composables/useRepairSubmit'
+import {STATUS_LABELS, STATUS_TAG_TYPES, useRepairTickets} from './composables/useRepairTickets'
 import RepairPolishDialog from './components/RepairPolishDialog.vue'
 import RepairDetailDialog from './components/RepairDetailDialog.vue'
 
@@ -66,13 +66,15 @@ const {
 } = useRepairSubmit(onSubmitSuccess)
 
 /**
- * Tab 切換事件處理：切換到「我的工單」且列表為空時自動觸發首次載入。
- * 避免在初始渲染時就發起不必要的請求（用戶可能只使用提交功能）。
- *
- * 注意：在 <script setup> 中 ref 不自動解包，需使用 .value。
+ * Tab 切換事件處理：切換到「我的工單」且尚未載入過時自動觸發首次載入。
+ * 使用 hasLoaded 標記而非 tickets.length === 0 判斷，
+ * 避免用戶刪除所有工單後切換 Tab 重複觸發載入。
  */
+const ticketsHasLoaded = ref(false)
+
 function onTabChange(name: string | number) {
-  if (name === 'tickets' && tickets.value.length === 0 && !ticketsLoading.value) {
+  if (name === 'tickets' && !ticketsHasLoaded.value) {
+    ticketsHasLoaded.value = true
     loadTickets()
   }
 }

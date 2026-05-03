@@ -9,14 +9,9 @@
  * 所有 Vue 組件通過此 Store 訪問配置，不直接調用 IPC。
  */
 
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type {
-  AppConfig,
-  SidebarItem,
-  QuickMenuItem,
-  SystemLink
-} from '@/types/config.types'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink} from '@/types/config.types'
 
 export const useConfigStore = defineStore('config', () => {
   // ─── State ────────────────────────────────────────────────
@@ -32,7 +27,7 @@ export const useConfigStore = defineStore('config', () => {
   // ─── Getters（計算屬性） ─────────────────────────────────
   /** 獲取啟用的側邊欄菜單項（過濾掉 enabled: false 的項） */
   const sidebarItems = computed<SidebarItem[]>(() =>
-    appConfig.value?.sidebar.items.filter((item) => item.enabled) ?? []
+      (appConfig.value?.sidebar?.items ?? []).filter((item) => item.enabled)
   )
 
   /** 是否默認折疊側邊欄 */
@@ -42,7 +37,7 @@ export const useConfigStore = defineStore('config', () => {
 
   /** 浮球快捷菜單項（過濾禁用項） */
   const floatingBallMenuItems = computed<QuickMenuItem[]>(() =>
-    appConfig.value?.floatingBall.quickMenu.filter((item) => item.enabled) ?? []
+      (appConfig.value?.floatingBall?.quickMenu ?? []).filter((item) => item.enabled)
   )
 
   /** 浮球配置 */

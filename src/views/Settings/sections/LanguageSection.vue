@@ -18,9 +18,8 @@
  *  - 開發上把 UI 部分先寫完，將來只接邏輯，不動 UI
  */
 
-import { computed, ref } from 'vue'
-import { useConfigStore } from '@/stores/config.store'
-import { ElMessage } from 'element-plus'
+import {computed, ref} from 'vue'
+import {useConfigStore} from '@/stores/config.store'
 import SettingsRow from '../components/SettingsRow.vue'
 
 const configStore = useConfigStore()
@@ -39,16 +38,6 @@ const currentLanguage = ref<string>(configStore.appConfig?.app?.language ?? 'zh-
 const currentLanguageLabel = computed(
   () => LANGUAGE_OPTIONS.find((o) => o.value === currentLanguage.value)?.label ?? '繁體中文'
 )
-
-/**
- * 用戶切換語言的處理（暫未實作，提示開發中）
- * 等接入 vue-i18n 後改為實際的語言切換邏輯。
- */
-function handleLanguageChange(value: string) {
-  ElMessage.info(`多語言切換功能開發中（已選擇：${value}）`)
-  // 還原回原值，避免 UI 狀態不一致
-  currentLanguage.value = configStore.appConfig?.app?.language ?? 'zh-TW'
-}
 </script>
 
 <template>
@@ -62,7 +51,6 @@ function handleLanguageChange(value: string) {
         size="small"
         style="width: 180px"
         disabled
-        @change="handleLanguageChange"
       >
         <el-option
           v-for="opt in LANGUAGE_OPTIONS"

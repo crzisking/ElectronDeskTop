@@ -5,7 +5,7 @@
  * 渲染可拖動的圓形浮球，處理：
  *  - 左鍵單擊：顯示主窗口
  *  - 左鍵按住拖動：通知主進程開始/停止拖動
- *  - 右鍵：觸發 showMenu 事件（由父組件顯示快捷菜單）
+ *  - 右鍵：請求主進程彈出原生 context menu
  *
  * 拖動原理：
  *  mousedown → electronAPI.floatingBall.startDrag()
@@ -14,43 +14,83 @@
  *  鬆開後觸發邊緣吸附動畫
  *
  * 注意：不使用 -webkit-app-region: drag（會吞噬點擊事件）
+ *
+ * ── 拖動事件策略 ──────────────────────────────────────────────────
+ * mousedown 時將 mousemove / mouseup 綁定到 window（而非浮球元素），
+ * 避免鼠標移出 80px 的浮球區域後事件丟失導致拖動「卡住」。
+ * mouseup 時移除 window 上的監聽器，防止內存泄漏。
+ *
+ * ── 點擊 vs 拖動判斷 ──────────────────────────────────────────────
+ * 同時檢查時間（> 200ms）和距離（> 5px），兩個條件都滿足才算拖動。
+ * 只看時間的話，用戶按住不動也會被誤判為拖動，導致點擊失效。
  */
 
-import { ref } from 'vue'
-
-// 右鍵菜單改用原生 Menu（由主進程彈出），不再需要 emit
-// 原因：浮球窗口僅 60×60px，Vue 覆蓋層會被窗口邊界裁剪
+import {ref} from 'vue'
 
 /** 是否正在拖動（用於樣式反饋） */
 const isDragging = ref(false)
 
-/**
- * 判斷是單擊還是拖動
- * 記錄 mousedown 時間，mouseup 時若 < 200ms 則視為點擊
- */
+/** 拖動判定閾值：按住超過此時間（ms）且移動超過此距離（px）才算拖動 */
+const DRAG_TIME_THRESHOLD = 200
+const DRAG_DISTANCE_THRESHOLD = 5
+
+/** mousedown 時記錄的時間戳 */
 let mousedownTime = 0
+
+/** mousedown 時記錄的鼠標坐標，用於計算移動距離 */
+let mousedownX = 0
+let mousedownY = 0
+
+/** 是否已判定為拖動（移動超過閾值） */
 let hasMoved = false
 
+/**
+ * 鼠標按下：記錄起始狀態，通知主進程準備拖動，
+ * 並將 mousemove / mouseup 綁定到 window 以防止鼠標移出浮球後事件丟失。
+ */
 function onMousedown(event: MouseEvent) {
-  // 只處理左鍵
   if (event.button !== 0) return
 
   mousedownTime = Date.now()
+  mousedownX = event.clientX
+  mousedownY = event.clientY
   hasMoved = false
   isDragging.value = false
 
-  // 通知主進程開始監聽游標位置（開始拖動準備）
+  // 通知主進程開始監聽游標位置
   window.electronAPI.floatingBall.startDrag()
+
+  // 綁定到 window：鼠標移出浮球元素後仍能接收事件
+  window.addEventListener('mousemove', onWindowMousemove)
+  window.addEventListener('mouseup', onWindowMouseup)
 }
 
-function onMousemove() {
-  if (Date.now() - mousedownTime > 150) {
+/**
+ * window 上的 mousemove：判斷是否超過拖動閾值（時間 + 距離）。
+ * 綁定在 window 上而非浮球元素，確保鼠標移出 80px 區域後仍能追蹤。
+ */
+function onWindowMousemove(event: MouseEvent) {
+  const elapsed = Date.now() - mousedownTime
+  const dx = event.clientX - mousedownX
+  const dy = event.clientY - mousedownY
+  const distance = Math.sqrt(dx * dx + dy * dy)
+
+  // 同時滿足時間和距離閾值才算拖動
+  if (elapsed > DRAG_TIME_THRESHOLD && distance > DRAG_DISTANCE_THRESHOLD) {
     hasMoved = true
     isDragging.value = true
   }
 }
 
-function onMouseup() {
+/**
+ * window 上的 mouseup：結束拖動，移除 window 事件監聽器。
+ * 若未移動（視為點擊）：顯示主窗口。
+ */
+function onWindowMouseup() {
+  // 移除 window 上的監聽器，防止內存泄漏
+  window.removeEventListener('mousemove', onWindowMousemove)
+  window.removeEventListener('mouseup', onWindowMouseup)
+
   // 通知主進程停止拖動（觸發邊緣吸附）
   window.electronAPI.floatingBall.stopDrag()
 
@@ -74,13 +114,10 @@ function onContextmenu(event: MouseEvent) {
     class="floating-ball"
     :class="{ 'is-dragging': isDragging }"
     @mousedown="onMousedown"
-    @mousemove="onMousemove"
-    @mouseup="onMouseup"
     @contextmenu="onContextmenu"
   >
     <!-- 浮球內容：公司 Logo -->
     <img class="ball-img" src="../assets/logo.png" alt="ichia" />
-
   </div>
 </template>
 

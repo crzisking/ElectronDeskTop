@@ -4,18 +4,18 @@
  * 浮球相關邏輯較簡單，直接寫在本檔；其餘委託給子模組註冊。
  */
 
-import { app, ipcMain, Menu } from 'electron'
-import { IpcChannels } from '../../shared/ipc-channels'
-import { registerWindowHandlers } from './window.handlers'
-import { registerAuthHandlers } from './auth.handlers'
-import { registerConfigHandlers } from './config.handlers'
-import { registerUpdateHandlers } from './update.handlers'
-import { registerLogHandlers } from './log.handlers'
-import { logger } from '../utils/logger'
-import type { WindowManager } from '../window-manager'
-import type { ConfigManager } from '../config-manager'
-import type { FloatingBallManager } from '../floating-ball'
-import type { UpdateManager } from '../update-manager'
+import {app, ipcMain, Menu} from 'electron'
+import {IpcChannels} from '../../shared/ipc-channels'
+import {registerWindowHandlers} from './window.handlers'
+import {registerAuthHandlers} from './auth.handlers'
+import {registerConfigHandlers} from './config.handlers'
+import {registerUpdateHandlers} from './update.handlers'
+import {registerLogHandlers} from './log.handlers'
+import {logger} from '../utils/logger'
+import type {WindowManager} from '../window-manager'
+import type {ConfigManager} from '../config-manager'
+import type {FloatingBallManager} from '../floating-ball'
+import type {UpdateManager} from '../update-manager'
 
 /**
  * 註冊所有 IPC Handler（依賴注入式，使用 main/index.ts 創建好的單例）。
@@ -70,9 +70,22 @@ export function registerAllHandlers(
   /**
    * OPEN_CHILD_WINDOW：用 electron-window 模式打開子窗口。
    * 用於：統一平台頁面 openMode='electron-window' 的系統卡片。
+   * 安全：從 app-config.json 的系統列表提取域名白名單，只允許打開已配置的系統 URL。
    */
   ipcMain.handle(IpcChannels.OPEN_CHILD_WINDOW, (_event, url: string, title: string) => {
-    windowManager.openChildWindow(url, title)
+    // 從配置中提取所有系統 URL 的域名作為白名單
+    const config = configManager.getConfig()
+    const allowedDomains = config.unifiedPlatform.systems
+        .map((sys) => {
+          try {
+            return new URL(sys.url).hostname
+          } catch {
+            return ''
+          }
+        })
+        .filter(Boolean)
+
+    windowManager.openChildWindow(url, title, allowedDomains)
     logger.info(`打開子窗口: ${title}`, 'IPC:window')
   })
 

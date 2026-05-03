@@ -4,20 +4,35 @@
  * 平台差異：macOS 用 Template 圖標自適應暗色模式；Windows/Linux 左鍵直接顯示主窗口。
  */
 
-import { Tray, Menu, app, nativeImage } from 'electron'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import { logger } from './utils/logger'
-import type { WindowManager } from './window-manager'
-import type { ConfigManager } from './config-manager'
+import {app, Menu, nativeImage, Tray} from 'electron'
+import {join} from 'path'
+import {existsSync} from 'fs'
+import {logger} from './utils/logger'
+import type {WindowManager} from './window-manager'
+import type {ConfigManager} from './config-manager'
 
 export class TrayManager {
   private tray: Tray | null = null
+
+  /**
+   * 退出清理回調，由 index.ts 注入 gracefulShutdown。
+   * 避免在 tray-manager 中重複退出邏輯，統一由 gracefulShutdown 管理。
+   */
+  private onQuitCallback: (() => void) | null = null
 
   constructor(
     private readonly windowManager: WindowManager,
     private readonly configManager: ConfigManager
   ) {}
+
+  /**
+   * 注入退出清理回調。
+   * 由 index.ts 在建構後呼叫，注入 gracefulShutdown 函數。
+   * @param callback 退出前清理函數（gracefulShutdown）
+   */
+  setQuitCallback(callback: () => void): void {
+    this.onQuitCallback = callback
+  }
 
   /** 必須在 app.whenReady() 之後呼叫 */
   init(): void {
@@ -91,9 +106,14 @@ export class TrayManager {
       {
         label: '結束應用程式',
         click: () => {
-          // 進入退出流程，主窗口 close 不再 preventDefault
-          this.windowManager.setQuitting(true)
-          this.windowManager.destroyAll()
+          // 呼叫統一的退出清理函數，避免重複退出邏輯
+          if (this.onQuitCallback) {
+            this.onQuitCallback()
+          } else {
+            // 回退：如果未注入回調，直接執行基本退出流程
+            this.windowManager.setQuitting(true)
+            this.windowManager.destroyAll()
+          }
           app.quit()
         }
       }
