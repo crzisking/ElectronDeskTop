@@ -7,11 +7,11 @@
 import {app, ipcMain, Menu} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {registerWindowHandlers} from './window.handlers'
-import {registerAuthHandlers} from './auth.handlers'
 import {registerConfigHandlers} from './config.handlers'
 import {registerUpdateHandlers} from './update.handlers'
 import {registerLogHandlers} from './log.handlers'
 import {logger} from '../utils/logger'
+import {safeOpenExternal} from '../utils/safe-shell'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -33,7 +33,6 @@ export function registerAllHandlers(
 ): void {
 
   registerWindowHandlers(windowManager)
-  registerAuthHandlers()
   registerConfigHandlers(configManager)
   registerUpdateHandlers(updateMgr)
   registerLogHandlers()
@@ -151,8 +150,9 @@ export function registerAllHandlers(
               break
 
             case 'open-url':
-              // 延遲 require shell，略微優化啟動時間
-              require('electron').shell.openExternal(action.url)
+              // 走 safeOpenExternal 過濾 javascript: / file:// 等危險協議
+              // （action.url 來自 app-config.json，理論可被外部修改注入）
+              safeOpenExternal(action.url)
               break
           }
         }

@@ -12,6 +12,7 @@
 import {onMounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth.store'
+import {logger} from '@/utils/logger'
 import {Lock, User} from '@element-plus/icons-vue'
 import type {FormInstance, FormRules} from 'element-plus'
 
@@ -23,7 +24,7 @@ onMounted(() => {
   if (import.meta.env.DEV && import.meta.env.VITE_DEV_AUTO_LOGIN === 'true') {
     const username = import.meta.env.VITE_DEV_USERNAME
     const password = import.meta.env.VITE_DEV_PASSWORD
-    console.log('[Login] 開發環境自動填入帳號：', username)
+    logger.debug('開發環境自動填入帳號', 'Login', {username})
     if (username && password) {
       form.userName = username
       form.password = password

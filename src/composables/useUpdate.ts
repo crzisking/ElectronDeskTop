@@ -17,6 +17,7 @@
 
 import { ref, readonly } from 'vue'
 import { ElNotification, ElMessageBox, ElMessage } from 'element-plus'
+import {logger} from '@/utils/logger'
 
 /** 更新流程當前狀態 */
 type UpdateState =
@@ -137,7 +138,7 @@ function bootstrap(): void {
     const err = args[0] as { message: string }
     state.value = 'error'
     lastError.value = err.message
-    console.warn('[Update] 更新流程錯誤:', err.message)
+    logger.warn('更新流程錯誤', 'useUpdate', err)
 
     if (userInitiated) {
       ElMessage.error(`檢查更新失敗：${err.message}`)

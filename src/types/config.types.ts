@@ -53,7 +53,7 @@ export interface AppConfig {
 
   /**
    * 全局應用設置
-   * 對應 JSON：{ "app": { "language": "zh-TW", "theme": "system", ... } }
+   * 對應 JSON：{ "app": { "language": "zh-TW", "startMinimized": false, ... } }
    * 詳細結構見 AppSettings interface
    */
   app: AppSettings
@@ -154,30 +154,21 @@ export interface UpdateConfig {
 // 對應 JSON：
 // "app": {
 //   "language": "zh-TW",
-//   "theme": "system",
 //   "startMinimized": false,
 //   "launchOnStartup": true
 // }
+//
+// 注意：本應用只支持單一亮色主題，不提供 theme 切換。
+// 過去保留過 theme 字段但無實際實現，已於 2026-05 統一移除。
 export interface AppSettings {
   /**
    * 界面語言（字面量聯合類型）
-   * 只能是這三個值之一，其他值 TypeScript 會報錯：
+   * 只能是這兩個值之一，其他值 TypeScript 會報錯：
    *   'zh-TW' ：繁體中文（台灣）
-   *   'zh-CN' ：簡體中文（中國大陸）
    *   'en'    ：英文
    * 在哪裡用：i18n 國際化配置，設置 vue-i18n 的 locale
    */
   language: 'zh-TW' | 'en'
-
-  /**
-   * 主題模式
-   * 'light'  ：強制亮色（無論系統設置）
-   * 'dark'   ：強制暗色（無論系統設置）
-   * 'system' ：跟隨操作系統設置（推薦，尊重用戶偏好）
-   * 在哪裡用：App.vue 中通過 window.matchMedia 監聽系統主題，
-   *            並動態切換 CSS class（如 <html class="dark">）
-   */
-  theme: 'light' | 'dark' | 'system'
 
   /**
    * 啟動時直接顯示浮球（跳過主窗口）

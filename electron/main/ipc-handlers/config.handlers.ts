@@ -16,7 +16,7 @@ import type {AppConfig} from '../../../src/types/config.types'
  */
 const ALLOWED_CONFIG_KEYS = new Set<keyof AppConfig>([
     'version', 'app', 'sidebar', 'floatingBall',
-    'unifiedPlatform', 'internalFunctions', 'business', 'update'
+    'unifiedPlatform', 'internalFunctions', 'update'
 ])
 
 /**

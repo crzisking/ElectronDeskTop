@@ -53,16 +53,6 @@ export const IpcChannels = {
    */
   BALL_MENU_ACTION: 'floating-ball:menu-action',
 
-  // ─── Auth Token（safeStorage 加密） ──────────────────────────────────
-  /** AUTH_GET_TOKEN：讀取 token，未找到返回 null。invoke。 */
-  AUTH_GET_TOKEN: 'auth:get-token',
-
-  /** AUTH_SET_TOKEN：登錄成功後加密存入 token（string）。invoke。 */
-  AUTH_SET_TOKEN: 'auth:set-token',
-
-  /** AUTH_DELETE_TOKEN：登出時刪除 token。invoke。 */
-  AUTH_DELETE_TOKEN: 'auth:delete-token',
-
   // ─── 主進程推送事件（主 → 渲染，單向） ────────────────────────────
   // 注意：PUSH_ 前綴僅由主進程 webContents.send 發出，無需在 ipcMain 註冊。
 

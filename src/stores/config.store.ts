@@ -11,6 +11,7 @@
 
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
+import {logger} from '@/utils/logger'
 import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink} from '@/types/config.types'
 
 export const useConfigStore = defineStore('config', () => {
@@ -54,9 +55,6 @@ export const useConfigStore = defineStore('config', () => {
   /** 當前語言設置 */
   const language = computed(() => appConfig.value?.app.language ?? 'zh-TW')
 
-  /** 當前主題設置 */
-  const theme = computed(() => appConfig.value?.app.theme ?? 'system')
-
   // ─── Actions ──────────────────────────────────────────────
   /**
    * 從主進程加載配置
@@ -70,7 +68,7 @@ export const useConfigStore = defineStore('config', () => {
       isLoaded.value = true
     } catch (err) {
       loadError.value = String(err)
-      console.error('[ConfigStore] 配置加載失敗:', err)
+      logger.error('配置加載失敗', 'config.store', err)
     }
   }
 
@@ -97,7 +95,6 @@ export const useConfigStore = defineStore('config', () => {
     platformSystems,
     functionsConfig,
     language,
-    theme,
     // Actions
     loadConfig,
     writeConfig

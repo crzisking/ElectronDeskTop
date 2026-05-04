@@ -22,6 +22,42 @@ let configManager: ConfigManager
 let updateMgr: UpdateManager
 
 /**
+ * 單例鎖：確保整個應用只能有一個實例在運行。
+ *
+ * 為什麼需要：
+ *   應用會把 Token、配置、日誌寫入 userData 目錄；若用戶連點兩次快捷方式
+ *   或從不同入口同時啟動，多個實例會並發寫同一份檔案，造成 Token 互相
+ *   覆蓋、配置漂移、日誌交錯不可讀。
+ *
+ * 行為：
+ *   - 第一個實例：拿到鎖，照常啟動。
+ *   - 第二個及之後實例：拿不到鎖 → 立刻 quit；同時 OS 會把參數轉發給
+ *     第一個實例的 'second-instance' 事件，我們在那裡把主窗口顯示出來。
+ *
+ * 必須放在 app.whenReady() 之前，搶鎖越早越好。
+ */
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  // 拿不到鎖 → 已有實例在跑，本實例直接退出
+  app.quit()
+  // app.quit 是異步信號，這裡用 process.exit 確保後續 whenReady 不會再執行
+  process.exit(0)
+}
+
+// 第二個實例試圖啟動時，把現有主窗口拉到前台
+app.on('second-instance', () => {
+  if (windowManager) {
+    windowManager.showMainWindow()
+    const mainWin = windowManager.getMainWindow()
+    if (mainWin) {
+      if (mainWin.isMinimized()) mainWin.restore()
+      mainWin.focus()
+    }
+    logger.info('檢測到第二個實例啟動，已將主窗口拉到前台', 'App')
+  }
+})
+
+/**
  * 統一的退出前清理函數。
  * 集中管理所有資源清理邏輯，避免在 tray-manager / update-manager / index.ts 三處重複。
  * 各退出入口（托盤菜單退出、更新安裝退出、系統信號退出）都應呼叫此函數。

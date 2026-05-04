@@ -19,6 +19,7 @@
 import {ref} from 'vue'
 import {useConfigStore} from '@/stores/config.store'
 import {useAuthStore} from '@/stores/auth.store'
+import {logger} from '@/utils/logger'
 import type {QaRequest} from '@/types/api.types'
 
 export function useAiStream() {
@@ -148,7 +149,7 @@ export function useAiStream() {
         return
       }
       streamError.value = err instanceof Error ? err.message : '流式請求失敗'
-      console.error('[useAiStream] 流式請求錯誤:', err)
+        logger.error('流式請求錯誤', 'useAiStream', err)
     } finally {
       isStreaming.value = false
       abortController = null

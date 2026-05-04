@@ -4,13 +4,11 @@
   "version": "1.0.2",
 
   "app": {
-    "_comment": "應用全局設定",
+    "_comment": "應用全局設定（本應用只支持單一亮色主題，不提供 theme 切換）",
     "_comment_language": "語言設定，可選值：'zh-TW'（繁體中文）、'en'（英文）",
-    "_comment_theme": "主題設定，可選值：'system'（跟隨系統）、'light'（淺色）、'dark'（深色）",
     "_comment_startMinimized": "啟動時是否最小化到浮球（true=啟動後只顯示浮球，false=啟動後顯示主窗口）",
     "_comment_launchOnStartup": "是否開機自動啟動應用",
     "language": "zh-TW",
-    "theme": "system",
     "startMinimized": false,
     "launchOnStartup": false
   },

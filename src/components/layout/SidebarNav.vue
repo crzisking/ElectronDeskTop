@@ -35,7 +35,7 @@ const authStore = useAuthStore()
  * 徽標規則：
  *  - unified-platform   → 平台系統數量（zero-pad 兩位）
  *  - internal-functions → 內部工具數量
- *  - business           → 業務功能數量（暫固定 03）
+ * 其餘 routeName 不顯示徽標。
  */
 const workspaceItems = computed<SidebarItem[]>(() => {
   const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`)

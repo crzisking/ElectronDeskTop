@@ -16,6 +16,7 @@
 import {reactive, ref} from 'vue'
 import {useAuthStore} from '@/stores/auth.store'
 import {repairApi} from '@/api/modules/repair.api'
+import {logger} from '@/utils/logger'
 import type {RepairDetail, RepairListItem, RepairStatus} from '@/types/api.types'
 
 // ── 狀態顯示映射（模塊級常量，直接 export 供模板使用） ────────────
@@ -90,7 +91,7 @@ export function useRepairTickets() {
   async function loadTickets() {
     const userName = authStore.user?.userName
     if (!userName) {
-      console.warn('[useRepairTickets] 用戶未登入，無法載入工單')
+      logger.warn('用戶未登入，無法載入工單', 'useRepairTickets')
       return
     }
 

@@ -92,15 +92,17 @@ export default defineConfig({
       AutoImport({
         resolvers: [ElementPlusResolver()],
         imports: ['vue', 'vue-router', 'pinia'],
-        // 生成類型聲明文件，提供完整 TypeScript 支持
-        dts: 'src/types/auto-imports.d.ts'
+        // 必須用絕對路徑：electron-vite 的 renderer root 已是 src/，
+        // 用相對路徑 'src/types/...' 會被解析成 <root>/src/types/...，
+        // 也就是 src/src/types/，導致生成檔錯位、tsconfig 找不到，自動 import 類型實際失效。
+        dts: resolve(__dirname, 'src/types/auto-imports.d.ts')
       }),
 
       // Element Plus 組件按需自動注冊
       Components({
         resolvers: [ElementPlusResolver()],
-        // 生成組件類型聲明文件
-        dts: 'src/types/components.d.ts'
+        // 同上，必須用絕對路徑
+        dts: resolve(__dirname, 'src/types/components.d.ts')
       })
     ]
   }

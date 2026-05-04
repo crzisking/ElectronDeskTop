@@ -11,8 +11,9 @@
  */
 
 import type {AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig} from 'axios'
-import {type Action, ElMessage, ElMessageBox} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
+import {logger} from '@/utils/logger'
 import router from '@/router'
 
 // ── 多語言錯誤訊息 ────────────────────────────────────────────────────
@@ -67,7 +68,17 @@ function getError(key: ErrorKey): string {
 }
 
 // ── 防止 401 彈窗重複彈出 ─────────────────────────────────────────────
-let _sessionExpiredShowing = false
+//
+// 為什麼用 Promise 而非 boolean 標誌：
+//   舊實作用同步 boolean `_sessionExpiredShowing`，在 await 與 callback
+//   之間有夾縫期：第一個 401 的 callback 把標誌設回 false 那一瞬間，
+//   並發中的其他 401 仍會把標誌再次設 true 並彈第二個窗。
+//
+//   改用 Promise 級聯：第一個 401 創建 Promise 並保存；後續 401 直接
+//   返回同一個 Promise，全程只彈一次窗、只跳一次登錄。Promise resolve
+//   後（用戶點確認 + logout + router.push 完成）才把引用清空，下一輪
+//   會話過期能正常觸發。
+let _sessionExpiredPromise: Promise<void> | null = null
 
 /**
  * 為指定 Axios 實例附加完整的請求/響應攔截器
@@ -84,10 +95,9 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
       if (token) {
         // 直接帶 token（與 Portal HttpClient 保持一致，不加 Bearer 前綴）
         config.headers.Authorization = 'Bearer '+token
-      } else {
-        // 有接口調用但 token 為空（理論上路由守衛已攔截，此為兜底）
-        ElMessage.error(getError('TokenExpiredError'))
       }
+      // token 為空時靜默放行（未登錄狀態下發起的請求會被後端拒絕，
+      // 由響應攔截器的 401 處理統一跳轉登錄頁）
 
       return config
     },
@@ -122,7 +132,7 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
     },
 
     async (error: AxiosError) => {
-      console.error('[HttpClient] 請求錯誤:', error)
+      logger.error('HTTP 請求錯誤', 'HttpClient', error)
 
       // 網絡斷線（無響應）
       if (error.code === 'ERR_NETWORK') {
@@ -132,19 +142,33 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
 
       switch (error.response?.status) {
         case 401: {
-          // 防重複彈窗
-          if (_sessionExpiredShowing) break
-          _sessionExpiredShowing = true
-
-          await ElMessageBox.alert(getError('Session_expired'), 'Warning', {
-              confirmButtonText: getError('OK'),
-              callback: async (_action: Action) => {
-                  _sessionExpiredShowing = false
+          // 並發 401 全部復用同一個 Promise，避免多次彈窗 / 多次跳轉
+          if (!_sessionExpiredPromise) {
+            _sessionExpiredPromise = ElMessageBox
+                .alert(getError('Session_expired'), 'Warning', {
+                  confirmButtonText: getError('OK')
+                })
+                .then(async () => {
                   const authStore = useAuthStore()
                   await authStore.logout()
                   await router.push({name: 'login'})
-              },
-          })
+                })
+                .catch(async () => {
+                  // 用戶點 X 關閉彈窗也走相同流程，避免懸空狀態
+                  const authStore = useAuthStore()
+                  await authStore.logout()
+                  await router.push({name: 'login'})
+                  // 顯式 return undefined，否則 router.push 的 NavigationFailure
+                  // 會讓 catch 回呼的返回類型推導成非 void，破壞外層 Promise<void>
+                })
+                .finally(() => {
+                  // 清空引用，允許下一輪會話過期再次觸發
+                  _sessionExpiredPromise = null
+                })
+          }
+          // 所有 401 都 await 同一個 Promise；Promise 完成後 reject 原始錯誤，
+          // 讓上層感知到失敗（也維持與其他 case 行為一致）
+          await _sessionExpiredPromise
           break
         }
 

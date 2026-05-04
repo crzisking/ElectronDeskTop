@@ -2,10 +2,45 @@
  * 主窗口預加載腳本，渲染進程 ↔ 主進程的唯一通信橋樑。
  * 用於：window.electronAPI.* 暴露給 src/ 渲染層使用。
  * 不暴露 ipcRenderer 本身，所有 channel 走白名單避免任意監聽/發送。
+ *
+ * 注意：IPC 頻道常量直接內聯在此文件中，不從 @shared/ipc-channels import，
+ * 避免 Rollup 代碼分割產生 chunk 文件（Electron 沙盒無法解析 chunk 相對路徑）。
  */
 
 import {contextBridge, ipcRenderer} from 'electron'
-import {IpcChannels} from '@shared/ipc-channels'
+
+// ─── IPC 頻道常量（內聯，與 electron/shared/ipc-channels.ts 保持同步） ──
+const IPC = {
+    CONFIG_READ: 'config:read',
+    CONFIG_WRITE: 'config:write',
+    WINDOW_MINIMIZE: 'window:minimize',
+    WINDOW_MAXIMIZE: 'window:maximize',
+    WINDOW_CLOSE: 'window:close',
+    WINDOW_SHOW: 'window:show',
+    WINDOW_HIDE: 'window:hide',
+    WINDOW_IS_MAXIMIZED: 'window:is-maximized',
+    OPEN_CHILD_WINDOW: 'window:open-child',
+    BALL_SHOW: 'floating-ball:show',
+    BALL_HIDE: 'floating-ball:hide',
+    BALL_START_DRAG: 'floating-ball:start-drag',
+    BALL_STOP_DRAG: 'floating-ball:stop-drag',
+    BALL_GET_POSITION: 'floating-ball:get-position',
+    BALL_MENU_ACTION: 'floating-ball:menu-action',
+    PUSH_CONFIG_CHANGED: 'push:config-changed',
+    PUSH_TRAY_CLICKED: 'push:tray-clicked',
+    PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
+    LOG_WRITE: 'log:write',
+    LOG_OPEN_FOLDER: 'log:open-folder',
+    UPDATE_CHECK: 'update:check',
+    UPDATE_DOWNLOAD: 'update:download',
+    UPDATE_QUIT_AND_INSTALL: 'update:quit-and-install',
+    PUSH_UPDATE_CHECKING: 'push:update-checking',
+    PUSH_UPDATE_AVAILABLE: 'push:update-available',
+    PUSH_UPDATE_NOT_AVAILABLE: 'push:update-not-available',
+    PUSH_UPDATE_PROGRESS: 'push:update-progress',
+    PUSH_UPDATE_DOWNLOADED: 'push:update-downloaded',
+    PUSH_UPDATE_ERROR: 'push:update-error'
+} as const
 
 /**
  * 原始 callback → 包裝函數的映射表。
@@ -18,19 +53,19 @@ const listenerMap = new WeakMap<Function, (_event: Electron.IpcRendererEvent, ..
 contextBridge.exposeInMainWorld('electronAPI', {
   config: {
     /** @returns Promise<AppConfig> */
-    read: () => ipcRenderer.invoke(IpcChannels.CONFIG_READ),
+    read: () => ipcRenderer.invoke(IPC.CONFIG_READ),
 
     /** @param config Partial<AppConfig> */
-    write: (config: unknown) => ipcRenderer.invoke(IpcChannels.CONFIG_WRITE, config)
+    write: (config: unknown) => ipcRenderer.invoke(IPC.CONFIG_WRITE, config)
   },
 
   window: {
-    minimize: () => ipcRenderer.send(IpcChannels.WINDOW_MINIMIZE),
-    maximize: () => ipcRenderer.send(IpcChannels.WINDOW_MAXIMIZE),
-    close:    () => ipcRenderer.send(IpcChannels.WINDOW_CLOSE),
-    show:     () => ipcRenderer.send(IpcChannels.WINDOW_SHOW),
-    hide:     () => ipcRenderer.send(IpcChannels.WINDOW_HIDE),
-    isMaximized: () => ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED),
+      minimize: () => ipcRenderer.send(IPC.WINDOW_MINIMIZE),
+      maximize: () => ipcRenderer.send(IPC.WINDOW_MAXIMIZE),
+      close: () => ipcRenderer.send(IPC.WINDOW_CLOSE),
+      show: () => ipcRenderer.send(IPC.WINDOW_SHOW),
+      hide: () => ipcRenderer.send(IPC.WINDOW_HIDE),
+      isMaximized: () => ipcRenderer.invoke(IPC.WINDOW_IS_MAXIMIZED),
 
     /**
      * 在新 Electron 子窗口打開系統 URL（openMode='electron-window' 用）。
@@ -38,14 +73,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param title 子窗口標題
      */
     openChild: (url: string, title: string) =>
-      ipcRenderer.invoke(IpcChannels.OPEN_CHILD_WINDOW, url, title)
+        ipcRenderer.invoke(IPC.OPEN_CHILD_WINDOW, url, title)
   },
 
   floatingBall: {
-    show:      () => ipcRenderer.send(IpcChannels.BALL_SHOW),
-    hide:      () => ipcRenderer.send(IpcChannels.BALL_HIDE),
-    startDrag: () => ipcRenderer.send(IpcChannels.BALL_START_DRAG),
-    stopDrag:  () => ipcRenderer.send(IpcChannels.BALL_STOP_DRAG),
+      show: () => ipcRenderer.send(IPC.BALL_SHOW),
+      hide: () => ipcRenderer.send(IPC.BALL_HIDE),
+      startDrag: () => ipcRenderer.send(IPC.BALL_START_DRAG),
+      stopDrag: () => ipcRenderer.send(IPC.BALL_STOP_DRAG),
 
     /**
      * 訂閱浮球菜單操作（浮球選單項 → 主窗口導航）。
@@ -53,17 +88,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
      * @param callback 接收 routeName
      */
     onMenuAction: (callback: (routeName: string) => void) => {
-      ipcRenderer.removeAllListeners(IpcChannels.BALL_MENU_ACTION)
-      ipcRenderer.on(IpcChannels.BALL_MENU_ACTION, (_event, routeName: string) => {
+        ipcRenderer.removeAllListeners(IPC.BALL_MENU_ACTION)
+        ipcRenderer.on(IPC.BALL_MENU_ACTION, (_event, routeName: string) => {
         callback(routeName)
       })
     }
-  },
-
-  auth: {
-    getToken:    () => ipcRenderer.invoke(IpcChannels.AUTH_GET_TOKEN),
-    setToken:    (token: string) => ipcRenderer.invoke(IpcChannels.AUTH_SET_TOKEN, token),
-    deleteToken: () => ipcRenderer.invoke(IpcChannels.AUTH_DELETE_TOKEN)
   },
 
   /**
@@ -76,9 +105,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       message: string
       module?: string
       args?: unknown[]
-    }) => ipcRenderer.send(IpcChannels.LOG_WRITE, entry),
+    }) => ipcRenderer.send(IPC.LOG_WRITE, entry),
 
-    openFolder: () => ipcRenderer.invoke(IpcChannels.LOG_OPEN_FOLDER) as Promise<{
+      openFolder: () => ipcRenderer.invoke(IPC.LOG_OPEN_FOLDER) as Promise<{
       ok: boolean
       dir: string
     }>
@@ -91,9 +120,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
    *   window.electronAPI.on('push:update-available', (info) => { ... })
    */
   update: {
-    check:          () => ipcRenderer.invoke(IpcChannels.UPDATE_CHECK),
-    download:       () => ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD),
-    quitAndInstall: () => ipcRenderer.invoke(IpcChannels.UPDATE_QUIT_AND_INSTALL)
+      check: () => ipcRenderer.invoke(IPC.UPDATE_CHECK),
+      download: () => ipcRenderer.invoke(IPC.UPDATE_DOWNLOAD),
+      quitAndInstall: () => ipcRenderer.invoke(IPC.UPDATE_QUIT_AND_INSTALL)
   },
 
   /**
@@ -105,18 +134,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const ALLOWED_CHANNELS = [
-      IpcChannels.PUSH_CONFIG_CHANGED,
-      IpcChannels.PUSH_TRAY_CLICKED,
-      IpcChannels.PUSH_WINDOW_MAXIMIZED,
+        IPC.PUSH_CONFIG_CHANGED,
+        IPC.PUSH_TRAY_CLICKED,
+        IPC.PUSH_WINDOW_MAXIMIZED,
       // 浮球/托盤右鍵菜單導航推送（主進程 webContents.send 到主窗口）
       'floating-ball:navigate',
       // UpdateManager 廣播的更新生命週期事件
-      IpcChannels.PUSH_UPDATE_CHECKING,
-      IpcChannels.PUSH_UPDATE_AVAILABLE,
-      IpcChannels.PUSH_UPDATE_NOT_AVAILABLE,
-      IpcChannels.PUSH_UPDATE_PROGRESS,
-      IpcChannels.PUSH_UPDATE_DOWNLOADED,
-      IpcChannels.PUSH_UPDATE_ERROR
+        IPC.PUSH_UPDATE_CHECKING,
+        IPC.PUSH_UPDATE_AVAILABLE,
+        IPC.PUSH_UPDATE_NOT_AVAILABLE,
+        IPC.PUSH_UPDATE_PROGRESS,
+        IPC.PUSH_UPDATE_DOWNLOADED,
+        IPC.PUSH_UPDATE_ERROR
     ] as string[]
 
     if (ALLOWED_CHANNELS.includes(channel)) {

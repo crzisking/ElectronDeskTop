@@ -4,11 +4,11 @@
  * 路徑：dev=專案根 config/app-config.json，prod=userData/app-config.json。
  */
 
-import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'fs'
-import { join, dirname } from 'path'
-import { logger } from './utils/logger'
-import type { AppConfig } from '../../src/types/config.types'
+import {app} from 'electron'
+import {copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs'
+import {dirname, join} from 'path'
+import {logger} from './utils/logger'
+import type {AppConfig} from '../../src/types/config.types'
 
 /**
  * 代碼兜底默認配置。
@@ -19,16 +19,14 @@ const DEFAULT_CONFIG: AppConfig = {
   version: '1.0.0',
   app: {
     language: 'zh-TW',
-    theme: 'system',
     startMinimized: false,
     launchOnStartup: false
   },
   sidebar: {
     defaultCollapsed: false,
     items: [
-      { id: 'unified-platform',  label: '統一平台',      icon: 'Grid',     routeName: 'unified-platform',  enabled: true },
-      { id: 'internal-functions', label: '內部功能',     icon: 'Grid',     routeName: 'internal-functions', enabled: true },
-      { id: 'business',           label: '業務安排與尋找', icon: 'DataLine', routeName: 'business',           enabled: true }
+      {id: 'unified-platform', label: '統一平台', icon: 'Grid', routeName: 'unified-platform', enabled: true},
+      {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true}
     ]
   },
   floatingBall: {
@@ -39,10 +37,21 @@ const DEFAULT_CONFIG: AppConfig = {
     quickMenu: [
       { id: 'show-main',    label: '打開主窗口',    icon: 'Monitor',     action: { type: 'show-main-window' },                       enabled: true  },
       { id: 'sep-1',        label: '',              action: { type: 'show-main-window' },                                             enabled: true, separator: true },
-      { id: 'go-platform',  label: '統一平台',      icon: 'Grid',        action: { type: 'navigate', routeName: 'unified-platform' }, enabled: true  },
-      { id: 'go-internal',  label: '內部功能',      icon: 'Grid',        action: { type: 'navigate', routeName: 'internal-functions' }, enabled: true },
-      { id: 'go-business',  label: '業務安排與尋找', icon: 'DataLine',   action: { type: 'navigate', routeName: 'business' },         enabled: true  },
-      { id: 'sep-2',        label: '',              action: { type: 'show-main-window' },                                             enabled: true, separator: true },
+      {
+        id: 'go-platform',
+        label: '統一平台',
+        icon: 'Grid',
+        action: {type: 'navigate', routeName: 'unified-platform'},
+        enabled: true
+      },
+      {
+        id: 'go-internal',
+        label: '內部功能',
+        icon: 'Grid',
+        action: {type: 'navigate', routeName: 'internal-functions'},
+        enabled: true
+      },
+      {id: 'sep-2', label: '', action: {type: 'show-main-window'}, enabled: true, separator: true},
       { id: 'quit',         label: '退出應用',      icon: 'SwitchButton', action: { type: 'quit-app' },                              enabled: true  }
     ]
   },
@@ -54,11 +63,6 @@ const DEFAULT_CONFIG: AppConfig = {
       { id: 'bpmUserFinder', name: 'bpm負責人查詢', description: '查找對應的bpm表單負責人', icon: 'Edit',  enabled: true, openMode: 'page', routeName: 'ai-bpm-finder', url: '' },
       { id: 'itRepair',      name: 'IT 報修',       description: '提交設備故障或 IT 問題',  icon: 'Tools', enabled: true, openMode: 'page', routeName: 'it-repair' }
     ]
-  },
-  business: {
-    pipelineApiEndpoint: '',
-    ownerSearchApiEndpoint: '',
-    maxSearchResults: 20
   },
   update: {
     enabled: false,

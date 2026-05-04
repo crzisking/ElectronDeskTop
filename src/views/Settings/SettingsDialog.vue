@@ -11,7 +11,7 @@
  *   ├── 軟體更新（UpdateSection）
  *   └── 語言（LanguageSection，預留）
  *
- * 將來新增「主題」「啟動行為」等設定，只需：
+ * 將來新增「啟動行為」等設定，只需：
  *   1. 在 sections/ 下新增 *Section.vue 檔
  *   2. 在本組件的 template 中加入 <SettingsCategory> 和對應的 <XxxSection>
  *

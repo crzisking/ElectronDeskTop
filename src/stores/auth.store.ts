@@ -1,14 +1,13 @@
 /**
  * 認證狀態（token / user / isAuthenticated）。
  * 用於：路由守衛 router/index.ts、HTTP 攔截器、登錄登出組件。
- * Token 持久化在 OS 鑰匙串（透過 window.electronAPI.auth），記憶體只保留副本供攔截器讀取。
+ * Token 僅存在內存中（Pinia Store），退出應用後丟失，下次啟動需重新登錄。
  */
 
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import type {UserProfile} from '@/types/api.types'
 import {authApi} from '@/api/modules/auth.api'
-import {logger} from "@/utils/logger";
 
 export const useAuthStore = defineStore('auth', () => {
 
@@ -21,14 +20,13 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserProfile | null>(null)
 
   /**
-   * Access Token 內存副本（不持久化，持久化交給 OS 鑰匙串）。
-   * 為何不存 localStorage：明文存儲容易被 XSS 或本機掃描工具竊取。
+   * Access Token（僅內存，不持久化到本地磁盤）。
    * HTTP 攔截器讀此值寫入 Authorization header。
    */
   const accessToken = ref<string | null>(null)
 
-  /** 會話恢復進行中：避免應用啟動瞬間出現「未登入」閃屏，路由守衛也會等它完成 */
-  const isRestoringSession = ref<boolean>(false)
+  /** 會話恢復標記（已棄用，保留兼容性） */
+  const isRestoringSession = ref(false)
 
   // ─── Getters ──────────────────────────────────────────────
 
@@ -38,33 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   // ─── Actions ──────────────────────────────────────────────
 
   /**
-   * 從 OS 鑰匙串恢復登入態。
-   * 用於：App.vue onMounted 啟動時呼叫一次。
-   * 找到 token 即直接視為已登入，過期由後續 401 攔截器處理。
-   */
-  async function restoreSession(): Promise<void> {
-    isRestoringSession.value = true
-    try {
-      const token = await window.electronAPI.auth.getToken()
-
-      if (token) {
-        accessToken.value = token
-        isAuthenticated.value = true
-        return
-      }
-
-      // 無 token：保持未登入，路由守衛會導向 /login
-    } catch (err) {
-      logger.error('會話恢復失敗',"auth.store.ts/restoreSession",err)
-    } finally {
-      isRestoringSession.value = false
-    }
-  }
-
-  /**
-   * 登錄：呼叫後端、寫鑰匙串、更新內存狀態。
-   * 攔截器已返回 data（業務數據），authApi.login 直接返回 LoginResponse，
-   * 其中包含 token 和 user 字段，無需額外類型斷言。
+   * 登錄：呼叫後端、更新內存狀態（不持久化 token）。
    * @param userName 工號（如 "S2403279"）
    * @param password 密碼
    * @throws 登錄失敗時拋出錯誤（由 LoginView 捕獲顯示給用戶）
@@ -72,39 +44,19 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(userName: string, password: string): Promise<void> {
     const {token, user: userInfo} = await authApi.login({username: userName, password})
 
-    // 持久化到 OS 鑰匙串（下次啟動可自動恢復）
-    await window.electronAPI.auth.setToken(token)
-
     accessToken.value = token
     user.value = userInfo
     isAuthenticated.value = true
   }
 
   /**
-   * 登出：刪除鑰匙串 token + 清空內存狀態。
+   * 登出：清空所有內存狀態。
    * 用於：登出按鈕、401 攔截器強制登出。
-   * 鑰匙串刪除失敗仍要清內存，確保當前 session 立即終止。
    */
   async function logout(): Promise<void> {
-    try {
-      await window.electronAPI.auth.deleteToken()
-    } catch (err) {
-      logger.error('刪除 Token 失敗',"auth.store.ts/logout",err)
-    } finally {
       accessToken.value = null
       user.value = null
       isAuthenticated.value = false
-    }
-  }
-
-  /**
-   * 更新內存中的 token（不寫鑰匙串）。
-   * 用於：HTTP 攔截器收到後端刷新的新 token 時。
-   * 如需持久化請另外呼叫 window.electronAPI.auth.setToken。
-   * @param token 新的 JWT Access Token
-   */
-  function setToken(token: string): void {
-    accessToken.value = token
   }
 
   return {
@@ -116,9 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     displayName,
     // Actions
-    restoreSession,
     login,
-    logout,
-    setToken
+    logout
   }
 })

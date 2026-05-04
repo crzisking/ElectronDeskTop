@@ -1,6 +1,7 @@
 import type {RouteRecordRaw} from 'vue-router'
 import {createRouter, createWebHashHistory} from 'vue-router'
 import {useAuthStore} from '@/stores/auth.store'
+import {useConfigStore} from '@/stores/config.store'
 
 /**
  * 應用路由表。
@@ -120,9 +121,10 @@ router.beforeEach((to, _from) => {
   }
 
   const authStore = useAuthStore()
+  const configStore = useConfigStore()
 
-  // restoreSession 進行中不做攔截，等其完成後再判斷
-  if (authStore.isRestoringSession) return
+  // 配置未加載完成 → 先放行，待 App.vue loadConfig 完成後重新觸發守衛
+  if (!configStore.isLoaded) return
 
   // 需要認證但未登入 → 跳轉登錄頁
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {

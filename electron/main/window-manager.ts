@@ -4,9 +4,10 @@
  * 狀態：主窗口顯示 ←→ 主窗口隱藏 + 浮球顯示。
  */
 
-import {app, BrowserWindow, screen, shell} from 'electron'
+import {app, BrowserWindow, screen} from 'electron'
 import {join} from 'path'
 import {logger} from './utils/logger'
+import {safeOpenExternal} from './utils/safe-shell'
 
 const isDev = !app.isPackaged
 
@@ -52,7 +53,10 @@ export class WindowManager {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false, // false 允許 preload 使用 require
+        // 啟用 Chromium 沙箱：即使 XSS 突破 contextBridge，也無法直接拿到主進程權限。
+        // 本專案 preload 只用 contextBridge + ipcRenderer，未調用 require('fs') 等
+        // 需 Node 能力的 API，可以開啟沙箱。
+        sandbox: true,
         devTools: isDev
       }
     })
@@ -89,8 +93,9 @@ export class WindowManager {
     })
 
     // 外部鏈接導向系統瀏覽器，不在 Electron 內開新窗口
+    // 走 safeOpenExternal 過濾 javascript: / file:// 等危險協議
     this.mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url)
+      safeOpenExternal(url)
       return { action: 'deny' }
     })
 
@@ -120,7 +125,8 @@ export class WindowManager {
         preload: join(__dirname, '../preload/floatingBall.js'),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false
+        // 浮球 preload 同樣只用 contextBridge + ipcRenderer，可開沙箱
+        sandbox: true
       }
     })
 
@@ -266,8 +272,9 @@ export class WindowManager {
     child.loadURL(url)
 
     // 子窗口內的外部鏈接導向系統瀏覽器
+    // 同樣走 safeOpenExternal 過濾危險協議
     child.webContents.setWindowOpenHandler(({ url: linkUrl }) => {
-      shell.openExternal(linkUrl)
+      safeOpenExternal(linkUrl)
       return { action: 'deny' }
     })
 

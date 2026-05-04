@@ -16,11 +16,12 @@
  * 分類（流程/支援/報表）暫由 tool.id 啟發式判斷，後續可在 config 增加 category 字段。
  */
 
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useConfigStore } from '@/stores/config.store'
-import type { InternalTool } from '@/types/config.types'
-import { Search, ArrowRight, Plus } from '@element-plus/icons-vue'
+import {computed, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {useConfigStore} from '@/stores/config.store'
+import {logger} from '@/utils/logger'
+import type {InternalTool} from '@/types/config.types'
+import {ArrowRight, Plus, Search} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -70,8 +71,8 @@ function handleOpen(tool: InternalTool) {
   if (tool.openMode === 'external' && tool.url) {
     window.open(tool.url, '_blank')
   } else if (tool.openMode === 'page' && tool.routeName) {
-    router.push({ name: tool.routeName }).catch(() => {
-      console.warn(`[InternalFunctions] 路由 "${tool.routeName}" 尚未配置`)
+    router.push({name: tool.routeName}).catch((err) => {
+      logger.warn('工具路由跳轉失敗', 'InternalFunctions', {routeName: tool.routeName, err})
     })
   }
 }

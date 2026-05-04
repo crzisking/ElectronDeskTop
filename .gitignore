@@ -10,3 +10,7 @@
 .env.*.local
 .env.local
 
+# 由 unplugin-auto-import / unplugin-vue-components 自動生成，每次構建會重寫
+src/types/auto-imports.d.ts
+src/types/components.d.ts
+

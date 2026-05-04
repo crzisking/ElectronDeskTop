@@ -8,7 +8,7 @@
  * 嚴禁直接使用 require('electron') 或 window.require。
  */
 
-import type { AppConfig } from './config.types'
+import type {AppConfig} from './config.types'
 
 // 確保此文件被視為模塊（避免全局聲明衝突）
 export {}
@@ -79,22 +79,6 @@ declare global {
          * @param callback 接收菜單項 routeName 的回調
          */
         onMenuAction: (callback: (routeName: string) => void) => void
-      }
-
-      // ─── Auth Token（OS 鑰匙串） ──────────────────────────────
-      auth: {
-        /**
-         * 從 OS 鑰匙串讀取 Access Token
-         * @returns token 字符串，或 null（未登錄）
-         */
-        getToken: () => Promise<string | null>
-        /**
-         * 將 Access Token 存入 OS 鑰匙串
-         * @param token JWT Access Token
-         */
-        setToken: (token: string) => Promise<void>
-        /** 從 OS 鑰匙串刪除 Access Token（登出時調用） */
-        deleteToken: () => Promise<void>
       }
 
       // ─── 日誌（渲染進程 → 主進程文件） ────────────────────────
