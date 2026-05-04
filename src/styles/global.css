@@ -65,8 +65,13 @@
   --app-shadow-card-hover: 0 2px 6px rgba(26, 26, 26, 0.06), 0 16px 36px rgba(26, 26, 26, 0.10);
 
   /* ── 字體 ──────────────────────────────────────────────── */
+    /* Windows 中文用戶優先級：Segoe UI（英文）→ Microsoft JhengHei（繁中）；
+       macOS 用戶：-apple-system → PingFang TC。
+       舊序列把 'Microsoft JhengHei' 排在 'PingFang TC' 之後，導致 Windows 上
+       英文字段被 Segoe UI 取，中文 fallback 卻先撞 PingFang TC（非 Windows 字體），
+       混排觀感差。 */
   --app-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                   'PingFang TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
+  'Microsoft JhengHei', 'PingFang TC', 'Helvetica Neue', Arial, sans-serif;
   --app-font-display: 'Playfair Display', 'Times New Roman', 'PingFang TC', serif;
   --app-font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
 
@@ -85,6 +90,18 @@
   --sidebar-width:           240px;
   --sidebar-width-collapsed: 72px;
   --titlebar-height:         48px;
+
+    /* ── Z-index 層級系統 ─────────────────────────────────────
+       避免組件級寫魔法數字導致層級混亂。
+       對齊 Element Plus：el-dialog 默認 2000，el-message 3000。
+       新增的浮層、loading 統一從這張表取值，不要硬寫 9999。 */
+    --z-base: 1; /* 普通內容上層（小 overlay、tag 等） */
+    --z-iframe-overlay: 10; /* iframe 加載遮罩 */
+    --z-dropdown: 1000; /* 下拉菜單、popper */
+    --z-modal: 2000; /* 對話框（與 Element Plus 對齊） */
+    --z-message: 3000; /* 全局消息（與 Element Plus 對齊） */
+    --z-loading-overlay: 4000; /* 全屏 LoadingSpinner，必須蓋住 dialog */
+    --z-toast: 5000; /* 最高優先級提示（系統級警告等） */
 
   /* ════════════════════════════════════════════════════════
      Element Plus 變量覆蓋（讓所有 el-* 組件自動跟隨主題）

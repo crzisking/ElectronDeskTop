@@ -207,7 +207,14 @@ export class WindowManager {
   }
 
   /**
-   * 設置浮球位置（會 clamp 到屏幕工作區內）。
+   * 設置浮球位置（會校驗顯示器邊界）。
+   *
+   * 邊界校驗邏輯：
+   *  1. 先用 (x, y) 與所有 display 的 workArea 比對。
+   *     若浮球的左上角座標仍落在某個 display 的 workArea 內 → 認為合法,僅做該 display 內的 clamp。
+   *  2. 若不在任何 display 內（典型場景：上次配置時是雙屏，現在拔掉了副屏），
+   *     直接放到主屏右下角，距離邊距 80px，避免首次顯示在屏外瞬閃。
+   *
    * @param x 目標 X 座標
    * @param y 目標 Y 座標
    * @param ballSize 浮球大小（用於計算邊界，默認 80 與窗口/CSS 一致）
@@ -215,12 +222,31 @@ export class WindowManager {
   setFloatingBallPosition(x: number, y: number, ballSize = 80): void {
     if (!this.floatingBallWindow) return
 
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize
+    // 找到 (x, y) 落入的 display；若都不在,fallback 到主屏
+    const displays = screen.getAllDisplays()
+    const containing = displays.find((d) => {
+      const {x: dx, y: dy, width: dw, height: dh} = d.workArea
+      return x >= dx && x <= dx + dw - ballSize && y >= dy && y <= dy + dh - ballSize
+    })
 
-    const clampedX = Math.max(0, Math.min(x, width - ballSize))
-    const clampedY = Math.max(0, Math.min(y, height - ballSize))
+    if (containing) {
+      // 在某 display 內，僅在該 display 內做 clamp（避免邊緣輕微越界）
+      const {x: dx, y: dy, width: dw, height: dh} = containing.workArea
+      const clampedX = Math.max(dx, Math.min(x, dx + dw - ballSize))
+      const clampedY = Math.max(dy, Math.min(y, dy + dh - ballSize))
+      this.floatingBallWindow.setPosition(clampedX, clampedY)
+      return
+    }
 
-    this.floatingBallWindow.setPosition(clampedX, clampedY)
+    // 任一 display 都不包含，說明顯示器拓撲變了。塞主屏右下角，離邊 80px。
+    const primary = screen.getPrimaryDisplay().workArea
+    const fallbackX = primary.x + primary.width - ballSize - 80
+    const fallbackY = primary.y + primary.height - ballSize - 80
+    logger.warn(
+        `浮球默認位置 (${x}, ${y}) 不在任何顯示器內，改塞主屏右下角 (${fallbackX}, ${fallbackY})`,
+        'WindowManager'
+    )
+    this.floatingBallWindow.setPosition(fallbackX, fallbackY)
   }
 
   /**
@@ -244,7 +270,13 @@ export class WindowManager {
         // 子窗口不需要 Node.js 能力
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true,
+        // 注意：子窗口故意不用 sandbox: true。
+        // 雖然主窗口/浮球用 sandbox: true 多一層 XSS 防護，但子窗口：
+        //   1. 沒有 preload 腳本，沒有 contextBridge 暴露任何能力給網頁，sandbox: true 沒有額外收益
+        //   2. 加載 ERP / BI / BPM 等複雜內網系統，它們依賴完整 cookie / fetch / SessionStorage
+        //      OS 級沙箱進程在某些頁面下會出現「一片空白、無報錯」現象（瀏覽器級別的資源加載被限制）
+        // 因此這裡顯式設為 false，與「網頁是受信任內網系統」的場景對齊。
+        sandbox: false,
       },
     })
 
@@ -269,7 +301,21 @@ export class WindowManager {
       return child
     }
 
-    child.loadURL(url)
+    // did-fail-load：頁面整體加載失敗時記錄具體錯誤碼，方便排查空白窗口問題
+    // errorCode 常見值：-3 (ABORTED, 通常是用戶取消，可忽略)、-105 (NAME_NOT_RESOLVED)、
+    //   -106 (INTERNET_DISCONNECTED)、-118 (CONNECTION_TIMED_OUT)、-501 (INSECURE_RESPONSE)
+    child.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      // -3 是用戶主動取消（例如關窗），不算真正的錯誤
+      if (errorCode === -3 || !isMainFrame) return
+      logger.error(
+          `子窗口加載失敗: ${validatedURL} (${errorCode} ${errorDescription})`,
+          'WindowManager'
+      )
+    })
+
+    child.loadURL(url).catch((err) => {
+      logger.error(`子窗口 loadURL 拋異常: ${url}`, 'WindowManager', err)
+    })
 
     // 子窗口內的外部鏈接導向系統瀏覽器
     // 同樣走 safeOpenExternal 過濾危險協議

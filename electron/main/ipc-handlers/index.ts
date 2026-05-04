@@ -89,38 +89,20 @@ export function registerAllHandlers(
   })
 
   /**
-   * 'app:quit'：完全退出應用。
-   * 用於：浮球右鍵菜單「退出應用」。此頻道未進入 IpcChannels 常量，故用字面量。
+   * APP_QUIT：完全退出應用。
+   * 用於：浮球右鍵菜單「結束應用程式」。
    */
-  ipcMain.on('app:quit', () => {
+  ipcMain.on(IpcChannels.APP_QUIT, () => {
     logger.info('收到退出指令，應用正在退出...', 'IPC:app')
     app.quit()
   })
 
   /**
-   * BALL_MENU_ACTION：浮球菜單動作轉發到主窗口渲染進程。
-   * 用於：浮球菜單「去主頁」等項目；浮球與主窗是兩個 BrowserWindow，渲染進程間
-   *       不能直連，必須由主進程中轉至 mainWin.webContents.send。
-   */
-  ipcMain.on(IpcChannels.BALL_MENU_ACTION, (_event, type: string, payload?: string) => {
-    logger.debug(`浮球菜單動作: ${type}, payload: ${payload ?? ''}`, 'IPC:ball')
-
-    const mainWin = windowManager.getMainWindow()
-    if (!mainWin || mainWin.isDestroyed()) return
-
-    windowManager.showMainWindow()
-
-    if (type === 'navigate' && payload) {
-      mainWin.webContents.send('floating-ball:navigate', payload)
-    }
-  })
-
-  /**
-   * 'floating-ball:show-context-menu'：彈出浮球的原生右鍵菜單。
+   * BALL_SHOW_CONTEXT_MENU：彈出浮球的原生右鍵菜單。
    * 用於：浮球 60×60 太小無法承載 Vue 自繪菜單，改用 OS 級原生菜單突破窗口邊界。
    * 菜單項由 configManager.floatingBall.quickMenu 動態生成，根據 action.type 分派。
    */
-  ipcMain.on('floating-ball:show-context-menu', (event) => {
+  ipcMain.on(IpcChannels.BALL_SHOW_CONTEXT_MENU, (event) => {
     const config = configManager.getConfig()
     const menuItems = config.floatingBall.quickMenu.filter((item) => item.enabled)
 
@@ -140,7 +122,7 @@ export function registerAllHandlers(
               windowManager.showMainWindow()
               const mainWin = windowManager.getMainWindow()
               if (mainWin && !mainWin.isDestroyed()) {
-                mainWin.webContents.send('floating-ball:navigate', action.routeName)
+                  mainWin.webContents.send(IpcChannels.PUSH_BALL_NAVIGATE, action.routeName)
               }
               break
             }

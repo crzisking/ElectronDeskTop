@@ -12,6 +12,7 @@ import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useUpdate} from '@/composables/useUpdate'
 import {logger} from "@/utils/logger";
+import {IpcChannels} from '@shared/ipc-channels'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -34,7 +35,7 @@ async function onConfigChanged(..._args: unknown[]) {
   }
 }
 
-/** 浮球菜單跳轉指令：主進程接到 BALL_MENU_ACTION 後轉發路由名稱 */
+/** 浮球/托盤菜單跳轉指令：主進程透過 PUSH_BALL_NAVIGATE 推送路由名稱 */
 function onMenuNavigate(...args: unknown[]) {
   const routeName = args[0] as string
   if (routeName) {
@@ -62,9 +63,9 @@ onMounted(async () => {
   await router.replace(initialTarget).catch(() => undefined)
 
   // 4. 注冊主進程推送事件監聽
-  window.electronAPI.on('push:window-maximized', onWindowMaximized)
-  window.electronAPI.on('push:config-changed', onConfigChanged)
-  window.electronAPI.on('floating-ball:navigate', onMenuNavigate)
+  window.electronAPI.on(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
+  window.electronAPI.on(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
+  window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
 
   // 5. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
   useUpdate().bootstrap()
@@ -75,9 +76,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   // 清理事件監聽，避免 HMR 熱更新時重複注冊
-  window.electronAPI.off('push:window-maximized', onWindowMaximized)
-  window.electronAPI.off('push:config-changed', onConfigChanged)
-  window.electronAPI.off('floating-ball:navigate', onMenuNavigate)
+  window.electronAPI.off(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
+  window.electronAPI.off(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
+  window.electronAPI.off(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
 })
 </script>
 

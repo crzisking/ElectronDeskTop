@@ -25,10 +25,10 @@ const IPC = {
     BALL_START_DRAG: 'floating-ball:start-drag',
     BALL_STOP_DRAG: 'floating-ball:stop-drag',
     BALL_GET_POSITION: 'floating-ball:get-position',
-    BALL_MENU_ACTION: 'floating-ball:menu-action',
     PUSH_CONFIG_CHANGED: 'push:config-changed',
     PUSH_TRAY_CLICKED: 'push:tray-clicked',
     PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
+    PUSH_BALL_NAVIGATE: 'floating-ball:navigate',
     LOG_WRITE: 'log:write',
     LOG_OPEN_FOLDER: 'log:open-folder',
     UPDATE_CHECK: 'update:check',
@@ -80,19 +80,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       show: () => ipcRenderer.send(IPC.BALL_SHOW),
       hide: () => ipcRenderer.send(IPC.BALL_HIDE),
       startDrag: () => ipcRenderer.send(IPC.BALL_START_DRAG),
-      stopDrag: () => ipcRenderer.send(IPC.BALL_STOP_DRAG),
-
-    /**
-     * 訂閱浮球菜單操作（浮球選單項 → 主窗口導航）。
-     * 用於：主窗口 App.vue；先 removeAllListeners 防止重複註冊。
-     * @param callback 接收 routeName
-     */
-    onMenuAction: (callback: (routeName: string) => void) => {
-        ipcRenderer.removeAllListeners(IPC.BALL_MENU_ACTION)
-        ipcRenderer.on(IPC.BALL_MENU_ACTION, (_event, routeName: string) => {
-        callback(routeName)
-      })
-    }
+      stopDrag: () => ipcRenderer.send(IPC.BALL_STOP_DRAG)
+      // 注意：浮球右鍵菜單的 navigate 由主進程 ipc-handlers/index.ts 統一處理
+      // 並透過 PUSH_BALL_NAVIGATE 推送到主窗口的 electronAPI.on(...) 訂閱，
+      // 不需要在 floatingBall 命名空間單獨暴露 onMenuAction 接口。
   },
 
   /**
@@ -138,7 +129,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         IPC.PUSH_TRAY_CLICKED,
         IPC.PUSH_WINDOW_MAXIMIZED,
       // 浮球/托盤右鍵菜單導航推送（主進程 webContents.send 到主窗口）
-      'floating-ball:navigate',
+        IPC.PUSH_BALL_NAVIGATE,
       // UpdateManager 廣播的更新生命週期事件
         IPC.PUSH_UPDATE_CHECKING,
         IPC.PUSH_UPDATE_AVAILABLE,

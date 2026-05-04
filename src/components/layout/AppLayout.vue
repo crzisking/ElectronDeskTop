@@ -81,18 +81,6 @@ const uiStore = useUiStore()
   border: 1px solid var(--app-border-subtle);
   box-shadow: var(--app-shadow-sm);
   -webkit-app-region: no-drag;
-}
-
-.app-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.app-content::-webkit-scrollbar-thumb {
-  background: rgba(26, 26, 26, 0.12);
-  border-radius: 3px;
-}
-
-.app-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(26, 26, 26, 0.24);
+  /* 滾動條樣式統一在 global.css 全局定義（::-webkit-scrollbar），此處不再重複 */
 }
 </style>

@@ -34,7 +34,8 @@ defineProps<{
   position: fixed;
   inset: 0;
   background: rgba(255, 255, 255, 0.85);
-  z-index: 9999;
+  /* 必須蓋住所有對話框（el-dialog: 2000）；用全局 z-index token */
+  z-index: var(--z-loading-overlay);
 }
 
 .spin-icon {

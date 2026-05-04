@@ -5,6 +5,16 @@
  */
 export const IpcChannels = {
 
+  // ─── Auth Token 加密存儲（safeStorage） ─────────────────────────────
+  /** AUTH_GET_TOKEN：讀取已加密 Token，主進程解密後返回明文。invoke。 */
+  AUTH_GET_TOKEN: 'auth:get-token',
+
+  /** AUTH_SET_TOKEN：傳入明文 Token，主進程 safeStorage 加密後落地。invoke。 */
+  AUTH_SET_TOKEN: 'auth:set-token',
+
+  /** AUTH_DELETE_TOKEN：登出時清除已存儲的 Token。invoke。 */
+  AUTH_DELETE_TOKEN: 'auth:delete-token',
+
   // ─── 配置管理 ──────────────────────────────────────────────────────────
   /** CONFIG_READ：讀取完整 AppConfig。preload.config.read → config.handlers。invoke。 */
   CONFIG_READ: 'config:read',
@@ -48,10 +58,16 @@ export const IpcChannels = {
   BALL_GET_POSITION: 'floating-ball:get-position',
 
   /**
-   * BALL_MENU_ACTION：浮球菜單動作（type, payload?）。
-   * 由主進程轉發至主窗口（兩個 BrowserWindow 不能直連）。send。
+   * BALL_SHOW_CONTEXT_MENU：浮球右鍵 → 主進程彈原生 Menu（浮球 60×60 太小渲染不下）。
+   * 浮球 preload → main 的 ipc-handlers/index.ts。send。
    */
-  BALL_MENU_ACTION: 'floating-ball:menu-action',
+  BALL_SHOW_CONTEXT_MENU: 'floating-ball:show-context-menu',
+
+  /**
+   * APP_QUIT：徹底退出應用（不是隱藏到浮球）。
+   * 浮球菜單 / 托盤菜單的「結束應用程式」項使用。send。
+   */
+  APP_QUIT: 'app:quit',
 
   // ─── 主進程推送事件（主 → 渲染，單向） ────────────────────────────
   // 注意：PUSH_ 前綴僅由主進程 webContents.send 發出，無需在 ipcMain 註冊。
@@ -64,6 +80,12 @@ export const IpcChannels = {
 
   /** PUSH_WINDOW_MAXIMIZED：最大化狀態變化（payload: boolean），用於同步標題欄圖標。 */
   PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
+
+  /**
+   * PUSH_BALL_NAVIGATE：浮球/托盤右鍵菜單選了某項導航時,主進程通知主窗口跳轉路由。
+   * payload：routeName 字串。主窗口 App.vue 監聽。
+   */
+  PUSH_BALL_NAVIGATE: 'floating-ball:navigate',
 
   // ─── 子窗口控制 ──────────────────────────────────────────────────────────
   /**

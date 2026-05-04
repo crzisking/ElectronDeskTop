@@ -74,11 +74,6 @@ declare global {
          * 必須在 mouseup 事件中調用
          */
         stopDrag: () => void
-        /**
-         * 監聽快捷菜單操作事件（從主窗口路由到對應頁面）
-         * @param callback 接收菜單項 routeName 的回調
-         */
-        onMenuAction: (callback: (routeName: string) => void) => void
       }
 
       // ─── 日誌（渲染進程 → 主進程文件） ────────────────────────
@@ -123,9 +118,6 @@ declare global {
        * 僅浮球窗口的 preload 提供此方法
        */
       showContextMenu: () => void
-
-      // ─── 浮球菜單操作（舊 Vue overlay 方式，已保留供兼容） ──────
-      executeMenuAction: (actionType: string, payload?: string) => void
 
       // ─── 通用 IPC 事件監聽 ─────────────────────────────────
       /**

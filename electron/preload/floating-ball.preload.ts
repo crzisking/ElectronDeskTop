@@ -1,8 +1,9 @@
 /**
  * 浮球窗口預加載腳本，暴露的 API 比主窗口少。
- * 用於：浮球渲染進程；只需拖動、顯示主窗口、讀配置、轉發菜單導航。
+ * 用於：浮球渲染進程；只需拖動、顯示主窗口、讀配置、彈右鍵菜單。
  *
  * 注意：IPC 頻道常量直接內聯，不從 shared 模塊 import（避免 chunk 拆分問題）。
+ *       新增頻道時必須同步 electron/shared/ipc-channels.ts 與本檔的 IPC 對象。
  */
 
 import {contextBridge, ipcRenderer} from 'electron'
@@ -11,9 +12,9 @@ import {contextBridge, ipcRenderer} from 'electron'
 const IPC = {
     BALL_START_DRAG: 'floating-ball:start-drag',
     BALL_STOP_DRAG: 'floating-ball:stop-drag',
+    BALL_SHOW_CONTEXT_MENU: 'floating-ball:show-context-menu',
     WINDOW_SHOW: 'window:show',
-    CONFIG_READ: 'config:read',
-    BALL_MENU_ACTION: 'floating-ball:menu-action'
+    CONFIG_READ: 'config:read'
 } as const
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -38,29 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /**
    * 請求主進程彈原生 context menu。
    * 用原生而非 HTML 是因為浮球窗口只有 60×60，會把菜單裁掉。
+   * 主進程收到後自行讀 config.floatingBall.quickMenu，
+   * 各 action.type 由主進程一站式處理（不需要再從浮球反饋路由名稱）。
    */
-  showContextMenu: () => ipcRenderer.send('floating-ball:show-context-menu'),
-
-  /**
-   * 執行快捷菜單動作。
-   * navigate 類型走「先 show 主窗口 + 再 send routeName」兩步，
-   * 由主進程中轉到主窗口的 'floating-ball:navigate' 監聽。
-   */
-  executeMenuAction: (actionType: string, payload?: string) => {
-    switch (actionType) {
-      case 'show-main-window':
-          ipcRenderer.send(IPC.WINDOW_SHOW)
-        break
-
-      case 'navigate':
-          ipcRenderer.send(IPC.WINDOW_SHOW)
-        // 主進程收到後轉發給主窗口渲染進程
-          ipcRenderer.send(IPC.BALL_MENU_ACTION, payload)
-        break
-
-      case 'quit-app':
-        ipcRenderer.send('app:quit')
-        break
-    }
-  }
+  showContextMenu: () => ipcRenderer.send(IPC.BALL_SHOW_CONTEXT_MENU)
 })

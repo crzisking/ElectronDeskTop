@@ -404,7 +404,7 @@ export interface QuickMenuItem {
  *       break
  *
  *     case 'quit-app':
- *       window.electronAPI.executeMenuAction('quit-app')
+ *       app.quit()  // 主進程直接調用
  *       break
  *   }
  * }
@@ -416,9 +416,10 @@ export interface QuickMenuItem {
  * { "type": "quit-app" }
  *
  * ── 在哪裡被使用？ ──────────────────────────────────────────────
- * - 主進程的菜單 action 分發邏輯（處理右鍵菜單點擊）
- * - src/App.vue 中處理 floatingBall.onMenuAction 回調
- * - FloatingBall 組件的 executeMenuAction 方法
+ * - 主進程的 ipc-handlers/index.ts 透過原生 Menu.popup() 分派 action.type:
+ *   show-main-window / navigate / open-url / quit-app 全部在主進程一站式處理。
+ * - navigate 場景：主進程 webContents.send(IpcChannels.PUSH_BALL_NAVIGATE, routeName)
+ *   → 主窗口 App.vue 訂閱該頻道並呼叫 router.push。
  */
 export type QuickMenuAction =
   // 顯示主窗口（最常用操作，相當於「打開應用」）

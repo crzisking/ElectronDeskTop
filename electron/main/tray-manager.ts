@@ -8,6 +8,7 @@ import {app, Menu, nativeImage, Tray} from 'electron'
 import {join} from 'path'
 import {existsSync} from 'fs'
 import {logger} from './utils/logger'
+import {IpcChannels} from '../shared/ipc-channels'
 import type {WindowManager} from './window-manager'
 import type {ConfigManager} from './config-manager'
 
@@ -82,8 +83,8 @@ export class TrayManager {
               this.windowManager.showMainWindow()
               // 延遲 200ms 等窗口顯示後再導航
               setTimeout(() => {
-                // 與浮球右鍵菜單共用頻道，主窗口 App.vue 監聽 'floating-ball:navigate'
-                this.windowManager.sendToMainWindow('floating-ball:navigate', item.routeName)
+                  // 與浮球右鍵菜單共用頻道，主窗口 App.vue 監聽 PUSH_BALL_NAVIGATE
+                  this.windowManager.sendToMainWindow(IpcChannels.PUSH_BALL_NAVIGATE, item.routeName)
               }, 200)
             }
           }

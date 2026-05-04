@@ -1,16 +1,15 @@
 <script setup lang="ts">
 /**
- * 安全 iframe 容器組件
+ * iframe 容器組件
  *
  * 用於在應用內嵌入公司內部系統頁面。
  *
- * 安全配置說明（sandbox 屬性）：
- *  - allow-scripts      ：允許 iframe 內執行 JS（內部系統需要）
- *  - allow-same-origin  ：允許 iframe 訪問其自身源的 Cookie/Storage
- *  - allow-forms        ：允許表單提交（登錄表單等）
- *  - allow-popups       ：允許彈出新窗口（部分系統功能需要）
- *  - 不包含 allow-top-navigation：防止 iframe 劫持主窗口導航
- *  - 不包含 allow-modals：防止 iframe 顯示原生 alert/confirm
+ * 不使用 sandbox 屬性的原因：
+ *   原本的 sandbox="allow-scripts allow-same-origin allow-forms allow-popups ..."
+ *   按 MDN 規定，allow-scripts + allow-same-origin 兩者同時開啟時，
+ *   iframe 可以移除自身的 sandbox 屬性，等同於完全沒有沙箱。
+ *   既然嵌入的都是公司內部受信任系統，且必須讓所有功能正常工作，
+ *   就直接不寫 sandbox，避免讓「半生不熟的沙箱配置」誤導後續維護者。
  *
  * 超時機制：
  *  iframe 不會觸發 error 事件，加載失敗時只會顯示空白。
@@ -22,8 +21,13 @@
 import {onBeforeUnmount, ref, watch} from 'vue'
 import {Loading} from '@element-plus/icons-vue'
 
-/** 默認載入超時時間（毫秒） */
-const DEFAULT_TIMEOUT = 15_000
+/**
+ * 默認載入超時時間（毫秒）。
+ * 取 30 秒：本應用主要嵌入 Dify chatbot 等第三方頁面，
+ * 第三方服務冷啟動經常超過 15 秒，造成「首次進入提示加載失敗、退出再進就秒開」的體驗。
+ * 如果調用方知道自己嵌入的是慢服務（例如 BI 報表），可以再上調 timeout prop。
+ */
+const DEFAULT_TIMEOUT = 30_000
 
 const props = withDefaults(
     defineProps<{
@@ -33,7 +37,7 @@ const props = withDefaults(
       title: string
       /** 是否允許全屏（默認 true） */
       allowFullscreen?: boolean
-      /** 載入超時時間（毫秒），默認 15 秒 */
+      /** 載入超時時間（毫秒），默認 30 秒 */
       timeout?: number
     }>(),
     {timeout: DEFAULT_TIMEOUT}
@@ -90,6 +94,20 @@ function onError() {
   loadError.value = true
 }
 
+/**
+ * 「重新加載」按鈕點擊處理。
+ * 通過 iframe key 強制重新掛載；同時重置 loading / error 狀態並重啟超時計時器。
+ * 用於：超時失敗後讓用戶不必退出頁面就能重試。
+ */
+const reloadKey = ref(0)
+
+function reload() {
+  reloadKey.value++
+  isLoading.value = true
+  loadError.value = false
+  startTimeout()
+}
+
 onBeforeUnmount(() => {
   clearTimeoutTimer()
 })
@@ -108,19 +126,24 @@ onBeforeUnmount(() => {
       <el-result
         icon="warning"
         title="頁面加載失敗"
-        sub-title="請確認系統地址是否可訪問，或嘗試在外部瀏覽器中打開"
-      />
+        sub-title="網絡較慢或系統暫時無法訪問，可點擊重新加載重試"
+      >
+        <template #extra>
+          <el-button type="primary" @click="reload">重新加載</el-button>
+        </template>
+      </el-result>
     </div>
 
-    <!-- 實際 iframe -->
+    <!-- 實際 iframe（不使用 sandbox，理由見 script 區塊頂部註釋） -->
+    <!-- :key="reloadKey" 用於「重新加載」按鈕觸發強制重新掛載 -->
     <iframe
       v-if="!loadError"
+      :key="reloadKey"
       :src="src"
       :title="title"
       :allowfullscreen="allowFullscreen !== false"
       class="system-iframe"
       :class="{ 'iframe-hidden': isLoading }"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
       referrerpolicy="no-referrer-when-downgrade"
       @load="onLoad"
       @error="onError"
@@ -147,7 +170,8 @@ onBeforeUnmount(() => {
   gap: 12px;
   background: var(--el-bg-color-page);
   color: var(--el-text-color-secondary);
-  z-index: 10;
+  /* 蓋住 iframe（內容層 z-index: 0），用全局 token 而非魔法數字 */
+  z-index: var(--z-iframe-overlay);
 }
 
 .loading-icon {
