@@ -5,15 +5,8 @@
  */
 export const IpcChannels = {
 
-  // ─── Auth Token 加密存儲（safeStorage） ─────────────────────────────
-  /** AUTH_GET_TOKEN：讀取已加密 Token，主進程解密後返回明文。invoke。 */
-  AUTH_GET_TOKEN: 'auth:get-token',
-
-  /** AUTH_SET_TOKEN：傳入明文 Token，主進程 safeStorage 加密後落地。invoke。 */
-  AUTH_SET_TOKEN: 'auth:set-token',
-
-  /** AUTH_DELETE_TOKEN：登出時清除已存儲的 Token。invoke。 */
-  AUTH_DELETE_TOKEN: 'auth:delete-token',
+  // 註：原 AUTH_* IPC 頻道已移除 —— Token 改為僅放渲染端 Pinia store（auth.store.ts），
+  // 不再持久化到磁盤，關閉應用即丟失，下次啟動需重新登錄。
 
   // ─── 配置管理 ──────────────────────────────────────────────────────────
   /** CONFIG_READ：讀取完整 AppConfig。preload.config.read → config.handlers。invoke。 */
