@@ -48,6 +48,17 @@ interface UpdateInfo {
 // ── 模塊級單例狀態（整個應用共享） ──────────────────────────────
 const state = ref<UpdateState>('idle')
 const lastError = ref<string>('')
+
+/**
+ * 已通知過的版本號（按事件類型）。
+ * 防止同一 push:update-* 事件對同一版本重複彈通知 —— 來源可能是：
+ *  1. 主進程在短時間內被多次觸發 check（如登錄檢查 + 用戶手動再點一次）
+ *  2. dev 模式 HMR 導致 electronAPI.on 累加監聽器（preload 的 ipcRenderer.on
+ *     不會自動去重，舊模塊實例的 wrapper 仍然存活）
+ * 用版本字符串識別「同一次更新」，跨重啟才會自然清空（模塊級變量）。
+ */
+const notifiedAvailableVersion = ref<string>('')
+const notifiedDownloadedVersion = ref<string>('')
 const progress = ref<UpdateProgress>({
   percent: 0,
   bytesPerSecond: 0,
@@ -76,12 +87,19 @@ function bootstrap(): void {
     state.value = 'checking'
   })
 
-  // 發現新版
+  // 發現新版 → 通知用戶開始背景下載（同一版本只通知一次）
   api.on('push:update-available', (...args: unknown[]) => {
     clearCheckTimeout()
     const info = args[0] as UpdateInfo
     state.value = 'available'
     availableInfo.value = info
+
+    // 去重：同版本不重複彈窗（防止重複監聽 / 重複 check 導致多通知）
+    if (notifiedAvailableVersion.value === info.version) {
+      logger.debug(`update-available 重複觸發，忽略：${info.version}`, 'useUpdate')
+      return
+    }
+    notifiedAvailableVersion.value = info.version
 
     ElNotification({
       title: `發現新版本 ${info.version}`,
@@ -117,6 +135,13 @@ function bootstrap(): void {
     const info = args[0] as UpdateInfo
     state.value = 'downloaded'
     availableInfo.value = info
+
+    // 去重：同版本不重複彈窗也不重複觸發重啟定時器
+    if (notifiedDownloadedVersion.value === info.version) {
+      logger.debug(`update-downloaded 重複觸發，忽略：${info.version}`, 'useUpdate')
+      return
+    }
+    notifiedDownloadedVersion.value = info.version
 
     ElNotification({
       title: `新版本 ${info.version} 已下載完成`,
