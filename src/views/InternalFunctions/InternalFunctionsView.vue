@@ -79,15 +79,6 @@ function handleOpen(tool: InternalTool) {
 
 /** 應用版本：從 app-config.json 的 version 字段讀取 */
 const appVersion = computed(() => configStore.appConfig?.version ?? '—')
-
-/**
- * API 環境標籤：根據 apiBaseUrl 是否包含 prod 判斷。
- * 只顯示「正式」/「測試」，不暴露具體環境名稱。
- */
-const apiEnv = computed(() =>
-  configStore.functionsConfig?.apiBaseUrl?.includes('prod') ? '正式' : '測試'
-)
-
 </script>
 
 <template>
@@ -183,10 +174,9 @@ const apiEnv = computed(() =>
         <span class="status-dot" />
         <span>系統運作正常</span>
         <span class="footer-sep">·</span>
-        <span>{{ apiEnv }}環境</span>
       </div>
       <div class="page-footer__right">
-        © {{ new Date().getFullYear() }} ICHIA Enterprise · build {{ appVersion }}
+        © {{ new Date().getFullYear() }} ICHIA Enterprise {{ appVersion }}
       </div>
     </div>
   </div>
