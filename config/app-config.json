@@ -35,6 +35,20 @@
     ]
   },
 
+  "systemLinks": {
+    "_comment": "側邊欄『系統』分組的外部資源連結，獨立於工作台菜單，啟動即可見。點擊用默認瀏覽器打開（Electron 透過 setWindowOpenHandler 將 window.open 轉成 shell.openExternal）",
+    "_comment_items": "鏈接項陣列，每項：id（唯一標識）、label（顯示文字）、icon（Element Plus 圖標名稱）、url（完整 URL）、enabled（是否啟用）",
+    "items": [
+      {
+        "id": "docs-center",
+        "label": "文檔中心",
+        "icon": "Document",
+        "url": "http://192.168.120.135:10002/",
+        "enabled": true
+      }
+    ]
+  },
+
   "floatingBall": {
     "_comment": "桌面浮球配置",
     "_comment_size": "浮球直徑，單位為像素（px）",

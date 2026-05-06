@@ -30,6 +30,11 @@ const DEFAULT_CONFIG = {
       {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true}
     ]
   },
+  systemLinks: {
+    items: [
+      {id: 'docs-center', label: '文檔中心', icon: 'Document', url: 'http://192.168.120.135:10002/', enabled: true}
+    ]
+  },
   floatingBall: {
     size: 60,
     opacity: 0.9,

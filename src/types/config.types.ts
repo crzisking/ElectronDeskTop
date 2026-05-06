@@ -65,6 +65,13 @@ export interface AppConfig {
   sidebar: SidebarConfig
 
   /**
+   * 側邊欄『系統』分組外部連結配置
+   * 對應 JSON：{ "systemLinks": { "items": [...] } }
+   * 詳細結構見 SystemLinksConfig interface
+   */
+  systemLinks: SystemLinksConfig
+
+  /**
    * 浮動小球配置
    * 對應 JSON：{ "floatingBall": { "size": 60, "opacity": 0.9, ... } }
    * 詳細結構見 FloatingBallConfig interface
@@ -266,6 +273,48 @@ export interface SidebarItem {
    * 不設置此字段 = 不顯示徽標
    */
   badge?: string
+}
+
+// ── 側邊欄『系統』分組外部連結 ────────────────────────────────────────
+// 對應 JSON：
+// "systemLinks": {
+//   "items": [ { "id": "docs-center", "label": "文檔中心", ... } ]
+// }
+//
+// 為什麼跟 sidebar.items 分開：
+//  sidebar.items 是路由跳轉項（routeName 驅動內部頁面），
+//  systemLinks.items 則是外部 URL 入口，點擊用默認瀏覽器打開，
+//  語義不同。混在一起會讓徽標計數、路由高亮邏輯混亂。
+export interface SystemLinksConfig {
+  /**
+   * 連結列表（渲染順序與數組順序一致）
+   * 在哪裡用：SidebarNav.vue「系統」分組 v-for 渲染
+   */
+  items: SystemLinkItem[]
+}
+
+export interface SystemLinkItem {
+  /** 唯一標識符（v-for key） */
+  id: string
+
+  /** 顯示文字（折疊狀態下作為 tooltip） */
+  label: string
+
+  /**
+   * Element Plus 圖標名稱（駝峰格式）
+   * 例：'Document' → <el-icon><Document /></el-icon>
+   */
+  icon: string
+
+  /**
+   * 點擊後打開的完整 URL
+   * 透過 window.open(url, '_blank')；Electron 的 setWindowOpenHandler
+   * 會攔截並轉為 shell.openExternal，由系統默認瀏覽器處理
+   */
+  url: string
+
+  /** 是否啟用（false 時不渲染） */
+  enabled: boolean
 }
 
 // ── 浮動小球 ──────────────────────────────────────────────────────────

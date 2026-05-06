@@ -18,13 +18,14 @@
  */
 
 import {computed, ref} from 'vue'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import SidebarNavItem from './SidebarNavItem.vue'
 import SettingsDialog from '@/views/Settings/SettingsDialog.vue'
 import {ArrowLeftBold, Setting} from '@element-plus/icons-vue'
-import type {SidebarItem} from '@/types/config.types'
+import type {SidebarItem, SystemLinkItem} from '@/types/config.types'
 
 const configStore = useConfigStore()
 const uiStore = useUiStore()
@@ -52,6 +53,24 @@ const workspaceItems = computed<SidebarItem[]>(() => {
     return badge ? { ...item, badge } : item
   })
 })
+
+/** 系統分組外部連結（來自 config.systemLinks.items） */
+const systemLinks = computed<SystemLinkItem[]>(() => configStore.systemLinkItems)
+
+/** 動態解析 Element Plus 圖標組件（系統連結用） */
+function resolveIcon(name: string) {
+  const icons = ElementPlusIconsVue as Record<string, unknown>
+  return icons[name] ?? null
+}
+
+/**
+ * 點擊系統連結 → 用默認瀏覽器打開
+ * 在 Electron 中 window.open 被 setWindowOpenHandler 攔截，
+ * 內部會調用 shell.openExternal 交給系統瀏覽器處理
+ */
+function openSystemLink(link: SystemLinkItem) {
+  window.open(link.url, '_blank')
+}
 
 /** 當前是否折疊 */
 const collapsed = computed(() => uiStore.sidebarCollapsed)
@@ -92,6 +111,31 @@ function openSettings() {
         <div v-if="workspaceItems.length === 0" class="nav-empty">
           <el-text type="info" size="small">菜單配置為空</el-text>
         </div>
+      </nav>
+    </div>
+
+    <!-- ── 系統分組：外部連結（文檔中心等） ──────────────── -->
+    <div v-if="systemLinks.length > 0" class="sidebar-section">
+      <div v-show="!collapsed" class="section-label">系统</div>
+      <nav class="section-nav" role="menu" aria-label="系统">
+        <button
+          v-for="link in systemLinks"
+          :key="link.id"
+          type="button"
+          class="nav-item"
+          :class="{ 'is-collapsed': collapsed }"
+          :title="collapsed ? link.label : ''"
+          role="menuitem"
+          @click="openSystemLink(link)"
+        >
+          <span class="nav-icon">
+            <el-icon v-if="resolveIcon(link.icon)" :size="16">
+              <component :is="resolveIcon(link.icon)" />
+            </el-icon>
+            <span v-else class="icon-placeholder">{{ link.label.charAt(0) }}</span>
+          </span>
+          <span v-show="!collapsed" class="nav-label">{{ link.label }}</span>
+        </button>
       </nav>
     </div>
 
@@ -176,6 +220,66 @@ function openSettings() {
 .nav-empty {
   padding: 8px;
   text-align: center;
+}
+
+/* ── 系統分組：外部連結按鈕（樣式對齊 SidebarNavItem，但無路由激活態） ── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-item.is-collapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+.nav-item:hover {
+  background: var(--app-bg-elevated);
+  color: var(--app-text-primary);
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.icon-placeholder {
+  width: 18px;
+  height: 18px;
+  background: var(--app-bg-muted);
+  color: inherit;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.nav-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
 }
 
 /* ── Spacer：把用戶卡片推到底 ──────────────────────────────── */

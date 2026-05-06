@@ -12,7 +12,7 @@
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import {logger} from '@/utils/logger'
-import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink} from '@/types/config.types'
+import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink, SystemLinkItem} from '@/types/config.types'
 
 export const useConfigStore = defineStore('config', () => {
   // ─── State ────────────────────────────────────────────────
@@ -34,6 +34,11 @@ export const useConfigStore = defineStore('config', () => {
   /** 是否默認折疊側邊欄 */
   const sidebarDefaultCollapsed = computed<boolean>(
     () => appConfig.value?.sidebar.defaultCollapsed ?? false
+  )
+
+  /** 側邊欄『系統』分組的外部連結（過濾禁用項） */
+  const systemLinkItems = computed<SystemLinkItem[]>(() =>
+      (appConfig.value?.systemLinks?.items ?? []).filter((item) => item.enabled)
   )
 
   /** 浮球快捷菜單項（過濾禁用項） */
@@ -90,6 +95,7 @@ export const useConfigStore = defineStore('config', () => {
     // Getters
     sidebarItems,
     sidebarDefaultCollapsed,
+    systemLinkItems,
     floatingBallMenuItems,
     floatingBallConfig,
     platformSystems,
