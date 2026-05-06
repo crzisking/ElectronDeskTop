@@ -6,9 +6,15 @@
 
 import { writeLine } from './log-file-writer'
 
-/** ISO 毫秒精度時間戳，例 2026-04-29 14:35:22.123 */
+/** 本地時間毫秒精度時間戳，例 2026-04-29 14:35:22.123（不用 toISOString，那是 UTC） */
 function timestamp(): string {
-  return new Date().toISOString().replace('T', ' ').slice(0, 23)
+  const d = new Date()
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0')
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.` +
+    `${pad(d.getMilliseconds(), 3)}`
+  )
 }
 
 /** 行格式 `[timestamp] [LEVEL][module] message [args]` */

@@ -77,11 +77,21 @@ function forwardToMain(level: LogLevel, message: string, module?: string, args?:
   }
 }
 
+/** 本地時間毫秒精度時間戳，例 2026-04-29 14:35:22.123（不用 toISOString，那是 UTC） */
+function localTimestamp(): string {
+  const d = new Date()
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0')
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.` +
+    `${pad(d.getMilliseconds(), 3)}`
+  )
+}
+
 /** 控制台輸出格式（與主進程 logger 對齊） */
 function consolePrefix(level: LogLevel, module?: string): string {
-  const ts = new Date().toISOString().replace('T', ' ').slice(0, 23)
   const mod = module ? `[${module}]` : ''
-  return `[${ts}] [${level}]${mod}`
+  return `[${localTimestamp()}] [${level}]${mod}`
 }
 
 /** 是否為 dev 模式（影響 debug 級別輸出） */
