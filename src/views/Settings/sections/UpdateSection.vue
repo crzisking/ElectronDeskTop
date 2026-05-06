@@ -22,7 +22,7 @@ import SettingsRow from '../components/SettingsRow.vue'
 import { Loading, Refresh } from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()
-const { state, progress, availableInfo, lastError, manualCheck, install } = useUpdate()
+const { state, progress, availableInfo, lastError, manualCheck } = useUpdate()
 
 /** 當前版本（讀 app-config.json 的 version 字段） */
 const currentVersion = computed(() => configStore.appConfig?.version ?? '—')
@@ -74,12 +74,12 @@ const progressText = computed(() => {
         </span>
       </template>
 
-      <!-- 已下載完成：顯示重啟按鈕 -->
+      <!-- 已下載完成：自動重啟由 useUpdate 統一觸發（5 秒緩衝後 quitAndInstall），
+           這裡只展示狀態文字，不提供按鈕 — 設計意圖是不允許用戶延後更新 -->
       <template v-else-if="state === 'downloaded'">
         <span class="status-text success">
-          {{ availableInfo?.version ? `v ${availableInfo.version} 已就緒` : '已就緒' }}
+          {{ availableInfo?.version ? `v ${availableInfo.version} 已就緒，即將自動重啟` : '已就緒，即將自動重啟' }}
         </span>
-        <el-button type="primary" size="small" @click="install">立即重啟</el-button>
       </template>
 
       <!-- 錯誤：顯示錯誤文字 + 重試 -->

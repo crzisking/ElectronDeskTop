@@ -12,6 +12,7 @@
 import {onMounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth.store'
+import {useUpdate} from '@/composables/useUpdate'
 import {logger} from '@/utils/logger'
 import {Lock, User} from '@element-plus/icons-vue'
 import type {FormInstance, FormRules} from 'element-plus'
@@ -76,7 +77,13 @@ async function handleLogin() {
 
   try {
     await authStore.login(form.userName, form.password)
-    // 登錄成功 → 跳轉首頁
+
+    // 登錄成功 → 觸發一次靜默更新檢查（不 await，不阻塞跳轉）
+    // 與每日 11:00 的定時檢查互補：用戶每次重新登錄即可立刻得知是否有新版
+    // loginCheck 內部已包含失敗兜底，不會把錯誤拋出影響登錄流程
+    void useUpdate().loginCheck()
+
+    // 跳轉首頁
     await router.push({name: 'unified-platform'})
   } catch (err: unknown) {
     // 顯示後端返回的錯誤信息或通用提示

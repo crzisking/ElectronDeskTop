@@ -16,8 +16,11 @@
  */
 
 import { ref, readonly } from 'vue'
-import { ElNotification, ElMessageBox, ElMessage } from 'element-plus'
+import { ElNotification, ElMessage } from 'element-plus'
 import {logger} from '@/utils/logger'
+
+/** 下載完成後到自動重啟之間的緩衝時間，給用戶看到通知並保存工作 */
+const RESTART_DELAY_MS = 5_000
 
 /** 更新流程當前狀態 */
 type UpdateState =
@@ -106,30 +109,25 @@ function bootstrap(): void {
     progress.value = args[0] as UpdateProgress
   })
 
-  // 下載完成 → 詢問用戶是否立即重啟
-  api.on('push:update-downloaded', async (...args: unknown[]) => {
+  // 下載完成 → 通知用戶後強制重啟（不給延後選項）
+  // 設計取捨：避免用戶長期掛在舊版上錯過修復，下載即重啟；
+  // 給 RESTART_DELAY_MS 緩衝讓用戶看清通知並保存任何進行中的工作
+  api.on('push:update-downloaded', (...args: unknown[]) => {
     clearCheckTimeout()
     const info = args[0] as UpdateInfo
     state.value = 'downloaded'
     availableInfo.value = info
 
-    const confirmed = await ElMessageBox.confirm(
-      `新版本 ${info.version} 已下載完成，立即重啟以完成安裝？`,
-      '更新就緒',
-      {
-        confirmButtonText: '立即重啟',
-        cancelButtonText: '稍後再說',
-        type: 'success',
-        center: true,
-        closeOnClickModal: false
-      }
-    ).catch(() => false)
+    ElNotification({
+      title: `新版本 ${info.version} 已下載完成`,
+      message: `應用將在 ${Math.round(RESTART_DELAY_MS / 1000)} 秒後自動重啟以完成安裝，請保存您的工作。`,
+      type: 'success',
+      duration: RESTART_DELAY_MS,
+      position: 'bottom-right',
+      showClose: false
+    })
 
-    if (confirmed) {
-      install()
-    }
-    // 用戶選「稍後」→ 等下次退出時自動安裝（若 autoInstallOnAppQuit=true）
-    // 或下次手動關閉應用時觸發
+    setTimeout(() => install(), RESTART_DELAY_MS)
   })
 
   // 錯誤：清掉超時 timer，更新狀態，必要時提示用戶
@@ -180,6 +178,37 @@ async function manualCheck(): Promise<void> {
   await window.electronAPI.update.check()
 }
 
+/**
+ * 登錄成功後的靜默檢查更新。
+ * 與 manualCheck 的差異：
+ *  - 不設置 userInitiated → 「已是最新版」/「失敗」事件不會彈 ElMessage
+ *  - 但若真有新版本，bootstrap 中的 ElNotification（line 83）依然會顯示，
+ *    用戶仍會收到提醒，符合「登錄時自動發現新版」的預期
+ *  - 同樣帶 30 秒超時保護，避免 dev 模式或網路異常時 UI 卡 checking
+ *  - 失敗不拋給呼叫方（登錄流程不應因更新檢查失敗而中斷）
+ */
+async function loginCheck(): Promise<void> {
+  // 已經在檢查 / 下載中就不要重複觸發
+  if (state.value === 'checking' || state.value === 'downloading') return
+
+  state.value = 'checking'
+  if (checkTimeoutTimer) clearTimeout(checkTimeoutTimer)
+  checkTimeoutTimer = setTimeout(() => {
+    if (state.value === 'checking') {
+      state.value = 'idle' // 靜默回退，不彈錯誤
+      logger.warn('登錄後檢查更新超時（靜默忽略）', 'useUpdate')
+    }
+  }, CHECK_TIMEOUT_MS)
+
+  try {
+    await window.electronAPI.update.check()
+  } catch (err) {
+    clearCheckTimeout()
+    state.value = 'idle'
+    logger.warn('登錄後檢查更新失敗（靜默忽略）', 'useUpdate', err)
+  }
+}
+
 /** 清除超時 timer（任何 push:update-* 事件抵達後呼叫） */
 function clearCheckTimeout(): void {
   if (checkTimeoutTimer) {
@@ -188,7 +217,11 @@ function clearCheckTimeout(): void {
   }
 }
 
-/** 立即重啟並安裝新版（用戶點擊「立即重啟」按鈕後呼叫） */
+/**
+ * 立即重啟並安裝新版。
+ * 由 push:update-downloaded handler 在 RESTART_DELAY_MS 緩衝後自動呼叫，
+ * 用戶不再有手動觸發的入口（自動更新策略：下載完即裝，不允許延後）。
+ */
 function install(): void {
   void window.electronAPI.update.quitAndInstall()
 }
@@ -201,6 +234,6 @@ export function useUpdate() {
     availableInfo: readonly(availableInfo),
     bootstrap,
     manualCheck,
-    install
+    loginCheck
   }
 }
