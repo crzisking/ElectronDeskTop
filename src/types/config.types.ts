@@ -43,11 +43,10 @@
 // }
 export interface AppConfig {
   /**
-   * 配置文件 Schema 版本號
-   * 用於「版本遷移」：當配置結構升級時，可根據版本號判斷需要做哪些兼容處理
-   * 例如：v1 沒有 floatingBall.snapToEdge 字段，v2 新增了，
-   * 讀取時發現 version === '1' 就自動填入默認值
-   * 對應 JSON：{ "version": "1.0.0" }
+   * 應用版本號（只讀）
+   * 由主進程 ConfigManager.getConfig() 從 app.getVersion()（即 package.json 的 version）動態注入，
+   * 不寫入 app-config.json，也不可透過 CONFIG_WRITE 修改。
+   * 唯一真實源：package.json，這樣 electron-updater 比對版本和 UI 顯示版本永遠一致。
    */
   version: string
 

@@ -15,8 +15,9 @@ import type {AppConfig} from '../../src/types/config.types'
  * 僅在 dev 缺檔 / prod 複製失敗且 userData 也無檔時使用。
  * 注意：正常情況直接讀 app-config.json，此處保持與其同步即可。
  */
-const DEFAULT_CONFIG: AppConfig = {
-  version: '1.0.0',
+// version 由 app.getVersion() 在 getConfig() 時動態注入，唯一真實源是 package.json
+// 這裡用 as 斷言補上類型，避免 DEFAULT_CONFIG 缺 version 編譯不過
+const DEFAULT_CONFIG = {
   app: {
     language: 'zh-TW',
     startMinimized: false,
@@ -72,11 +73,11 @@ const DEFAULT_CONFIG: AppConfig = {
     autoDownload: true,
     autoInstallOnAppQuit: false
   }
-}
+} as Omit<AppConfig, 'version'>
 
 export class ConfigManager {
-  /** 當前配置（初始化後永不為 null） */
-  private config: AppConfig = DEFAULT_CONFIG
+  /** 當前配置（初始化後永不為 null）；version 在 getConfig() 動態注入 */
+  private config: Omit<AppConfig, 'version'> = DEFAULT_CONFIG
 
   /** 配置文件磁盤路徑 */
   private readonly configFilePath: string
@@ -105,8 +106,10 @@ export class ConfigManager {
       if (existsSync(this.configFilePath)) {
         const raw = readFileSync(this.configFilePath, 'utf-8')
         const parsed = JSON.parse(raw) as Partial<AppConfig>
+        // 即便舊版 JSON 仍有 version 字段也忽略，version 改由 app.getVersion() 注入
+        if ('version' in parsed) delete (parsed as Record<string, unknown>).version
         // 深合並確保新增字段有默認值
-        this.config = this.deepMerge(DEFAULT_CONFIG, parsed) as AppConfig
+        this.config = this.deepMerge(DEFAULT_CONFIG, parsed) as Omit<AppConfig, 'version'>
         logger.info('配置文件加載成功', 'ConfigManager')
       } else {
         logger.warn('配置文件不存在，使用默認配置', 'ConfigManager')
@@ -118,9 +121,12 @@ export class ConfigManager {
     }
   }
 
-  /** 取當前配置 */
+  /**
+   * 取當前配置；version 字段在此處從 app.getVersion() 注入，
+   * 所以渲染端讀到的版本永遠等於 package.json 裡 electron-builder 打包用的版本。
+   */
   getConfig(): AppConfig {
-    return this.config
+    return { ...this.config, version: app.getVersion() }
   }
 
   /**
@@ -144,7 +150,9 @@ export class ConfigManager {
    */
   async writeConfig(partial: Partial<AppConfig>): Promise<void> {
     try {
-      this.config = this.deepMerge(this.config, partial) as AppConfig
+      // version 不寫文件（運行時從 app.getVersion() 提供）
+      if ('version' in partial) delete (partial as Record<string, unknown>).version
+      this.config = this.deepMerge(this.config, partial) as Omit<AppConfig, 'version'>
       const dir = dirname(this.configFilePath)
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true })

@@ -14,8 +14,9 @@ import type {AppConfig} from '../../../src/types/config.types'
  * 用於：CONFIG_WRITE 時校驗渲染進程傳入的 partial 是否只包含合法字段，
  * 防止惡意或有 bug 的渲染進程寫入非法數據。
  */
+// version 由主進程從 app.getVersion() 注入，不允許渲染端寫入
 const ALLOWED_CONFIG_KEYS = new Set<keyof AppConfig>([
-    'version', 'app', 'sidebar', 'floatingBall',
+    'app', 'sidebar', 'floatingBall',
     'unifiedPlatform', 'internalFunctions', 'update'
 ])
 

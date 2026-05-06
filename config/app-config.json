@@ -1,7 +1,6 @@
 {
   "_comment": "此 JSON 文件中所有以 '_comment' 開頭的欄位均為注釋，不參與程式邏輯，僅供開發人員閱讀參考",
-
-  "version": "1.0.2",
+  "_comment_version": "版本號不再寫在此文件，運行時由主進程 app.getVersion() 注入（唯一真實源是 package.json）",
 
   "app": {
     "_comment": "應用全局設定（本應用只支持單一亮色主題，不提供 theme 切換）",

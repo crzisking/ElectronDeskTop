@@ -314,6 +314,11 @@ export class WindowManager {
     })
 
     child.loadURL(url).catch((err) => {
+      // 窗口在載入完成前被關閉時，Electron 會 reject 這個 Promise（常見 ERR_FAILED -2 / ERR_ABORTED -3），不算真正錯誤
+      if (child.isDestroyed() || err?.code === 'ERR_ABORTED' || err?.errno === -3 || err?.errno === -2) {
+        logger.info(`子窗口 loadURL 被中斷（窗口已關閉或載入被取消）: ${url}`, 'WindowManager')
+        return
+      }
       logger.error(`子窗口 loadURL 拋異常: ${url}`, 'WindowManager', err)
     })
 
