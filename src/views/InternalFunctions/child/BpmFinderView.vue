@@ -9,11 +9,13 @@
 import { ArrowLeft, ChromeFilled } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import IframeContainer from '@/components/common/IframeContainer.vue'
 import { useConfigStore } from '@/stores/config.store'
 
 const router = useRouter()
 const configStore = useConfigStore()
+const {t} = useI18n()
 
 /** 從 config 找到 bpmUserFinder 工具的 Dify embed URL */
 const difyUrl = computed<string | undefined>(
@@ -32,11 +34,12 @@ function openInBrowser() {
 
 <template>
   <div class="bpm-finder-view">
+    <!-- 原文：返回 / BPM 負責人查詢 / 在瀏覽器開啟 -->
     <div class="toolbar">
-      <el-button :icon="ArrowLeft" text @click="goBack">返回</el-button>
-      <span class="toolbar-title">BPM 負責人查詢</span>
+      <el-button :icon="ArrowLeft" text @click="goBack">{{ t('repair.back') }}</el-button>
+      <span class="toolbar-title">{{ t('ai.bpmFinder.title') }}</span>
       <div class="toolbar-spacer" />
-      <el-button v-if="difyUrl" text :icon="ChromeFilled" @click="openInBrowser">在瀏覽器開啟</el-button>
+      <el-button v-if="difyUrl" text :icon="ChromeFilled" @click="openInBrowser">{{ t('ai.bpmFinder.openInBrowserBtn') }}</el-button>
     </div>
 
     <div class="iframe-wrapper">
@@ -46,9 +49,10 @@ function openInBrowser() {
         title="BPM Finder"
       />
 
+      <!-- 原文：尚未設定 Dify 網址，請在 app-config.json 的 internalFunctions.tools[bpmUserFinder].url 中填入正確的 URL -->
       <el-empty
         v-else
-        description="尚未設定 Dify 網址，請在 app-config.json 的 internalFunctions.tools[bpmUserFinder].url 中填入正確的 URL"
+        :description="t('ai.bpmFinder.urlNotConfigured')"
         :image-size="120"
       />
     </div>

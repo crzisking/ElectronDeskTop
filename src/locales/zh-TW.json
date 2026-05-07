@@ -1,0 +1,293 @@
+{
+  "_comment": "繁體中文（台灣）字典 — 應用基線語言。結構約定：第一層按業務模塊/頁面劃分；插值用 {name} 語法；config.* 對應 app-config.json 的 id，缺失時組件會 fallback 到 JSON 原值。新增 key 必須與 en.json 同步加。",
+
+  "common": {
+    "confirm": "確認",
+    "cancel": "取消",
+    "close": "關閉",
+    "save": "保存",
+    "retry": "重試",
+    "loading": "加載中…",
+    "saving": "保存中…",
+    "success": "成功",
+    "error": "錯誤",
+    "warning": "警告",
+    "yes": "是",
+    "no": "否"
+  },
+
+  "app": {
+    "name": "ICHIA 企業客戶端",
+    "configLoadFailed": "應用配置加載失敗，部分功能可能不可用",
+    "configUpdated": "配置已更新",
+    "configReloadFailed": "配置重載失敗，使用舊配置",
+    "initializing": "應用初始化中..."
+  },
+
+  "titleBar": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "還原",
+    "closeToTray": "關閉（最小化到浮球）"
+  },
+
+  "login": {
+    "eyebrowEn": "ICHIA ENTERPRISE",
+    "eyebrowZh": "· 企業客戶端",
+    "welcomeBack1": "歡迎",
+    "welcomeBack2": "回來",
+    "desc": "統一平台 · AI 助手 · 業務管理",
+    "fieldUserName": "工號",
+    "fieldPassword": "密碼",
+    "placeholderUserName": "請輸入工號，如 S2403279",
+    "placeholderPassword": "請輸入密碼",
+    "rules": {
+      "userNameRequired": "請輸入工號",
+      "userNameInvalid": "工號格式不正確",
+      "passwordRequired": "請輸入密碼",
+      "passwordEmpty": "密碼不能為空"
+    },
+    "submit": "登 錄",
+    "submitting": "登錄中...",
+    "errorFallback": "登錄失敗，請稍後再試"
+  },
+
+  "sidebar": {
+    "sectionWorkspace": "工作台",
+    "sectionSystem": "系统",
+    "emptyMenu": "菜單配置為空",
+    "collapse": "收合側邊欄",
+    "expand": "展開側邊欄",
+    "settings": "設定",
+    "guest": "訪客"
+  },
+
+  "settings": {
+    "title": "設定",
+    "subtitle": "管理應用偏好與更新",
+    "sections": {
+      "general": "通用",
+      "update": "軟體更新",
+      "language": "語言",
+      "log": "日誌與診斷",
+      "about": "關於"
+    },
+    "language": {
+      "label": "界面語言",
+      "description": "切換應用的顯示語言",
+      "current": "當前語言",
+      "currentDesc": "目前應用顯示使用的語言",
+      "switched": "語言已切換",
+      "switchFailed": "語言切換失敗，已恢復原設定",
+      "zh-TW": "繁體中文",
+      "en": "English"
+    }
+  },
+
+  "update": {
+    "currentVersion": "當前版本",
+    "currentVersionDesc": "您目前使用的應用版本號",
+    "autoCheck": "自動檢查",
+    "autoCheckDesc": "每天定時自動檢查並下載新版本",
+    "autoCheckDisabled": "未啟用",
+    "checkBtn": "檢查更新",
+    "checkBtnDesc": "立即連線伺服器查詢是否有新版本",
+    "checking": "檢查中…",
+    "downloading": "下載中 {percent}",
+    "downloaded": "v {version} 已就緒，即將自動重啟",
+    "downloadedNoVersion": "已就緒，即將自動重啟",
+    "isLatest": "您已是最新版本",
+    "checkFailed": "檢查更新失敗：{message}",
+    "timeout": "檢查更新超時，請稍後再試或檢查網路",
+    "notifyAvailableTitle": "發現新版本 {version}",
+    "notifyAvailableMsg": "正在背景下載，下載完成後會通知您重啟。",
+    "notifyDownloadedTitle": "新版本 {version} 已下載完成",
+    "notifyDownloadedMsg": "應用將在 {seconds} 秒後自動重啟以完成安裝，請保存您的工作。"
+  },
+
+  "log": {
+    "folderTitle": "日誌資料夾",
+    "folderDesc": "包含應用運行記錄，遇到問題時請打包當日的 .log 檔回報",
+    "openBtn": "打開",
+    "openFailed": "打開日誌資料夾失敗",
+    "pathTitle": "路徑",
+    "pathDesc": "日誌資料夾的絕對路徑",
+    "copyBtn": "複製",
+    "copyHint": "請先點「打開日誌資料夾」",
+    "copied": "路徑已複製",
+    "copyFailed": "複製失敗，請手動複製",
+    "retentionTitle": "保留策略",
+    "retentionDesc": "超過 14 天的舊日誌會自動清理",
+    "retentionValue": "14 天"
+  },
+
+  "platform": {
+    "searchPlaceholder": "搜尋系統名稱或描述…",
+    "allSystems": "所有系統",
+    "systemsLabel": "SYSTEMS",
+    "tagSso": "SSO 直通",
+    "tagSsoEnabled": "SSO 已啟用",
+    "openModeIframe": "嵌入顯示",
+    "openModeWindow": "獨立窗口",
+    "openModeBrowser": "外部瀏覽器",
+    "backToList": "返回系統列表",
+    "openInBrowser": "在瀏覽器打開",
+    "emptyAll": "尚未配置任何系統，請編輯 app-config.json 的 unifiedPlatform.systems 字段",
+    "emptySearch": "未找到包含「{keyword}」的系統"
+  },
+
+  "internal": {
+    "searchPlaceholder": "搜尋功能名稱或描述…",
+    "commonTools": "常用功能",
+    "itemsLabel": "ITEMS",
+    "filterAll": "全部",
+    "filterProcess": "流程",
+    "filterSupport": "支援",
+    "comingSoon": "即將推出",
+    "comingSoonDesc": "更多企業內部工具陸續上線中",
+    "emptyAll": "尚未配置任何功能，請在 app-config.json 的 internalFunctions.tools 中添加",
+    "emptySearch": "未找到符合的功能",
+    "statusOk": "系統運作正常",
+    "routeFailed": "工具路由跳轉失敗"
+  },
+
+  "iframe": {
+    "loading": "頁面載入中…",
+    "errorTitle": "頁面無法載入",
+    "errorDesc": "可能因為網路、SSL 證書或目標站點不允許嵌入。可嘗試在瀏覽器中打開。",
+    "openInBrowser": "在瀏覽器打開",
+    "reload": "重新載入"
+  },
+
+  "loading": {
+    "default": "加載中..."
+  },
+
+  "repair": {
+    "back": "返回",
+    "tabSubmit": "提交報修",
+    "tabHistory": "我的工單",
+    "fieldTitle": "工單標題",
+    "fieldTitlePlaceholder": "請簡短描述問題，例如：電腦無法開機",
+    "fieldDesc": "問題描述",
+    "polishBtn": "使用AI整理",
+    "polishLimitReached": "已達 {limit} 次上限，請修改描述後再試",
+    "polishRemaining": "剩餘 {n} 次",
+    "editorTip": "正常輸入文字，或直接將圖片粘貼到編輯器",
+    "submitBtn": "提交報修",
+    "submitting": "提交中...",
+    "uploadingHint": "請等待圖片上傳完成",
+    "refresh": "刷新",
+    "tableEmpty": "暫無工單記錄",
+    "colTicketNo": "工單號",
+    "colTitle": "標題",
+    "colStatus": "狀態",
+    "colAssigned": "處理人",
+    "unassigned": "待分配",
+    "colSubmitTime": "提交時間",
+    "colAction": "操作",
+    "viewDetail": "詳情",
+    "emptyMyTickets": "您還沒有提交過工單",
+    "statusFilterAll": "全部",
+    "statusSubmitted": "已提交",
+    "statusAssigned": "已分配",
+    "statusClosed": "已關閉",
+    "detailTitle": "工單詳情",
+    "detailSubmitter": "提交人",
+    "itReply": "IT 匯報回覆",
+    "itReplyEmpty": "IT 尚未提交匯報回覆",
+    "attachments": "匯報附件（{n} 個）",
+    "polishDialogTitle": "✨ 使用AI整理",
+    "polishOriginal": "原始描述",
+    "polishArrow": "↓ AI 整理結果",
+    "polishResultLabel": "整理後的版本",
+    "polishGenerating": "生成中...",
+    "polishPlaceholder": "AI 正在生成中...",
+    "polishApply": "使用此版本",
+    "polishStreamError": "AI 整理失敗：{message}",
+    "submitSuccess": "提交成功",
+    "submitNotLoggedIn": "請先登入",
+    "validateFailed": "請完整填寫必填項",
+    "uploadingFiles": "圖片上傳中，請稍候",
+    "imageUploadFailed": "圖片上傳失敗",
+    "imageTooLarge": "圖片不能超過 5MB",
+    "ruleTitleRequired": "請填寫工單標題",
+    "ruleTitleMax": "標題不超過 100 個字元",
+    "ruleDescRequired": "請填寫問題描述",
+    "ruleDescMax": "描述不超過 2000 個字元",
+    "polishNeedDesc": "請先填寫問題描述",
+    "polishFailedHint": "AI 整理失敗，請確認服務是否可用",
+    "submitOk": "報修提交成功！工單號：{no}",
+    "uploadOnlyImage": "只能上傳圖片文件（jpg / png / gif 等）",
+    "uploadTooLarge": "{name} 超過 10MB，請壓縮後重試"
+  },
+
+  "ai": {
+    "bpmFinder": {
+      "title": "BPM 負責人查詢",
+      "desc": "輸入流程名稱或關鍵字，AI 為您找出對應的 BPM 表單負責人",
+      "openInBrowserBtn": "在瀏覽器開啟",
+      "urlNotConfigured": "尚未設定 Dify 網址，請在 app-config.json 的 internalFunctions.tools[bpmUserFinder].url 中填入正確的 URL"
+    },
+    "aiSop": {
+      "title": "AI SOP 生成",
+      "desc": "用文字描述業務需求，AI 自動生成 SOP 步驟",
+      "openInBrowserBtn": "在瀏覽器開啟"
+    },
+    "stream": {
+      "errorPrefix": "AI 服務出錯：",
+      "timeoutMsg": "AI 服務響應超時，請稍後再試",
+      "networkMsg": "網路異常，無法連接 AI 服務"
+    }
+  },
+
+  "aisop": {
+    "uploadHeader": "上傳文件至泛微發佈",
+    "titlePlaceholder": "請輸入文檔標題",
+    "titleRequired": "請填寫上傳標題",
+    "fileRequired": "請選擇文件",
+    "dragText1": "拖拽文件到這裡 或",
+    "dragClick": "點擊選擇",
+    "tip": "支援 PDF、Word、Excel、PPT、圖片、文字檔，最大 20MB",
+    "uploadBtn": "上傳",
+    "uploadOk": "上傳成功！文件id：{id}",
+    "uploadFailed": "上傳失敗：{msg}",
+    "unsupportedType": "不支援的文件類型，僅允許 PDF、Word、Excel、PPT、圖片、文字檔",
+    "fileTooLarge": "{name} 超過 20MB，請壓縮後重試",
+    "urlNotConfigured": "尚未設定 Dify 網址"
+  },
+
+  "auth": {
+    "tokenInvalid": "登入已失效，請重新登入",
+    "noPermission": "您沒有權限執行此操作",
+    "serverError": "服務器異常，請稍後再試",
+    "networkError": "網路連接失敗，請檢查網路"
+  },
+
+  "http": {
+    "tokenExpired": "無效的令牌",
+    "sysError": "系統出錯",
+    "networkError": "網絡連接錯誤",
+    "sessionExpired": "登錄已過期，點擊確認重新登錄。",
+    "unauthorized": "當前操作未授權",
+    "notFound": "未找到請求的資源"
+  },
+
+  "router": {
+    "login": "登入",
+    "unifiedPlatform": "統一平台",
+    "internalFunctions": "內部功能",
+    "bpmFinder": "BPM 負責人查詢",
+    "aiSop": "AI SOP 生成",
+    "itRepair": "IT 報修"
+  },
+
+  "config": {
+    "_comment": "config.* 對應 app-config.json 的 id；繁中默認沿用 JSON 原值（這裡留空），en.json 必須提供翻譯",
+    "sidebar": {},
+    "systemLinks": {},
+    "floatingBall": {},
+    "systems": {},
+    "tools": {}
+  }
+}

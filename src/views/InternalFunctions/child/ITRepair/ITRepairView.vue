@@ -11,6 +11,7 @@
  */
 import {ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {QuillEditor} from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import {ArrowLeft, MagicStick, View} from '@element-plus/icons-vue'
@@ -20,6 +21,7 @@ import RepairPolishDialog from './components/RepairPolishDialog.vue'
 import RepairDetailDialog from './components/RepairDetailDialog.vue'
 
 const router = useRouter()
+const {t} = useI18n()
 
 /**
  * 返回上一個頁面：優先使用瀏覽器歷史記錄；
@@ -85,8 +87,9 @@ function onTabChange(name: string | number) {
     <!-- 頁面頭部：僅返回按鈕 -->
     <div class="app-page-header app-page-header--compact">
       <div class="header-row">
-        <el-tooltip content="返回" placement="bottom">
-          <button class="app-icon-btn" aria-label="返回" @click="handleBack">
+        <!-- 原文 tooltip/aria：返回 -->
+        <el-tooltip :content="t('repair.back')" placement="bottom">
+          <button class="app-icon-btn" :aria-label="t('repair.back')" @click="handleBack">
             <el-icon :size="16"><ArrowLeft /></el-icon>
           </button>
         </el-tooltip>
@@ -97,7 +100,8 @@ function onTabChange(name: string | number) {
     <el-tabs v-model="activeTab" class="repair-tabs" @tab-change="onTabChange">
 
       <!-- ── 提交報修 Tab ──────────────────────────────────────── -->
-      <el-tab-pane label="提交報修" name="submit">
+      <!-- 原文：提交報修 -->
+      <el-tab-pane :label="t('repair.tabSubmit')" name="submit">
         <el-form
           ref="submitFormRef"
           :model="submitForm"
@@ -106,10 +110,11 @@ function onTabChange(name: string | number) {
           class="submit-form"
         >
           <!-- 工單標題 -->
-          <el-form-item label="工單標題" prop="title">
+          <!-- 原文 label：工單標題；placeholder：請簡短描述問題，例如：電腦無法開機 -->
+          <el-form-item :label="t('repair.fieldTitle')" prop="title">
             <el-input
               v-model="submitForm.title"
-              placeholder="請簡短描述問題，例如：電腦無法開機"
+              :placeholder="t('repair.fieldTitlePlaceholder')"
               maxlength="100"
               show-word-limit
               clearable
@@ -120,11 +125,13 @@ function onTabChange(name: string | number) {
           <el-form-item prop="description">
             <template #label>
               <span class="desc-label-row">
-                <span>問題描述</span>
+                <!-- 原文：問題描述 -->
+                <span>{{ t('repair.fieldDesc') }}</span>
+                <!-- 原文 tooltip 已達 N 次上限 / 剩餘 N 次；按鈕：使用AI整理 -->
                 <el-tooltip
                   :content="polishLimitReached
-                    ? `已達 ${POLISH_LIMIT} 次上限，請修改描述後再試`
-                    : `剩餘 ${POLISH_LIMIT - polishUsedCount} 次`"
+                    ? t('repair.polishLimitReached', {limit: POLISH_LIMIT})
+                    : t('repair.polishRemaining', {n: POLISH_LIMIT - polishUsedCount})"
                   placement="top"
                 >
                   <el-button
@@ -136,7 +143,7 @@ function onTabChange(name: string | number) {
                     @click="polishDescription"
                   >
                     <el-icon v-if="!polishLoading"><MagicStick /></el-icon>
-                    使用AI整理
+                    {{ t('repair.polishBtn') }}
                     <span v-if="polishUsedCount > 0" class="polish-count">
                       {{ polishUsedCount }}/{{ POLISH_LIMIT }}
                     </span>
@@ -155,14 +162,16 @@ function onTabChange(name: string | number) {
                 @ready="handleEditorReady"
                 @blur="handleEditorBlur"
               />
+              <!-- 原文 tip：Type normally or paste an image directly into the editor（本身已是英文，保持不變） -->
               <div class="editor-footer">
-                <span class="editor-tip">Type normally or paste an image directly into the editor</span>
+                <span class="editor-tip">{{ t('repair.editorTip') }}</span>
                 <span class="editor-count">{{ descriptionWordCount }}/2000</span>
               </div>
             </div>
           </el-form-item>
 
           <!-- 提交按鈕 -->
+          <!-- 原文：提交中... / 提交報修；hint：請等待圖片上傳完成 -->
           <el-form-item>
             <el-button
               type="primary"
@@ -172,51 +181,55 @@ function onTabChange(name: string | number) {
               style="min-width: 140px"
               @click="handleSubmit"
             >
-              {{ submitting ? '提交中...' : '提交報修' }}
+              {{ submitting ? t('repair.submitting') : t('repair.submitBtn') }}
             </el-button>
-            <span v-if="uploading" class="submit-disabled-hint">請等待圖片上傳完成</span>
+            <span v-if="uploading" class="submit-disabled-hint">{{ t('repair.uploadingHint') }}</span>
           </el-form-item>
         </el-form>
       </el-tab-pane>
 
       <!-- ── 我的工單 Tab ──────────────────────────────────────── -->
-      <el-tab-pane label="我的工單" name="tickets">
+      <!-- 原文：我的工單 -->
+      <el-tab-pane :label="t('repair.tabHistory')" name="tickets">
+        <!-- 原文 radios：全部 / 已提交 / 已分配 / 已關閉；button：刷新 -->
         <div class="tickets-toolbar">
           <el-radio-group v-model="ticketParams.status" @change="handleStatusFilter">
-            <el-radio-button :value="0">全部</el-radio-button>
-            <el-radio-button :value="1">已提交</el-radio-button>
-            <el-radio-button :value="2">已分配</el-radio-button>
-            <el-radio-button :value="3">已關閉</el-radio-button>
+            <el-radio-button :value="0">{{ t('repair.statusFilterAll') }}</el-radio-button>
+            <el-radio-button :value="1">{{ t('repair.statusSubmitted') }}</el-radio-button>
+            <el-radio-button :value="2">{{ t('repair.statusAssigned') }}</el-radio-button>
+            <el-radio-button :value="3">{{ t('repair.statusClosed') }}</el-radio-button>
           </el-radio-group>
-          <el-button :loading="ticketsLoading" @click="loadTickets">刷新</el-button>
+          <el-button :loading="ticketsLoading" @click="loadTickets">{{ t('repair.refresh') }}</el-button>
         </div>
 
+        <!-- 原文 table headers：工單號 / 標題 / 狀態 / 處理人（待分配） / 提交時間 / 操作 / 詳情 -->
+        <!-- 原文 empty：暫無工單記錄 -->
         <el-table
           :data="tickets"
           v-loading="ticketsLoading"
           row-class-name="clickable-row"
-          empty-text="暫無工單記錄"
+          :empty-text="t('repair.tableEmpty')"
           style="width: 100%"
           @row-click="handleRowClick"
         >
-          <el-table-column prop="requestNo" label="工單號" width="180" show-overflow-tooltip />
-          <el-table-column prop="title" label="標題" min-width="120" show-overflow-tooltip />
-          <el-table-column label="狀態" width="100">
+          <el-table-column prop="requestNo" :label="t('repair.colTicketNo')" width="180" show-overflow-tooltip />
+          <el-table-column prop="title" :label="t('repair.colTitle')" min-width="120" show-overflow-tooltip />
+          <el-table-column :label="t('repair.colStatus')" width="100">
             <template #default="{ row }">
               <el-tag :type="STATUS_TAG_TYPES[row.status]" size="small">
-                {{ STATUS_LABELS[row.status] }}
+                {{ t(STATUS_LABELS[row.status]) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="assignedName" label="處理人" width="120">
-            <template #default="{ row }">{{ row.assignedName ?? '待分配' }}</template>
+          <el-table-column prop="assignedName" :label="t('repair.colAssigned')" width="120">
+            <template #default="{ row }">{{ row.assignedName ?? t('repair.unassigned') }}</template>
           </el-table-column>
-          <el-table-column prop="createTime" label="提交時間" width="170" />
-          <el-table-column label="操作" width="80" align="center">
+          <el-table-column prop="createTime" :label="t('repair.colSubmitTime')" width="170" />
+          <el-table-column :label="t('repair.colAction')" width="80" align="center">
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click.stop="handleRowClick(row)">
                 <el-icon><View /></el-icon>
-                詳情
+                {{ t('repair.viewDetail') }}
               </el-button>
             </template>
           </el-table-column>
@@ -232,9 +245,10 @@ function onTabChange(name: string | number) {
           @current-change="handlePageChange"
         />
 
+        <!-- 原文：您還沒有提交過工單 -->
         <el-empty
           v-if="!ticketsLoading && tickets.length === 0"
-          description="您還沒有提交過工單"
+          :description="t('repair.emptyMyTickets')"
           :image-size="100"
         />
       </el-tab-pane>

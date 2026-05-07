@@ -71,6 +71,21 @@ export class TrayManager {
     if (!this.tray) return
 
     const config = this.configManager.getConfig()
+    const lang = config.app?.language ?? 'zh-TW'
+
+    // 主進程小型字典，鍵約定見 ipc-handlers/index.ts 同類設計
+    // 原文：企業桌面客戶端 / 開啟主視窗 / 結束應用程式 / 統一平台 / 內部功能
+    const TRAY_DICT: Record<string, Record<string, string>> = {
+      'zh-TW': {},
+      en: {
+        appTitle:           'ICHIA Enterprise',
+        openMain:           'Open Main Window',
+        quit:               'Quit',
+        'unified-platform': 'Unified Platform',
+        'internal-functions': 'Internal Tools'
+      }
+    }
+    const tt = (key: string, fallback: string) => TRAY_DICT[lang]?.[key] ?? fallback
 
     // 從 sidebar.items 動態生成導航菜單項
     const navItems = config.sidebar.items
@@ -78,7 +93,7 @@ export class TrayManager {
       .map((item) =>
         Menu.buildFromTemplate([
           {
-            label: item.label,
+            label: tt(item.id, item.label),
             click: () => {
               this.windowManager.showMainWindow()
               // 延遲 200ms 等窗口顯示後再導航
@@ -93,19 +108,19 @@ export class TrayManager {
 
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: '企業桌面客戶端',
+        label: tt('appTitle', '企業桌面客戶端'),
         enabled: false // 標題行
       },
       { type: 'separator' },
       {
-        label: '開啟主視窗',
+        label: tt('openMain', '開啟主視窗'),
         click: () => this.windowManager.showMainWindow()
       },
       { type: 'separator' },
       ...navItems,
       { type: 'separator' },
       {
-        label: '結束應用程式',
+        label: tt('quit', '結束應用程式'),
         click: () => {
           // 呼叫統一的退出清理函數，避免重複退出邏輯
           if (this.onQuitCallback) {

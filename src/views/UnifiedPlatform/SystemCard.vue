@@ -16,10 +16,13 @@
  *  - open：用戶點擊"打開"按鈕時觸發，父組件負責處理打開邏輯
  */
 
+import {computed} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {useConfigText} from '@/composables/useConfigText'
 import type { SystemLink } from '@/types/config.types'
 import {ArrowRight} from "@element-plus/icons-vue";
 
-defineProps<{
+const props = defineProps<{
   system: SystemLink
 }>()
 
@@ -27,6 +30,16 @@ const emit = defineEmits<{
   /** 用戶請求打開系統 */
   (e: 'open', system: SystemLink): void
 }>()
+
+const {t} = useI18n()
+const {ct} = useConfigText()
+
+/**
+ * 顯示用名稱與描述：走 i18n config.systems.<id>.{name,description}，
+ * 缺失則 fallback 到 JSON 原值。原文示例：新ERP 系統 / ERP系統
+ */
+const displayName = computed(() => ct(`config.systems.${props.system.id}.name`, props.system.name))
+const displayDesc = computed(() => ct(`config.systems.${props.system.id}.description`, props.system.description))
 </script>
 
 <template>
@@ -36,31 +49,38 @@ const emit = defineEmits<{
       <img
         v-if="system.iconUrl"
         :src="system.iconUrl"
-        :alt="system.name"
+        :alt="displayName"
         class="icon-img"
         @error="($event.target as HTMLImageElement).style.display = 'none'"
       />
       <!-- 圖標加載失敗或無圖標時顯示首字母 -->
-      <span v-else class="icon-text">{{ system.name.charAt(0) }}</span>
+      <span v-else class="icon-text">{{ displayName.charAt(0) }}</span>
     </div>
 
     <!-- 系統信息 -->
     <div class="card-info">
-      <div class="card-name">{{ system.name }}</div>
-      <div class="card-desc">{{ system.description }}</div>
+      <div class="card-name">{{ displayName }}</div>
+      <div class="card-desc">{{ displayDesc }}</div>
 
       <!-- 標籤組 -->
+      <!-- 原文：SSO 直通 -->
       <div class="card-tags">
         <el-tag v-if="system.ssoEnabled" size="small" type="success" effect="light">
-          SSO 直通
+          {{ t('platform.tagSso') }}
         </el-tag>
-        <!-- 打開方式標籤：iframe=嵌入顯示 / electron-window=獨立窗口 / external-browser=外部瀏覽器 -->
+        <!-- 打開方式標籤（原文：嵌入顯示 / 獨立窗口 / 外部瀏覽器） -->
         <el-tag
           size="small"
           :type="system.openMode === 'iframe' ? 'primary' : system.openMode === 'electron-window' ? 'warning' : 'info'"
           effect="light"
         >
-          {{ system.openMode === 'iframe' ? '嵌入顯示' : system.openMode === 'electron-window' ? '獨立窗口' : '外部瀏覽器' }}
+          {{
+            system.openMode === 'iframe'
+              ? t('platform.openModeIframe')
+              : system.openMode === 'electron-window'
+                ? t('platform.openModeWindow')
+                : t('platform.openModeBrowser')
+          }}
         </el-tag>
       </div>
     </div>

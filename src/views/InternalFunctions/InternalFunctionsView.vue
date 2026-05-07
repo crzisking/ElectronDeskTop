@@ -18,32 +18,50 @@
 
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
+import {useConfigText} from '@/composables/useConfigText'
 import {logger} from '@/utils/logger'
 import type {InternalTool} from '@/types/config.types'
 import {ArrowRight, Plus, Search} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const configStore = useConfigStore()
+const {t} = useI18n()
+const {ct} = useConfigText()
+
+/** 工具顯示用名稱（i18n 字典缺失時 fallback 到 JSON name） */
+function toolName(tool: InternalTool): string {
+  return ct(`config.tools.${tool.id}.name`, tool.name)
+}
+
+function toolDesc(tool: InternalTool): string {
+  return ct(`config.tools.${tool.id}.description`, tool.description)
+}
 
 /** 搜索關鍵詞 */
 const searchKeyword = ref('')
 
-/** 當前 filter pill 值（'all' | '流程' | '支援' | '報表'） */
-const currentFilter = ref<'all' | '流程' | '支援' >('all')
+/**
+ * 當前 filter pill 值。
+ * 注意：value 用穩定英文字符串（'all' / 'process' / 'support'），不隨語言變化；
+ * label 才走 i18n。原文 label：全部 / 流程 / 支援
+ */
+type FilterValue = 'all' | 'process' | 'support'
+const currentFilter = ref<FilterValue>('all')
 
-/** Filter pills 配置 */
-const filters: Array<{ value: 'all' | '流程' | '支援' ; label: string }> = [
-  { value: 'all', label: '全部' },
-  { value: '流程', label: '流程' },
-  { value: '支援', label: '支援' },
+/** Filter pills 配置（label 在模板中用 t() 解析，這裡只記 i18n key） */
+const filters: Array<{ value: FilterValue; labelKey: string }> = [
+  { value: 'all',     labelKey: 'internal.filterAll' },
+  { value: 'process', labelKey: 'internal.filterProcess' },
+  { value: 'support', labelKey: 'internal.filterSupport' }
 ]
 
 /** 工具到分類的映射（啟發式：基於 id/name 關鍵字） */
-function categorizeTool(tool: InternalTool): '流程' | '支援'  {
+function categorizeTool(tool: InternalTool): Exclude<FilterValue, 'all'> {
   const text = `${tool.id} ${tool.name}`.toLowerCase()
-  if (/repair|報修|support|tools/.test(text)) return '支援'
-  return '流程'
+  if (/repair|報修|support|tools/.test(text)) return 'support'
+  return 'process'
 }
 
 /** 所有啟用的功能 */
@@ -54,16 +72,22 @@ const allTools = computed<InternalTool[]>(
 /** 過濾後的功能列表（搜索 + 分類） */
 const tools = computed<InternalTool[]>(() => {
   const kw = searchKeyword.value.trim().toLowerCase()
-  return allTools.value.filter((t) => {
-    if (currentFilter.value !== 'all' && categorizeTool(t) !== currentFilter.value) return false
+  return allTools.value.filter((tool) => {
+    if (currentFilter.value !== 'all' && categorizeTool(tool) !== currentFilter.value) return false
     if (!kw) return true
-    return t.name.toLowerCase().includes(kw) || t.description.toLowerCase().includes(kw)
+    // 同時匹配翻譯後文本和 JSON 原值
+    const name = toolName(tool).toLowerCase()
+    const desc = toolDesc(tool).toLowerCase()
+    return name.includes(kw)
+      || desc.includes(kw)
+      || tool.name.toLowerCase().includes(kw)
+      || tool.description.toLowerCase().includes(kw)
   })
 })
 
-/** 卡片元數據（佔位文字，後續可由 API/配置提供） */
+/** 卡片元數據（佔位文字，目前使用描述本身；後續可由 API/配置提供） */
 function toolMeta(tool: InternalTool): string {
-  return `${tool.description}`
+  return toolDesc(tool)
 }
 
 /** 點擊功能卡片 */
@@ -87,9 +111,10 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
     <div class="app-page-header app-page-header--compact">
       <div class="app-page-header__right">
         <div class="search-input">
+          <!-- 原文 placeholder：搜尋功能名稱或描述… -->
           <el-input
             v-model="searchKeyword"
-            placeholder="搜尋功能名稱或描述…"
+            :placeholder="t('internal.searchPlaceholder')"
             :prefix-icon="Search"
             clearable
           />
@@ -100,11 +125,13 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
     <!-- ── Section 標題列 + Filter Pills ────────────────────── -->
     <div class="section-bar">
       <div class="app-section-title">
-        <span class="app-section-title__main">常用功能</span>
+        <!-- 原文：常用功能 -->
+        <span class="app-section-title__main">{{ t('internal.commonTools') }}</span>
         <span class="app-section-title__count">
-          {{ String(allTools.length).padStart(2, '0') }} ITEMS
+          {{ String(allTools.length).padStart(2, '0') }} {{ t('internal.itemsLabel') }}
         </span>
       </div>
+      <!-- 原文 pills：全部 / 流程 / 支援 -->
       <div class="filter-pills">
         <button
           v-for="f in filters"
@@ -114,7 +141,7 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
           :class="{ 'is-active': currentFilter === f.value }"
           @click="currentFilter = f.value"
         >
-          {{ f.label }}
+          {{ t(f.labelKey) }}
         </button>
       </div>
     </div>
@@ -136,8 +163,8 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
         </div>
 
         <div class="tool-card__body">
-          <h3 class="tool-card__title">{{ tool.name }}</h3>
-          <p class="tool-card__desc">{{ tool.description }}</p>
+          <h3 class="tool-card__title">{{ toolName(tool) }}</h3>
+          <p class="tool-card__desc">{{ toolDesc(tool) }}</p>
         </div>
 
         <div class="tool-card__footer">
@@ -147,32 +174,36 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
       </div>
 
       <!-- 即將推出占位卡 -->
+      <!-- 原文 title：即將推出；desc：更多企業內部工具陸續上線中 -->
       <div class="app-card app-card--dashed coming-soon">
         <div class="coming-soon__icon">
           <el-icon :size="22"><Plus /></el-icon>
         </div>
-        <div class="coming-soon__title">即將推出</div>
-        <div class="coming-soon__desc">更多企業內部工具陸續上線中</div>
+        <div class="coming-soon__title">{{ t('internal.comingSoon') }}</div>
+        <div class="coming-soon__desc">{{ t('internal.comingSoonDesc') }}</div>
       </div>
     </div>
 
     <!-- 空狀態 -->
+    <!-- 原文：尚未配置任何功能，請在 app-config.json 的 internalFunctions.tools 中添加 -->
     <el-empty
       v-if="tools.length === 0 && allTools.length === 0"
-      description="尚未配置任何功能，請在 app-config.json 的 internalFunctions.tools 中添加"
+      :description="t('internal.emptyAll')"
       :image-size="120"
     />
+    <!-- 原文：未找到符合的功能 -->
     <el-empty
       v-else-if="tools.length === 0"
-      :description="`未找到符合的功能`"
+      :description="t('internal.emptySearch')"
       :image-size="100"
     />
 
     <!-- ── 頁面底部 ───────────────────────────────────────── -->
+    <!-- 原文：系統運作正常 -->
     <div class="page-footer">
       <div class="page-footer__left">
         <span class="status-dot" />
-        <span>系統運作正常</span>
+        <span>{{ t('internal.statusOk') }}</span>
         <span class="footer-sep">·</span>
       </div>
       <div class="page-footer__right">

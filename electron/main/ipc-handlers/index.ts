@@ -18,6 +18,40 @@ import type {FloatingBallManager} from '../floating-ball'
 import type {UpdateManager} from '../update-manager'
 
 /**
+ * 主進程小型 i18n 字典 — 僅用於原生菜單（浮球右鍵菜單、Tray 等）。
+ *
+ * 為什麼不共用渲染端的 vue-i18n：
+ *  - vue-i18n 是 Vue 生態庫，主進程是純 Node.js 環境，引不進來
+ *  - 主進程需要的文案非常少（菜單幾項），手寫字典維護成本可忽略
+ *
+ * 鍵約定：與 app-config.json 的 quickMenu[].id 對應。
+ * 缺失時自動 fallback 到 item.label（即 JSON 原值，繁中）。
+ *
+ * 原文（quickMenu.id → label）：
+ *   menu-show-main   → 打開主窗口
+ *   menu-go-platform → 統一平台
+ *   menu-go-internal → 內部功能
+ *   menu-quit        → 退出應用
+ */
+const NATIVE_MENU_I18N: Record<string, Record<string, string>> = {
+  'zh-TW': {
+    // 留空 → 用 JSON 原值
+  },
+  en: {
+    'menu-show-main':   'Open Main Window',
+    'menu-go-platform': 'Unified Platform',
+    'menu-go-internal': 'Internal Tools',
+    'menu-quit':        'Quit'
+  }
+}
+
+/** 取菜單項顯示文字：先查 i18n 字典，沒有就 fallback 到 item.label */
+function localizeMenuLabel(itemId: string, fallback: string, lang: string): string {
+  const dict = NATIVE_MENU_I18N[lang] ?? {}
+  return dict[itemId] ?? fallback
+}
+
+/**
  * 註冊所有 IPC Handler（依賴注入式，使用 main/index.ts 創建好的單例）。
  * 用於：main/index.ts 的 whenReady 回調，需在窗口創建後調用。
  * @param windowManager   窗口管理器
@@ -104,13 +138,15 @@ export function registerAllHandlers(
    */
   ipcMain.on(IpcChannels.BALL_SHOW_CONTEXT_MENU, (event) => {
     const config = configManager.getConfig()
+    const lang = config.app?.language ?? 'zh-TW'
     const menuItems = config.floatingBall.quickMenu.filter((item) => item.enabled)
 
     const template = menuItems.map((item) => {
       if (item.separator) return { type: 'separator' as const }
 
       return {
-        label: item.label,
+        // 走主進程 i18n helper：英文環境顯示翻譯，繁中保留 JSON 原文
+        label: localizeMenuLabel(item.id, item.label, lang),
         click: () => {
           const action = item.action
           switch (action.type) {

@@ -28,9 +28,12 @@
  *  @emit update:modelValue  點擊關閉按鈕時通知父層更新 visible 狀態
  */
 
+import {useI18n} from 'vue-i18n'
 import {Document} from '@element-plus/icons-vue'
 import DOMPurify from 'dompurify'
 import type {RepairDetail, RepairResultAttachment} from '@/types/api.types'
+
+const {t} = useI18n()
 
 defineProps<{
   modelValue: boolean
@@ -79,9 +82,10 @@ function sanitize(html: string): string {
 </script>
 
 <template>
+  <!-- 原文 title：工單詳情 -->
   <el-dialog
     :model-value="modelValue"
-    title="工單詳情"
+    :title="t('repair.detailTitle')"
     width="640px"
     :close-on-click-modal="false"
     destroy-on-close
@@ -93,56 +97,49 @@ function sanitize(html: string): string {
       <template v-if="detail">
 
         <!-- ── 提問信息 ──────────────────────────────────────────── -->
+        <!-- 原文 labels：工單號 / 標題 / 提交人 / 提交時間 -->
         <el-descriptions :column="2" border size="small">
           <!-- 工單號跨兩列，使用等寬字體突出顯示 -->
-          <el-descriptions-item label="工單號" :span="2">
+          <el-descriptions-item :label="t('repair.colTicketNo')" :span="2">
             <span class="request-no">{{ detail.requestNo }}</span>
           </el-descriptions-item>
 
           <!-- 標題跨兩列 -->
-          <el-descriptions-item label="標題" :span="2">
+          <el-descriptions-item :label="t('repair.colTitle')" :span="2">
             <span class="detail-title">{{ detail.title }}</span>
           </el-descriptions-item>
 
-          <el-descriptions-item label="提交人">{{ detail.userName }}</el-descriptions-item>
-          <el-descriptions-item label="提交時間">{{ detail.createTime }}</el-descriptions-item>
+          <el-descriptions-item :label="t('repair.detailSubmitter')">{{ detail.userName }}</el-descriptions-item>
+          <el-descriptions-item :label="t('repair.colSubmitTime')">{{ detail.createTime }}</el-descriptions-item>
         </el-descriptions>
 
         <!-- ── 問題描述（富文本） ────────────────────────────────── -->
-        <!-- 使用 v-html 渲染後端存儲的富文本 HTML，包含文字格式和圖片 -->
+        <!-- 原文 section title：問題描述 -->
         <div class="section">
-          <div class="section-title">問題描述</div>
+          <div class="section-title">{{ t('repair.fieldDesc') }}</div>
           <div class="section-body rich-text" v-html="sanitize(detail.description)"></div>
         </div>
 
         <!-- ── IT 匯報回覆（富文本） ─────────────────────────────── -->
-        <!--
-          resultContent 為 null 時表示 IT 尚未提交用戶可見匯報（IsUserSee=1 那一筆）。
-          此時顯示占位提示，不渲染富文本區。
-        -->
+        <!-- 原文 title：IT 匯報回覆；empty：IT 尚未提交匯報回覆 -->
         <div class="section">
           <div class="section-title report-title">
-            <span>IT 匯報回覆</span>
+            <span>{{ t('repair.itReply') }}</span>
             <span v-if="detail.resultTime" class="report-time">
               {{ detail.resultTime }}
             </span>
           </div>
           <div v-if="detail.resultContent" class="section-body rich-text" v-html="sanitize(detail.resultContent)"></div>
           <div v-else class="section-body section-empty">
-            IT 尚未提交匯報回覆
+            {{ t('repair.itReplyEmpty') }}
           </div>
         </div>
 
         <!-- ── 匯報附件 ──────────────────────────────────────────── -->
-        <!--
-          後端返回的附件為 OSS URL，可能是任意文件類型（圖片、文檔、壓縮包…），
-          此處不做類型判斷，統一以文件名列表形式呈現。
-          target="_blank" + rel=noopener：點擊以系統默認瀏覽器新標籤頁打開，
-          圖片/PDF 等瀏覽器可預覽的直接預覽，其他格式觸發下載。
-        -->
+        <!-- 原文：匯報附件（{n} 個） -->
         <template v-if="detail.attachments.length > 0">
           <div class="attachments-title">
-            匯報附件（{{ detail.attachments.length }} 個）
+            {{ t('repair.attachments', {n: detail.attachments.length}) }}
           </div>
           <ul class="attachments-list">
             <li
@@ -166,8 +163,9 @@ function sanitize(html: string): string {
       </template>
     </div>
 
+    <!-- 原文：關閉 -->
     <template #footer>
-      <el-button @click="emit('update:modelValue', false)">關閉</el-button>
+      <el-button @click="emit('update:modelValue', false)">{{ t('common.close') }}</el-button>
     </template>
   </el-dialog>
 </template>

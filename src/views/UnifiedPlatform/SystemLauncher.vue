@@ -10,7 +10,9 @@
  */
 
 import { computed } from 'vue'
+import {useI18n} from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth.store'
+import {useConfigText} from '@/composables/useConfigText'
 import IframeContainer from '@/components/common/IframeContainer.vue'
 import type { SystemLink } from '@/types/config.types'
 
@@ -25,6 +27,11 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const {t} = useI18n()
+const {ct} = useConfigText()
+
+/** 顯示用名稱（用於工具欄和 iframe title） */
+const displayName = computed(() => ct(`config.systems.${props.system.id}.name`, props.system.name))
 
 /**
  * 構建最終加載 URL
@@ -53,27 +60,28 @@ function openInBrowser() {
   <div class="system-launcher">
     <!-- 頂部工具欄 -->
     <div class="launcher-toolbar">
-      <!-- 返回按鈕 -->
+      <!-- 原文：返回系統列表 -->
       <el-button text :icon="ArrowLeft" @click="emit('back')">
-        返回系統列表
+        {{ t('platform.backToList') }}
       </el-button>
 
       <div class="toolbar-center">
-        <span class="system-name">{{ system.name }}</span>
+        <span class="system-name">{{ displayName }}</span>
+        <!-- 原文：SSO 已啟用 -->
         <el-tag v-if="system.ssoEnabled" size="small" type="success" effect="light">
-          SSO 已啟用
+          {{ t('platform.tagSsoEnabled') }}
         </el-tag>
       </div>
 
-      <!-- 在瀏覽器打開 -->
+      <!-- 原文：在瀏覽器打開 -->
       <el-button text :icon="ChromeFilled" @click="openInBrowser">
-        在瀏覽器打開
+        {{ t('platform.openInBrowser') }}
       </el-button>
     </div>
 
     <!-- iframe 嵌入區域 -->
     <div class="launcher-content">
-      <IframeContainer :src="finalUrl" :title="system.name" />
+      <IframeContainer :src="finalUrl" :title="displayName" />
     </div>
   </div>
 </template>

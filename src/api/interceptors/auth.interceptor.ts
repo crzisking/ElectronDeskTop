@@ -15,8 +15,22 @@ import {ElMessage, ElMessageBox} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/utils/logger'
 import router from '@/router'
+import {i18n} from '@/locales'
 
 // ── 多語言錯誤訊息 ────────────────────────────────────────────────────
+//
+// 之前自帶 ERROR_MESSAGES 表 + 從 authStore.user.lang 取語言；
+// 全應用上 i18n 後改為直接讀 vue-i18n 全局實例，與其他組件共用同一份字典，
+// 切換語言後錯誤提示也自動跟著變。
+//
+// 原文映射（保留方便排查）：
+//   TokenExpiredError      → 無效的令牌 / Invalid token
+//   Sys_Error              → 系統出錯 / System error occurred
+//   ERR_NETWORK            → 網絡連接錯誤 / Network connection error
+//   Session_expired        → 登錄已過期，點擊確認重新登錄。
+//   OK                     → 確認 / Confirm
+//   Unauthorized_operation → 當前操作未授權
+//   ERR_BAD_REQUEST        → 未找到請求的資源
 type ErrorKey =
   | 'TokenExpiredError'
   | 'Sys_Error'
@@ -26,45 +40,20 @@ type ErrorKey =
   | 'Unauthorized_operation'
   | 'ERR_BAD_REQUEST'
 
-const ERROR_MESSAGES: Record<string, Record<ErrorKey, string>> = {
-  zh_TW: {
-    TokenExpiredError:      '無效的令牌',
-    Sys_Error:              '系統出錯',
-    ERR_NETWORK:            '網絡連接錯誤',
-    Session_expired:        '登錄已過期，點擊確認重新登錄。',
-    OK:                     '確認',
-    Unauthorized_operation: '當前操作未授權',
-    ERR_BAD_REQUEST:        '未找到請求的資源',
-  },
-  zh_CN: {
-    TokenExpiredError:      '无效的令牌',
-    Sys_Error:              '系统出错',
-    ERR_NETWORK:            '网络连接错误',
-    Session_expired:        '登录已过期，点击确认重新登录。',
-    OK:                     '确认',
-    Unauthorized_operation: '当前操作未授权',
-    ERR_BAD_REQUEST:        '未找到请求的资源',
-  },
-  en_US: {
-    TokenExpiredError:      'Invalid token',
-    Sys_Error:              'System error occurred',
-    ERR_NETWORK:            'Network connection error',
-    Session_expired:        'Session expired. Click to log in.',
-    OK:                     'Confirm',
-    Unauthorized_operation: 'Unauthorized operation.',
-    ERR_BAD_REQUEST:        'The requested resource was not found',
-  },
+/** 把舊的錯誤分類碼映射到 i18n key，外面繼續用 getError(key) 不變 */
+const ERROR_KEY_MAP: Record<ErrorKey, string> = {
+  TokenExpiredError:      'http.tokenExpired',
+  Sys_Error:              'http.sysError',
+  ERR_NETWORK:            'http.networkError',
+  Session_expired:        'http.sessionExpired',
+  OK:                     'common.confirm',
+  Unauthorized_operation: 'http.unauthorized',
+  ERR_BAD_REQUEST:        'http.notFound'
 }
 
-/**
- * 根據當前用戶語言取錯誤文案
- * 未登錄或語言不匹配時，回退到 zh_TW
- */
+/** 取錯誤文案：直接走 i18n 全局實例，跟隨當前語言 */
 function getError(key: ErrorKey): string {
-  const authStore = useAuthStore()
-  const lang = authStore.user?.lang ?? 'zh_TW'
-  const map = ERROR_MESSAGES[lang] ?? ERROR_MESSAGES['zh_TW']
-  return map[key]
+  return i18n.global.t(ERROR_KEY_MAP[key])
 }
 
 // ── 防止 401 彈窗重複彈出 ─────────────────────────────────────────────

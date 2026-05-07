@@ -18,8 +18,13 @@
 import {computed, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
+import {i18n} from '@/locales'
 import {logger} from '@/utils/logger'
 import {plainTextToHtml} from './useRepairForm'
+
+/** 模塊級 i18n helper（composable 在 setup 內呼叫，但回調在 setup 外執行） */
+const t = (key: string, named?: Record<string, unknown>) =>
+  named ? i18n.global.t(key, named) : i18n.global.t(key)
 
 const DIFY_URL = import.meta.env.VITE_DIFY_URL as string
 const DIFY_API_KEY = import.meta.env.VITE_DIFY_API_KEY as string
@@ -80,11 +85,13 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
     async function polishDescription(): Promise<void> {
         const plainDescription = opts.getPlainText(opts.normalizeEditorHtml(opts.submitForm.description))
         if (!plainDescription) {
-            ElMessage.warning('請先填寫問題描述')
+            // 原文：請先填寫問題描述
+            ElMessage.warning(t('repair.polishNeedDesc'))
             return
         }
         if (polishLimitReached.value) {
-            ElMessage.warning(`同一問題描述最多整理 ${POLISH_LIMIT} 次，請修改描述後再試`)
+            // 原文：同一問題描述最多整理 N 次，請修改描述後再試
+            ElMessage.warning(t('repair.polishLimitReached', {limit: POLISH_LIMIT}))
             return
         }
 
@@ -96,6 +103,7 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
         polishResult.value = ''
         polishAbort = new AbortController()
 
+        // Prompt 是給 AI 看的，固定中文不走 i18n（後端 AI 與語言無關）
         const prompt =
             `請幫我潤色以下 IT 報修問題描述，讓表達更清晰、完整、專業，` +
             `保留所有原始資訊和細節，語言與原文保持一致：\n\n${plainDescription}`
@@ -117,7 +125,8 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
             })
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`)
-            if (!response.body) throw new Error('響應體為空')
+            // 原文：響應體為空（內部錯誤訊息，不直接顯示給用戶，保持中文便於日誌追溯）
+            if (!response.body) throw new Error('Empty response body')
 
             const reader = response.body.getReader()
             const decoder = new TextDecoder('utf-8')
@@ -154,7 +163,8 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
             if (e instanceof Error && e.name === 'AbortError') return
 
             logger.error('AI 潤色串流失敗', 'useRepairPolish', e)
-            ElMessage.error('AI 整理失敗，請確認服務是否可用')
+            // 原文：AI 整理失敗，請確認服務是否可用
+            ElMessage.error(t('repair.polishFailedHint'))
             polishVisible.value = false
         } finally {
             polishLoading.value = false

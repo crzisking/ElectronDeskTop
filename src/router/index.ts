@@ -2,6 +2,7 @@ import type {RouteRecordRaw} from 'vue-router'
 import {createRouter, createWebHashHistory} from 'vue-router'
 import {useAuthStore} from '@/stores/auth.store'
 import {useConfigStore} from '@/stores/config.store'
+import {i18n} from '@/locales'
 
 /**
  * 應用路由表。
@@ -17,13 +18,14 @@ const routes: RouteRecordRaw[] = [
   },
 
   // 登錄頁（不需認證的公開頁面）
+  // meta.title 改存「i18n key」，在 beforeEach 動態解析；原文：登錄
   {
     path: '/login',
     name: 'login',
     component: () => import('@/views/Login/LoginView.vue'),
     meta: {
       requiresAuth: false,
-      title: '登錄'
+      title: 'router.login'
     }
   },
 
@@ -34,58 +36,58 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
 
-      // 統一平台（默認首頁）
+      // 統一平台（默認首頁）；原文 title：統一平台
       {
         path: 'unified-platform',
         name: 'unified-platform',
         component: () => import('@/views/UnifiedPlatform/UnifiedPlatformView.vue'),
         meta: {
           requiresAuth: true,
-          title: '統一平台'
+          title: 'router.unifiedPlatform'
         }
       },
 
-      // 內部功能入口：同時放 AI 工具與公司內部功能，由 config 驅動
+      // 內部功能入口；原文 title：內部功能
       {
         path: 'internal-functions',
         name: 'internal-functions',
         component: () => import('@/views/InternalFunctions/InternalFunctionsView.vue'),
         meta: {
           requiresAuth: true,
-          title: '內部功能'
+          title: 'router.internalFunctions'
         }
       },
 
-      // BPM 負責人查詢：嵌入 Dify chatbot，URL 由 app-config.json 管理
+      // BPM 負責人查詢；原文 title：BPM 負責人查詢
       {
         path: 'ai-bpm-finder',
         name: 'ai-bpm-finder',
         component: () => import('@/views/InternalFunctions/child/BpmFinderView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'BPM 負責人查詢'
+          title: 'router.bpmFinder'
         }
       },
 
-      // IT 報修工單：用戶提交設備故障 / 查看自己的工單狀態
+      // IT 報修；原文 title：IT 報修
       {
         path: 'it-repair',
         name: 'it-repair',
         component: () => import('@/views/InternalFunctions/child/ITRepair/ITRepairView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'IT 報修'
+          title: 'router.itRepair'
         }
       },
 
-      // AiSop：AI 標準作業流程查詢
+      // AiSop；title 為產品名直接保留（不翻）
       {
         path: 'ai-sop',
         name: 'ai-sop',
         component: () => import('@/views/InternalFunctions/child/AiSop/AiSopView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'AiSop'
+          title: 'router.aiSop'
         }
       }
 
@@ -114,10 +116,13 @@ const router = createRouter({
  * 注意：main.ts 中 pinia 先於 router 注冊，故此處 useAuthStore 安全。
  */
 router.beforeEach((to, _from) => {
-  // 更新窗口標題
-  const title = to.meta.title as string | undefined
-  if (title) {
-    document.title = `${title} - 企業桌面客戶端`
+  // 更新窗口標題：meta.title 是 i18n key，動態解析後拼上應用名
+  // 原文後綴：- 企業桌面客戶端
+  const titleKey = to.meta.title as string | undefined
+  if (titleKey) {
+    const pageTitle = i18n.global.t(titleKey)
+    const appName = i18n.global.t('app.name')
+    document.title = `${pageTitle} - ${appName}`
   }
 
   const authStore = useAuthStore()

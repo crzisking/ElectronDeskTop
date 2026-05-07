@@ -104,6 +104,9 @@ export default defineConfig({
         // 同上，必須用絕對路徑
         dts: resolve(__dirname, 'src/types/components.d.ts')
       })
+      // 注：i18n 沒有引入 unplugin-vue-i18n。
+      // 我們在 src/locales/index.ts 提供了自定義 messageCompiler（CSP 安全），
+      // 直接 import JSON 字典即可，不需要插件做預編譯。
     ]
   }
 })

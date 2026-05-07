@@ -18,6 +18,10 @@
  */
 import {computed, ref} from 'vue'
 import {ElMessage} from 'element-plus'
+import {i18n} from '@/locales'
+
+const t = (key: string, named?: Record<string, unknown>) =>
+  named ? i18n.global.t(key, named) : i18n.global.t(key)
 import {repairApi} from '@/api/modules/repair.api'
 import type {RepairAttachment} from '@/types/api.types'
 
@@ -48,11 +52,13 @@ export function useRepairUpload(getEditor: QuillGetter) {
      */
     function beforeUpload(rawFile: File): boolean {
         if (!rawFile.type.startsWith('image/')) {
-            ElMessage.error('只能上傳圖片文件（jpg / png / gif 等）')
+            // 原文：只能上傳圖片文件（jpg / png / gif 等）
+            ElMessage.error(t('repair.uploadOnlyImage'))
             return false
         }
         if (rawFile.size > 10 * 1024 * 1024) {
-            ElMessage.error(`${rawFile.name} 超過 10MB，請壓縮後重試`)
+            // 原文：{name} 超過 10MB，請壓縮後重試
+            ElMessage.error(t('repair.uploadTooLarge', {name: rawFile.name}))
             return false
         }
         return true
@@ -92,7 +98,8 @@ export function useRepairUpload(getEditor: QuillGetter) {
             // 游標往後移一位（跳過剛插的圖），'silent' 避免再次觸發 text-change
             editor.setSelection(range.index + 1, 0, 'silent')
         } catch {
-            ElMessage.error('圖片上傳失敗，請重試')
+            // 原文：圖片上傳失敗，請重試
+            ElMessage.error(t('repair.imageUploadFailed'))
         } finally {
             uploadingCount.value--
         }

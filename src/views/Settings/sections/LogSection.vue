@@ -13,9 +13,12 @@
 
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import {useI18n} from 'vue-i18n'
 import SettingsRow from '../components/SettingsRow.vue'
 import { FolderOpened, DocumentCopy } from '@element-plus/icons-vue'
 import { logger } from '@/utils/logger'
+
+const {t} = useI18n()
 
 /** 已知的日誌目錄（首次點擊「打開」時由主進程返回） */
 const knownDir = ref<string>('')
@@ -31,11 +34,12 @@ async function handleOpen() {
       knownDir.value = res.dir
       logger.info('用戶打開日誌資料夾', 'LogSection')
     } else {
-      ElMessage.error('打開日誌資料夾失敗')
+      // 原文：打開日誌資料夾失敗
+      ElMessage.error(t('log.openFailed'))
     }
   } catch (err) {
     logger.error('呼叫 log.openFolder 失敗', 'LogSection', err)
-    ElMessage.error('打開日誌資料夾失敗')
+    ElMessage.error(t('log.openFailed'))
   }
 }
 
@@ -45,14 +49,17 @@ async function handleOpen() {
  */
 async function copyPath() {
   if (!knownDir.value) {
-    ElMessage.info('請先點「打開日誌資料夾」')
+    // 原文：請先點「打開日誌資料夾」
+    ElMessage.info(t('log.copyHint'))
     return
   }
   try {
     await navigator.clipboard.writeText(knownDir.value)
-    ElMessage.success('路徑已複製')
+    // 原文：路徑已複製
+    ElMessage.success(t('log.copied'))
   } catch {
-    ElMessage.error('複製失敗，請手動複製')
+    // 原文：複製失敗，請手動複製
+    ElMessage.error(t('log.copyFailed'))
   }
 }
 </script>
@@ -60,40 +67,45 @@ async function copyPath() {
 <template>
   <div class="log-section">
     <!-- 主功能：打開日誌資料夾 -->
+    <!-- 原文 title：日誌資料夾；description：包含應用運行記錄，遇到問題時請打包當日的 .log 檔回報 -->
     <SettingsRow
-      title="日誌資料夾"
-      description="包含應用運行記錄，遇到問題時請打包當日的 .log 檔回報"
+      :title="t('log.folderTitle')"
+      :description="t('log.folderDesc')"
     >
+      <!-- 原文：打開 -->
       <el-button
         type="primary"
         size="small"
         :icon="FolderOpened"
         @click="handleOpen"
       >
-        打開
+        {{ t('log.openBtn') }}
       </el-button>
     </SettingsRow>
 
     <!-- 顯示路徑（首次打開後才有值） -->
+    <!-- 原文 title：路徑；description：日誌資料夾的絕對路徑 -->
     <SettingsRow
       v-if="knownDir"
-      title="路徑"
-      description="日誌資料夾的絕對路徑"
+      :title="t('log.pathTitle')"
+      :description="t('log.pathDesc')"
       compact
     >
       <span class="path-text" :title="knownDir">{{ knownDir }}</span>
+      <!-- 原文：複製 -->
       <el-button
         size="small"
         :icon="DocumentCopy"
         @click="copyPath"
       >
-        複製
+        {{ t('log.copyBtn') }}
       </el-button>
     </SettingsRow>
 
     <!-- 保留策略 -->
-    <SettingsRow title="保留策略" description="超過 14 天的舊日誌會自動清理" compact>
-      <span class="meta-text">14 天</span>
+    <!-- 原文 title：保留策略；description：超過 14 天的舊日誌會自動清理；value：14 天 -->
+    <SettingsRow :title="t('log.retentionTitle')" :description="t('log.retentionDesc')" compact>
+      <span class="meta-text">{{ t('log.retentionValue') }}</span>
     </SettingsRow>
   </div>
 </template>

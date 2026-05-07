@@ -26,6 +26,10 @@
  *  @emit close              點擊取消或右上角關閉，父層執行 closePolish（含中止串流）
  */
 
+import {useI18n} from 'vue-i18n'
+
+const {t} = useI18n()
+
 defineProps<{
   modelValue: boolean
   loading: boolean
@@ -42,9 +46,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <!-- 原文 title：✨ 使用AI整理 -->
   <el-dialog
     :model-value="modelValue"
-    title="✨ 使用AI整理"
+    :title="t('repair.polishDialogTitle')"
     width="680px"
     :close-on-click-modal="false"
     :before-close="() => emit('close')"
@@ -52,8 +57,8 @@ const emit = defineEmits<{
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="polish-content">
-      <!-- 原始描述（只讀） -->
-      <div class="polish-section-label">原始描述</div>
+      <!-- 原始描述（只讀）；原文：原始描述 -->
+      <div class="polish-section-label">{{ t('repair.polishOriginal') }}</div>
       <el-input
         :value="originalText"
         type="textarea"
@@ -63,36 +68,35 @@ const emit = defineEmits<{
         class="polish-original"
       />
 
-      <!-- 方向指示 -->
-      <div class="polish-arrow">↓ AI 整理結果</div>
+      <!-- 方向指示；原文：↓ AI 整理結果 -->
+      <div class="polish-arrow">{{ t('repair.polishArrow') }}</div>
 
       <!-- 整理結果（可手動微調後再採用） -->
+      <!-- 原文：整理後的版本；標籤：生成中...；placeholder：AI 正在生成中... -->
       <div class="polish-section-label">
-        整理後的版本
-        <!-- loading 期間顯示「生成中...」標籤，告知用戶正在串流接收 -->
-        <el-tag v-if="loading" size="small" type="primary" effect="plain">生成中...</el-tag>
+        {{ t('repair.polishResultLabel') }}
+        <el-tag v-if="loading" size="small" type="primary" effect="plain">{{ t('repair.polishGenerating') }}</el-tag>
       </div>
       <el-input
         :model-value="result"
         type="textarea"
         :rows="6"
         resize="none"
-        placeholder="AI 正在生成中..."
+        :placeholder="t('repair.polishPlaceholder')"
         class="polish-result"
         @update:model-value="emit('update:result', $event)"
       />
     </div>
 
+    <!-- 原文：取消 / 使用此版本 -->
     <template #footer>
-      <!-- 取消：關閉彈窗並中止未完成的串流請求 -->
-      <el-button @click="emit('close')">取消</el-button>
-      <!-- 使用此版本：result 為空時禁用，防止回填空內容 -->
+      <el-button @click="emit('close')">{{ t('common.cancel') }}</el-button>
       <el-button
         type="primary"
         :disabled="!result.trim()"
         @click="emit('apply')"
       >
-        使用此版本
+        {{ t('repair.polishApply') }}
       </el-button>
     </template>
   </el-dialog>

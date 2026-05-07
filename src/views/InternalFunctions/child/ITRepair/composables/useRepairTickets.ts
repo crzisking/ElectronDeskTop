@@ -22,13 +22,15 @@ import type {RepairDetail, RepairListItem, RepairStatus} from '@/types/api.types
 // ── 狀態顯示映射（模塊級常量，直接 export 供模板使用） ────────────
 
 /**
- * 工單狀態碼 → 中文文字映射。
+ * 工單狀態碼 → i18n key 映射。
+ * 模板用法：{{ t(STATUS_LABELS[row.status]) }}
  * 對應後端 status 字段：1 = 已提交、2 = 已分配、3 = 已關閉。
+ * 原文：'已提交' / '已分配' / '已關閉'
  */
 export const STATUS_LABELS: Record<number, string> = {
-  1: '已提交',
-  2: '已分配',
-  3: '已關閉'
+  1: 'repair.statusSubmitted',
+  2: 'repair.statusAssigned',
+  3: 'repair.statusClosed'
 }
 
 /**

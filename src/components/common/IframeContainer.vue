@@ -19,7 +19,10 @@
  */
 
 import {onBeforeUnmount, ref, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {Loading} from '@element-plus/icons-vue'
+
+const {t} = useI18n()
 
 /**
  * 默認載入超時時間（毫秒）。
@@ -116,20 +119,22 @@ onBeforeUnmount(() => {
 <template>
   <div class="iframe-container">
     <!-- 加載中遮罩 -->
+    <!-- 原文：正在加載頁面... -->
     <div v-if="isLoading" class="iframe-loading">
       <el-icon :size="32" class="loading-icon"><Loading /></el-icon>
-      <p>正在加載頁面...</p>
+      <p>{{ t('iframe.loading') }}</p>
     </div>
 
     <!-- 加載失敗提示 -->
+    <!-- 原文 title：頁面加載失敗；subtitle：網絡較慢或系統暫時無法訪問，可點擊重新加載重試；btn：重新加載 -->
     <div v-if="loadError" class="iframe-error">
       <el-result
         icon="warning"
-        title="頁面加載失敗"
-        sub-title="網絡較慢或系統暫時無法訪問，可點擊重新加載重試"
+        :title="t('iframe.errorTitle')"
+        :sub-title="t('iframe.errorDesc')"
       >
         <template #extra>
-          <el-button type="primary" @click="reload">重新加載</el-button>
+          <el-button type="primary" @click="reload">{{ t('iframe.reload') }}</el-button>
         </template>
       </el-result>
     </div>

@@ -15,18 +15,21 @@
  * 子路由通過 <router-view> 渲染在右側內容區。
  */
 
+import {useI18n} from 'vue-i18n'
 import TitleBar from './TitleBar.vue'
 import SidebarNav from './SidebarNav.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import {useUiStore} from '@/stores/ui.store'
 
 const uiStore = useUiStore()
+const {t} = useI18n()
 </script>
 
 <template>
   <div class="app-layout">
     <!-- 全屏初始化加載遮罩：配置載入、會話恢復期間顯示 -->
-    <LoadingSpinner v-if="uiStore.globalLoading" fullscreen text="應用初始化中..."/>
+    <!-- 原文：應用初始化中... -->
+    <LoadingSpinner v-if="uiStore.globalLoading" fullscreen :text="t('app.initializing')"/>
 
     <template v-else>
     <!-- 自定義標題欄（frameless 窗口，替代原生標題欄） -->

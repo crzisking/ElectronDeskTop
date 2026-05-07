@@ -17,9 +17,11 @@
  */
 
 import { computed } from 'vue'
+import {useI18n} from 'vue-i18n'
 import { useUiStore } from '@/stores/ui.store'
 
 const uiStore = useUiStore()
+const {t} = useI18n()
 
 /** 當前是否最大化（控制最大化/還原按鈕的圖標切換） */
 const isMaximized = computed(() => uiStore.isWindowMaximized)
@@ -59,14 +61,16 @@ function closeWindow() {
     <!-- 窗口控制按鈕組：no-drag 確保點擊可響應 -->
     <div class="window-controls">
       <!-- 最小化按鈕 -->
-      <button class="window-btn" title="最小化" @click="minimize">
+      <!-- 原文 title：最小化 -->
+      <button class="window-btn" :title="t('titleBar.minimize')" @click="minimize">
         <svg width="10" height="1" viewBox="0 0 10 1">
           <line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" stroke-width="1.5" />
         </svg>
       </button>
 
       <!-- 最大化/還原按鈕（根據狀態切換圖標） -->
-      <button class="window-btn" :title="isMaximized ? '還原' : '最大化'" @click="toggleMaximize">
+      <!-- 原文 title：還原 / 最大化 -->
+      <button class="window-btn" :title="isMaximized ? t('titleBar.restore') : t('titleBar.maximize')" @click="toggleMaximize">
         <!-- 還原圖標（兩個重疊的矩形） -->
         <svg v-if="isMaximized" width="10" height="10" viewBox="0 0 10 10">
           <rect x="2" y="0" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.5" />
@@ -79,7 +83,8 @@ function closeWindow() {
       </button>
 
       <!-- 關閉按鈕（紅色懸停） -->
-      <button class="window-btn close-btn" title="關閉（最小化到浮球）" @click="closeWindow">
+      <!-- 原文 title：關閉（最小化到浮球） -->
+      <button class="window-btn close-btn" :title="t('titleBar.closeToTray')" @click="closeWindow">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" />
           <line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.5" />

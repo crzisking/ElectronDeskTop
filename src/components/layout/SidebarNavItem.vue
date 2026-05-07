@@ -16,6 +16,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import {useConfigText} from '@/composables/useConfigText'
 import type { SidebarItem } from '@/types/config.types'
 
 const props = defineProps<{
@@ -25,6 +26,13 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const {ct} = useConfigText()
+
+/**
+ * 顯示用 label：走 i18n 字典 config.sidebar.<id>，缺失時 fallback 到 JSON 的 label。
+ * 原文示例：統一平台 / 內部功能
+ */
+const displayLabel = computed(() => ct(`config.sidebar.${props.item.id}`, props.item.label))
 
 /** 動態解析 Element Plus 圖標組件 */
 const iconComponent = computed(() => {
@@ -51,7 +59,7 @@ function navigate() {
     type="button"
     class="nav-item"
     :class="{ 'is-active': isActive, 'is-collapsed': collapsed }"
-    :title="collapsed ? item.label : ''"
+    :title="collapsed ? displayLabel : ''"
     role="menuitem"
     :aria-current="isActive ? 'page' : undefined"
     @click="navigate"
@@ -60,10 +68,10 @@ function navigate() {
       <el-icon v-if="iconComponent" :size="16">
         <component :is="iconComponent" />
       </el-icon>
-      <span v-else class="icon-placeholder">{{ item.label.charAt(0) }}</span>
+      <span v-else class="icon-placeholder">{{ displayLabel.charAt(0) }}</span>
     </span>
 
-    <span v-show="!collapsed" class="nav-label">{{ item.label }}</span>
+    <span v-show="!collapsed" class="nav-label">{{ displayLabel }}</span>
 
     <span v-if="item.badge && !collapsed" class="nav-badge">{{ item.badge }}</span>
   </button>

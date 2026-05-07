@@ -11,6 +11,7 @@
 
 import {onMounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {useAuthStore} from '@/stores/auth.store'
 import {useUpdate} from '@/composables/useUpdate'
 import {logger} from '@/utils/logger'
@@ -19,6 +20,7 @@ import type {FormInstance, FormRules} from 'element-plus'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const {t} = useI18n()
 
 /** 開發環境自動登錄：將 env 值填入表單，再走正常登錄流程 */
 onMounted(() => {
@@ -43,15 +45,19 @@ const form = reactive({
   password: ''
 })
 
-/** 前端基礎校驗規則 */
+/**
+ * 前端基礎校驗規則。
+ * message 用 t() 動態讀取 → 切換語言時 form 校驗提示自動跟著變。
+ * 原文：請輸入工號 / 工號格式不正確 / 請輸入密碼 / 密碼不能為空
+ */
 const rules: FormRules = {
   userName: [
-    { required: true, message: '請輸入工號', trigger: 'blur' },
-    { min: 2, message: '工號格式不正確', trigger: 'blur' }
+    { required: true, message: () => t('login.rules.userNameRequired'), trigger: 'blur' },
+    { min: 2, message: () => t('login.rules.userNameInvalid'), trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '請輸入密碼', trigger: 'blur' },
-    { min: 1, message: '密碼不能為空', trigger: 'blur' }
+    { required: true, message: () => t('login.rules.passwordRequired'), trigger: 'blur' },
+    { min: 1, message: () => t('login.rules.passwordEmpty'), trigger: 'blur' }
   ]
 }
 
@@ -87,9 +93,10 @@ async function handleLogin() {
     await router.push({name: 'unified-platform'})
   } catch (err: unknown) {
     // 顯示後端返回的錯誤信息或通用提示
+    // 原文 fallback：登錄失敗，請稍後再試
     errorMsg.value = err instanceof Error
       ? err.message
-      : '登錄失敗，請稍後再試'
+      : t('login.errorFallback')
   } finally {
     loading.value = false
   }
@@ -105,13 +112,17 @@ async function handleLogin() {
           <span class="brand-mark__letter">i</span>
         </div>
         <div class="brand-eyebrow">
-          <span>ICHIA ENTERPRISE</span>
-          <span class="brand-eyebrow__zh">· 企業客戶端</span>
+          <!-- 原文：ICHIA ENTERPRISE -->
+          <span>{{ t('login.eyebrowEn') }}</span>
+          <!-- 原文：· 企業客戶端 -->
+          <span class="brand-eyebrow__zh">{{ t('login.eyebrowZh') }}</span>
         </div>
+        <!-- 原文：歡迎回來（拆兩段給「回來」單獨的 accent 樣式） -->
         <h1 class="brand-title">
-          歡迎<span class="brand-title__accent">回來</span>
+          {{ t('login.welcomeBack1') }}<span class="brand-title__accent">{{ t('login.welcomeBack2') }}</span>
         </h1>
-        <p class="brand-desc">統一平台 · AI 助手 · 業務管理</p>
+        <!-- 原文：統一平台 · AI 助手 · 業務管理 -->
+        <p class="brand-desc">{{ t('login.desc') }}</p>
       </div>
 
       <!-- 登錄表單 -->
@@ -123,21 +134,23 @@ async function handleLogin() {
         size="large"
         @submit.prevent="handleLogin"
       >
-        <el-form-item label="工號" prop="userName">
+        <!-- 原文 label：工號 -->
+        <el-form-item :label="t('login.fieldUserName')" prop="userName">
           <el-input
             v-model="form.userName"
-            placeholder="請輸入工號，如 S2403279"
+            :placeholder="t('login.placeholderUserName')"
             clearable
             :prefix-icon="User"
             @keyup.enter="handleLogin"
           />
         </el-form-item>
 
-        <el-form-item label="密碼" prop="password">
+        <!-- 原文 label：密碼 -->
+        <el-form-item :label="t('login.fieldPassword')" prop="password">
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="請輸入密碼"
+            :placeholder="t('login.placeholderPassword')"
             show-password
             :prefix-icon="Lock"
             @keyup.enter="handleLogin"
@@ -154,13 +167,14 @@ async function handleLogin() {
           class="login-error"
         />
 
+        <!-- 原文：登錄中... / 登 錄 -->
         <el-button
           type="primary"
           native-type="submit"
           :loading="loading"
           class="login-btn"
         >
-          {{ loading ? '登錄中...' : '登 錄' }}
+          {{ loading ? t('login.submitting') : t('login.submit') }}
         </el-button>
       </el-form>
     </div>

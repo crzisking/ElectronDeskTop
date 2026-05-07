@@ -17,7 +17,15 @@
 
 import { ref, readonly } from 'vue'
 import { ElNotification, ElMessage } from 'element-plus'
+import {i18n} from '@/locales'
 import {logger} from '@/utils/logger'
+
+/**
+ * useUpdate 是模塊級單例（在 setup() 之外被呼叫），所以不能用 useI18n()。
+ * 直接讀 i18n.global.t，並透過函數式包裝確保語言切換時讀的是當前 locale。
+ */
+const t = (key: string, named?: Record<string, unknown>) =>
+  named ? i18n.global.t(key, named) : i18n.global.t(key)
 
 /** 下載完成後到自動重啟之間的緩衝時間，給用戶看到通知並保存工作 */
 const RESTART_DELAY_MS = 5_000
@@ -101,9 +109,11 @@ function bootstrap(): void {
     }
     notifiedAvailableVersion.value = info.version
 
+    // 原文 title：發現新版本 {version}
+    // 原文 message：正在背景下載，下載完成後會通知您重啟。
     ElNotification({
-      title: `發現新版本 ${info.version}`,
-      message: '正在背景下載，下載完成後會通知您重啟。',
+      title: t('update.notifyAvailableTitle', {version: info.version}),
+      message: t('update.notifyAvailableMsg'),
       type: 'info',
       duration: 6000,
       position: 'bottom-right'
@@ -115,7 +125,8 @@ function bootstrap(): void {
     clearCheckTimeout()
     state.value = 'not-available'
     if (userInitiated) {
-      ElMessage.success('您已是最新版本')
+      // 原文：您已是最新版本
+      ElMessage.success(t('update.isLatest'))
       userInitiated = false
     }
   })
@@ -143,9 +154,11 @@ function bootstrap(): void {
     }
     notifiedDownloadedVersion.value = info.version
 
+    // 原文 title：新版本 {version} 已下載完成
+    // 原文 message：應用將在 {seconds} 秒後自動重啟以完成安裝，請保存您的工作。
     ElNotification({
-      title: `新版本 ${info.version} 已下載完成`,
-      message: `應用將在 ${Math.round(RESTART_DELAY_MS / 1000)} 秒後自動重啟以完成安裝，請保存您的工作。`,
+      title: t('update.notifyDownloadedTitle', {version: info.version}),
+      message: t('update.notifyDownloadedMsg', {seconds: Math.round(RESTART_DELAY_MS / 1000)}),
       type: 'success',
       duration: RESTART_DELAY_MS,
       position: 'bottom-right',
@@ -164,7 +177,8 @@ function bootstrap(): void {
     logger.warn('更新流程錯誤', 'useUpdate', err)
 
     if (userInitiated) {
-      ElMessage.error(`檢查更新失敗：${err.message}`)
+      // 原文：檢查更新失敗：{message}
+      ElMessage.error(t('update.checkFailed', {message: err.message}))
       userInitiated = false
     }
   })
@@ -192,7 +206,8 @@ async function manualCheck(): Promise<void> {
   checkTimeoutTimer = setTimeout(() => {
     if (state.value === 'checking') {
       state.value = 'error'
-      lastError.value = '檢查更新超時，請稍後再試或檢查網路'
+      // 原文：檢查更新超時，請稍後再試或檢查網路
+      lastError.value = t('update.timeout')
       if (userInitiated) {
         ElMessage.error(lastError.value)
         userInitiated = false

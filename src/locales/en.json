@@ -1,0 +1,310 @@
+{
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "yes": "Yes",
+    "no": "No"
+  },
+
+  "app": {
+    "name": "ICHIA Enterprise",
+    "configLoadFailed": "Failed to load app configuration. Some features may not work.",
+    "configUpdated": "Configuration updated",
+    "configReloadFailed": "Configuration reload failed, using previous version",
+    "initializing": "Initializing app..."
+  },
+
+  "titleBar": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "closeToTray": "Close (minimize to floating ball)"
+  },
+
+  "login": {
+    "eyebrowEn": "ICHIA ENTERPRISE",
+    "eyebrowZh": "· Enterprise Client",
+    "welcomeBack1": "Welcome",
+    "welcomeBack2": "back",
+    "desc": "Unified Platform · AI Assistant · Business Management",
+    "fieldUserName": "Employee ID",
+    "fieldPassword": "Password",
+    "placeholderUserName": "Enter your ID, e.g. S2403279",
+    "placeholderPassword": "Enter your password",
+    "rules": {
+      "userNameRequired": "Employee ID is required",
+      "userNameInvalid": "Invalid Employee ID",
+      "passwordRequired": "Password is required",
+      "passwordEmpty": "Password cannot be empty"
+    },
+    "submit": "Sign In",
+    "submitting": "Signing in…",
+    "errorFallback": "Sign in failed. Please try again later."
+  },
+
+  "sidebar": {
+    "sectionWorkspace": "Workspace",
+    "sectionSystem": "System",
+    "emptyMenu": "No menu configured",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "settings": "Settings",
+    "guest": "Guest"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage application preferences and updates",
+    "sections": {
+      "general": "General",
+      "update": "Software Update",
+      "language": "Language",
+      "log": "Logs & Diagnostics",
+      "about": "About"
+    },
+    "language": {
+      "label": "Language",
+      "description": "Switch the application display language",
+      "current": "Current language",
+      "currentDesc": "The language currently used by the app",
+      "switched": "Language switched",
+      "switchFailed": "Language switch failed, reverted to previous setting",
+      "zh-TW": "繁體中文",
+      "en": "English"
+    }
+  },
+
+  "update": {
+    "currentVersion": "Current version",
+    "currentVersionDesc": "The application version you are currently using",
+    "autoCheck": "Auto check",
+    "autoCheckDesc": "Automatically check and download new versions daily",
+    "autoCheckDisabled": "Disabled",
+    "checkBtn": "Check for updates",
+    "checkBtnDesc": "Connect to the server immediately to check for new versions",
+    "checking": "Checking…",
+    "downloading": "Downloading {percent}",
+    "downloaded": "v {version} is ready, restarting shortly",
+    "downloadedNoVersion": "Ready, restarting shortly",
+    "isLatest": "You are on the latest version",
+    "checkFailed": "Update check failed: {message}",
+    "timeout": "Update check timed out. Please try again or check your network.",
+    "notifyAvailableTitle": "New version {version} found",
+    "notifyAvailableMsg": "Downloading in the background. You will be notified to restart when ready.",
+    "notifyDownloadedTitle": "New version {version} downloaded",
+    "notifyDownloadedMsg": "The app will restart in {seconds} seconds to complete the installation. Please save your work."
+  },
+
+  "log": {
+    "folderTitle": "Log folder",
+    "folderDesc": "Contains application logs. When reporting issues, please attach today's .log file.",
+    "openBtn": "Open",
+    "openFailed": "Failed to open log folder",
+    "pathTitle": "Path",
+    "pathDesc": "Absolute path to the log folder",
+    "copyBtn": "Copy",
+    "copyHint": "Please click \"Open\" first",
+    "copied": "Path copied",
+    "copyFailed": "Copy failed, please copy manually",
+    "retentionTitle": "Retention",
+    "retentionDesc": "Logs older than 14 days are auto-purged",
+    "retentionValue": "14 days"
+  },
+
+  "platform": {
+    "searchPlaceholder": "Search by system name or description…",
+    "allSystems": "All Systems",
+    "systemsLabel": "SYSTEMS",
+    "tagSso": "SSO Direct",
+    "tagSsoEnabled": "SSO Enabled",
+    "openModeIframe": "Embedded",
+    "openModeWindow": "Standalone Window",
+    "openModeBrowser": "External Browser",
+    "backToList": "Back to list",
+    "openInBrowser": "Open in browser",
+    "emptyAll": "No systems configured. Edit unifiedPlatform.systems in app-config.json.",
+    "emptySearch": "No systems found matching \"{keyword}\""
+  },
+
+  "internal": {
+    "searchPlaceholder": "Search by name or description…",
+    "commonTools": "Common Tools",
+    "itemsLabel": "ITEMS",
+    "filterAll": "All",
+    "filterProcess": "Process",
+    "filterSupport": "Support",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "More internal tools are on their way",
+    "emptyAll": "No tools configured. Add them in internalFunctions.tools of app-config.json.",
+    "emptySearch": "No matching tools found",
+    "statusOk": "All systems operational",
+    "routeFailed": "Tool route navigation failed"
+  },
+
+  "iframe": {
+    "loading": "Loading page…",
+    "errorTitle": "Page failed to load",
+    "errorDesc": "This may be due to network, SSL certificate, or the target site disallowing embedding. Try opening in browser.",
+    "openInBrowser": "Open in browser",
+    "reload": "Reload"
+  },
+
+  "loading": {
+    "default": "Loading..."
+  },
+
+  "repair": {
+    "back": "Back",
+    "tabSubmit": "New Ticket",
+    "tabHistory": "My Tickets",
+    "fieldTitle": "Title",
+    "fieldTitlePlaceholder": "Briefly describe the issue, e.g. \"Computer won't start\"",
+    "fieldDesc": "Description",
+    "polishBtn": "AI Polish",
+    "polishLimitReached": "Reached {limit}-time limit, please modify description and try again",
+    "polishRemaining": "{n} remaining",
+    "editorTip": "Type normally or paste an image directly into the editor",
+    "submitBtn": "Submit",
+    "submitting": "Submitting...",
+    "uploadingHint": "Please wait for image upload to finish",
+    "refresh": "Refresh",
+    "tableEmpty": "No tickets yet",
+    "colTicketNo": "Ticket No.",
+    "colTitle": "Title",
+    "colStatus": "Status",
+    "colAssigned": "Assignee",
+    "unassigned": "Unassigned",
+    "colSubmitTime": "Submitted",
+    "colAction": "Action",
+    "viewDetail": "Details",
+    "emptyMyTickets": "You haven't submitted any tickets yet",
+    "statusFilterAll": "All",
+    "statusSubmitted": "Submitted",
+    "statusAssigned": "Assigned",
+    "statusClosed": "Closed",
+    "detailTitle": "Ticket Details",
+    "detailSubmitter": "Submitter",
+    "itReply": "IT Reply",
+    "itReplyEmpty": "IT has not posted a reply yet",
+    "attachments": "Attachments ({n})",
+    "polishDialogTitle": "✨ AI Polish",
+    "polishOriginal": "Original",
+    "polishArrow": "↓ AI Polished Result",
+    "polishResultLabel": "Polished version",
+    "polishGenerating": "Generating...",
+    "polishPlaceholder": "AI is generating...",
+    "polishApply": "Use this version",
+    "polishStreamError": "AI polish failed: {message}",
+    "submitSuccess": "Submitted successfully",
+    "submitNotLoggedIn": "Please sign in first",
+    "validateFailed": "Please fill in all required fields",
+    "uploadingFiles": "Uploading images, please wait",
+    "imageUploadFailed": "Image upload failed",
+    "imageTooLarge": "Image cannot exceed 5MB",
+    "ruleTitleRequired": "Please enter a title",
+    "ruleTitleMax": "Title must not exceed 100 characters",
+    "ruleDescRequired": "Please describe the issue",
+    "ruleDescMax": "Description must not exceed 2000 characters",
+    "polishNeedDesc": "Please describe the issue first",
+    "polishFailedHint": "AI polish failed, please verify the service is available",
+    "submitOk": "Ticket submitted! Ticket No.: {no}",
+    "uploadOnlyImage": "Only image files are allowed (jpg / png / gif, etc.)",
+    "uploadTooLarge": "{name} exceeds 10MB, please compress and try again"
+  },
+
+  "ai": {
+    "bpmFinder": {
+      "title": "BPM Owner Lookup",
+      "desc": "Enter a process name or keywords; AI will find the corresponding BPM form owner",
+      "openInBrowserBtn": "Open in browser",
+      "urlNotConfigured": "Dify URL not configured. Set it in internalFunctions.tools[bpmUserFinder].url of app-config.json"
+    },
+    "aiSop": {
+      "title": "AI SOP Generator",
+      "desc": "Describe a workflow in plain text; AI generates the SOP steps",
+      "openInBrowserBtn": "Open in browser"
+    },
+    "stream": {
+      "errorPrefix": "AI service error: ",
+      "timeoutMsg": "AI service timed out, please try again later",
+      "networkMsg": "Network error, cannot reach AI service"
+    }
+  },
+
+  "aisop": {
+    "uploadHeader": "Upload to Fanwei",
+    "titlePlaceholder": "Document title",
+    "titleRequired": "Please enter a title",
+    "fileRequired": "Please select a file",
+    "dragText1": "Drag file here or",
+    "dragClick": "click to select",
+    "tip": "Supports PDF, Word, Excel, PPT, images, and text files up to 20MB",
+    "uploadBtn": "Upload",
+    "uploadOk": "Uploaded! File ID: {id}",
+    "uploadFailed": "Upload failed: {msg}",
+    "unsupportedType": "Unsupported file type. Only PDF, Word, Excel, PPT, images, and text files are allowed.",
+    "fileTooLarge": "{name} exceeds 20MB, please compress and try again",
+    "urlNotConfigured": "Dify URL not configured"
+  },
+
+  "auth": {
+    "tokenInvalid": "Session expired, please sign in again",
+    "noPermission": "You don't have permission for this operation",
+    "serverError": "Server error, please try again later",
+    "networkError": "Network connection failed, please check your network"
+  },
+
+  "http": {
+    "tokenExpired": "Invalid token",
+    "sysError": "System error occurred",
+    "networkError": "Network connection error",
+    "sessionExpired": "Session expired. Click to log in.",
+    "unauthorized": "Unauthorized operation.",
+    "notFound": "The requested resource was not found"
+  },
+
+  "router": {
+    "login": "Sign In",
+    "unifiedPlatform": "Unified Platform",
+    "internalFunctions": "Internal Tools",
+    "bpmFinder": "BPM Owner Lookup",
+    "aiSop": "AI SOP Generator",
+    "itRepair": "IT Repair"
+  },
+
+  "config": {
+    "sidebar": {
+      "unified-platform": "Unified Platform",
+      "internal-functions": "Internal Tools"
+    },
+    "systemLinks": {
+      "docs-center": "Documentation Center"
+    },
+    "floatingBall": {
+      "menu-show-main": "Open Main Window",
+      "menu-go-platform": "Unified Platform",
+      "menu-go-internal": "Internal Tools",
+      "menu-quit": "Quit"
+    },
+    "systems": {
+      "sys-erp":     { "name": "New ERP",       "description": "ERP system" },
+      "sys-bi":      { "name": "BI Analytics",  "description": "Reports, dashboards, trend analysis" },
+      "sys-fanwei":  { "name": "Fanwei",        "description": "Fanwei platform" },
+      "sys-BPM":     { "name": "BPM",           "description": "BPM system" },
+      "sys-it":      { "name": "IT Service Desk", "description": "Tickets, IT assets, VPN requests" }
+    },
+    "tools": {
+      "bpmUserFinder": { "name": "BPM Owner Lookup", "description": "Find the owner of a BPM form" },
+      "AiSop":         { "name": "AI SOP Generator", "description": "Generate SOP from text" },
+      "itRepair":      { "name": "IT Repair",        "description": "Submit device or IT issues, view your tickets" }
+    }
+  }
+}

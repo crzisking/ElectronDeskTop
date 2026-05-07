@@ -54,7 +54,8 @@ export function useAiStream() {
 
     const apiBaseUrl = configStore.functionsConfig?.apiBaseUrl ?? ''
     if (!apiBaseUrl) {
-      streamError.value = 'AI API 地址未配置'
+      // 原文：AI API 地址未配置（內部技術錯誤，保留原文便於日誌排查）
+      streamError.value = 'AI API URL not configured'
       return
     }
 
@@ -87,7 +88,8 @@ export function useAiStream() {
       }
 
       if (!response.body) {
-        throw new Error('響應體為空，服務器可能不支持流式輸出')
+        // 內部錯誤訊息（throw 出去後在 catch 裡再決定是否展示給用戶），保留原文
+        throw new Error('Empty response body: server may not support streaming')
       }
 
       // 使用 ReadableStream 逐塊讀取 SSE 數據
@@ -148,8 +150,8 @@ export function useAiStream() {
       if (err instanceof Error && err.name === 'AbortError') {
         return
       }
-      streamError.value = err instanceof Error ? err.message : '流式請求失敗'
-        logger.error('流式請求錯誤', 'useAiStream', err)
+      streamError.value = err instanceof Error ? err.message : 'Stream request failed'
+      logger.error('流式請求錯誤', 'useAiStream', err)
     } finally {
       isStreaming.value = false
       abortController = null

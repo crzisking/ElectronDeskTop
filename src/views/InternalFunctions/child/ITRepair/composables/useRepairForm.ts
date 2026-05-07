@@ -20,6 +20,13 @@
  */
 import {computed, reactive, ref} from 'vue'
 import type {FormInstance} from 'element-plus'
+import {i18n} from '@/locales'
+
+/**
+ * useRepairForm 在 setup 內呼叫，但 rules 的 message 函數在校驗時才執行，
+ * 此時可能 useI18n() 上下文已經失效；穩妥做法是用全局 i18n 實例直接讀。
+ */
+const t = (key: string) => i18n.global.t(key)
 
 /**
  * 將富文本 HTML 轉換為純文字。
@@ -91,21 +98,25 @@ export function useRepairForm() {
      * description 不直接用 max:2000，因為 max 會把 HTML 標籤字符計入長度，
      * 改用 validator 把 HTML 轉純文字再判長度。
      */
+    /**
+     * 校驗 message 全部用函數形式 + t()，這樣語言切換後重新校驗能拿到新語言文本。
+     * 原文：請填寫工單標題 / 標題不超過 100 個字元 / 請填寫問題描述 / 描述不超過 2000 個字元
+     */
     const richSubmitRules = {
         title: [
-            {required: true, message: '請填寫工單標題', trigger: 'blur'},
-            {max: 100, message: '標題不超過 100 個字元', trigger: 'blur'}
+            {required: true, message: () => t('repair.ruleTitleRequired'), trigger: 'blur'},
+            {max: 100, message: () => t('repair.ruleTitleMax'), trigger: 'blur'}
         ],
         description: [
             {
                 validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
                     const plainText = getPlainText(normalizeEditorHtml(value))
                     if (!plainText) {
-                        callback(new Error('請填寫問題描述'))
+                        callback(new Error(t('repair.ruleDescRequired')))
                         return
                     }
                     if (plainText.length > 2000) {
-                        callback(new Error('描述不超過 2000 個字元'))
+                        callback(new Error(t('repair.ruleDescMax')))
                         return
                     }
                     callback()

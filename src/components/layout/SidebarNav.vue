@@ -19,17 +19,37 @@
 
 import {computed, ref} from 'vue'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import {ElMessage} from 'element-plus'
+import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
+import {useConfigText} from '@/composables/useConfigText'
+import {useLanguage, LANGUAGE_OPTIONS} from '@/composables/useLanguage'
 import SidebarNavItem from './SidebarNavItem.vue'
 import SettingsDialog from '@/views/Settings/SettingsDialog.vue'
-import {ArrowLeftBold, Setting} from '@element-plus/icons-vue'
+import {ArrowLeftBold, Check, Setting} from '@element-plus/icons-vue'
 import type {SidebarItem, SystemLinkItem} from '@/types/config.types'
+import type {SupportedLocale} from '@/locales'
 
 const configStore = useConfigStore()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
+const {t} = useI18n()
+const {ct} = useConfigText()
+const {currentLocale, switching, switchLanguage} = useLanguage()
+
+/**
+ * 用戶點擊語言下拉項。
+ * 展示用 toast 提示成功/失敗（這裡需要的話可以保留也可以省略，
+ * 因為界面語言會立即切換，視覺反饋已經很明顯）。
+ */
+async function handleLanguageSelect(target: SupportedLocale) {
+  const ok = await switchLanguage(target)
+  // 失敗才提示；成功時界面已換語言，無需多餘 toast
+  // 原文：語言切換失敗，已恢復原設定
+  if (!ok) ElMessage.error(t('settings.language.switchFailed'))
+}
 
 /**
  * 工作台分組：基於 configStore.sidebarItems，並動態注入計數徽標。
@@ -76,7 +96,8 @@ function openSystemLink(link: SystemLinkItem) {
 const collapsed = computed(() => uiStore.sidebarCollapsed)
 
 /** 用戶顯示信息（fallback：未登錄時顯示佔位） */
-const userName = computed(() => authStore.user?.name ?? '訪客')
+// 原文 fallback：訪客
+const userName = computed(() => authStore.user?.name ?? t('sidebar.guest'))
 const userInitial = computed(() => userName.value.charAt(0))
 
 /** 切換折疊狀態 */
@@ -99,32 +120,36 @@ function openSettings() {
 <template>
   <aside class="sidebar" :class="{ 'sidebar--collapsed': collapsed }">
     <!-- ── 工作台分組 ──────────────────────────────────────── -->
+    <!-- 原文 section label：工作台 -->
     <div class="sidebar-section">
-      <div v-show="!collapsed" class="section-label">工作台</div>
-      <nav class="section-nav" role="menu" aria-label="工作台">
+      <div v-show="!collapsed" class="section-label">{{ t('sidebar.sectionWorkspace') }}</div>
+      <nav class="section-nav" role="menu" :aria-label="t('sidebar.sectionWorkspace')">
         <SidebarNavItem
           v-for="item in workspaceItems"
           :key="item.id"
           :item="item"
           :collapsed="collapsed"
         />
+        <!-- 原文：菜單配置為空 -->
         <div v-if="workspaceItems.length === 0" class="nav-empty">
-          <el-text type="info" size="small">菜單配置為空</el-text>
+          <el-text type="info" size="small">{{ t('sidebar.emptyMenu') }}</el-text>
         </div>
       </nav>
     </div>
 
     <!-- ── 系統分組：外部連結（文檔中心等） ──────────────── -->
+    <!-- 原文 section label：系统 -->
+    <!-- link.label 走 useConfigText：字典裡有就翻譯，沒有就 fallback 到 JSON 原值 -->
     <div v-if="systemLinks.length > 0" class="sidebar-section">
-      <div v-show="!collapsed" class="section-label">系统</div>
-      <nav class="section-nav" role="menu" aria-label="系统">
+      <div v-show="!collapsed" class="section-label">{{ t('sidebar.sectionSystem') }}</div>
+      <nav class="section-nav" role="menu" :aria-label="t('sidebar.sectionSystem')">
         <button
           v-for="link in systemLinks"
           :key="link.id"
           type="button"
           class="nav-item"
           :class="{ 'is-collapsed': collapsed }"
-          :title="collapsed ? link.label : ''"
+          :title="collapsed ? ct(`config.systemLinks.${link.id}`, link.label) : ''"
           role="menuitem"
           @click="openSystemLink(link)"
         >
@@ -132,9 +157,9 @@ function openSettings() {
             <el-icon v-if="resolveIcon(link.icon)" :size="16">
               <component :is="resolveIcon(link.icon)" />
             </el-icon>
-            <span v-else class="icon-placeholder">{{ link.label.charAt(0) }}</span>
+            <span v-else class="icon-placeholder">{{ ct(`config.systemLinks.${link.id}`, link.label).charAt(0) }}</span>
           </span>
-          <span v-show="!collapsed" class="nav-label">{{ link.label }}</span>
+          <span v-show="!collapsed" class="nav-label">{{ ct(`config.systemLinks.${link.id}`, link.label) }}</span>
         </button>
       </nav>
     </div>
@@ -150,10 +175,46 @@ function openSettings() {
         設置按鈕：折疊狀態下也保留（小屏依然能進設定），
         完全隱藏會讓收合後找不到設定入口
       -->
+      <!-- ── 語言切換快捷按鈕（齒輪左側） ──────────────────
+           原文 tooltip：界面語言；點擊彈出 dropdown 列表，
+           當前語言用 ✓ 高亮。配置寫入由 useLanguage composable 統一處理 -->
+      <el-dropdown
+        trigger="click"
+        placement="top-start"
+        :disabled="switching"
+        @command="handleLanguageSelect"
+      >
+        <button
+          type="button"
+          class="settings-btn lang-btn"
+          :title="t('settings.language.label')"
+          :aria-label="t('settings.language.label')"
+        >
+          <!-- 文字按鈕：顯示當前語言代碼，緊湊不占地方 -->
+          <span class="lang-btn__text">{{ currentLocale === 'zh-TW' ? '繁' : 'EN' }}</span>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+              v-for="opt in LANGUAGE_OPTIONS"
+              :key="opt.value"
+              :command="opt.value"
+              :disabled="opt.value === currentLocale || switching"
+            >
+              <span class="lang-item__label">{{ opt.label }}</span>
+              <el-icon v-if="opt.value === currentLocale" class="lang-item__check" :size="14">
+                <Check />
+              </el-icon>
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+
+      <!-- 原文 title：設定 -->
       <button
         type="button"
         class="settings-btn"
-        :title="'設定'"
+        :title="t('sidebar.settings')"
         @click="openSettings"
       >
         <el-icon :size="16"><Setting /></el-icon>
@@ -161,11 +222,12 @@ function openSettings() {
     </div>
 
     <!-- ── 收合按鈕 ───────────────────────────────────────── -->
-    <button class="collapse-handle" type="button" :title="collapsed ? '展開側邊欄' : '收合側邊欄'" @click="toggleCollapse">
+    <!-- 原文 title：展開側邊欄 / 收合側邊欄；按鈕文字：收合側邊欄 -->
+    <button class="collapse-handle" type="button" :title="collapsed ? t('sidebar.expand') : t('sidebar.collapse')" @click="toggleCollapse">
       <el-icon :size="14" :style="{ transform: collapsed ? 'rotate(180deg)' : 'none' }">
         <ArrowLeftBold />
       </el-icon>
-      <span v-show="!collapsed" class="collapse-label">收合側邊欄</span>
+      <span v-show="!collapsed" class="collapse-label">{{ t('sidebar.collapse') }}</span>
     </button>
 
     <!-- 設置彈窗（透過 Teleport 渲染到 body，不受側邊欄裁剪） -->
@@ -354,6 +416,35 @@ function openSettings() {
 
 .settings-btn:active {
   transform: rotate(60deg) scale(0.95);
+}
+
+/* ── 語言切換按鈕（覆蓋 settings-btn 的旋轉動畫） ─────────── */
+/* 文字按鈕用 12px 等寬字體，視覺重量與齒輪 icon 持平 */
+.lang-btn .lang-btn__text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: var(--app-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+  color: inherit;
+}
+
+/* 覆蓋父類旋轉效果，語言按鈕不需要轉 */
+.settings-btn.lang-btn:hover {
+  transform: none;
+}
+
+.settings-btn.lang-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── 語言下拉項（當前語言尾部 ✓） ─────────────────────────── */
+:global(.el-dropdown-menu__item) .lang-item__label {
+  margin-right: 8px;
+}
+
+:global(.el-dropdown-menu__item) .lang-item__check {
+  color: var(--app-success, var(--el-color-success));
+  margin-left: auto;
 }
 
 /* ── 收合按鈕 ────────────────────────────────────────────── */

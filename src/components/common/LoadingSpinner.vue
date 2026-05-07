@@ -3,6 +3,9 @@
  * 用於頁面初始化、數據請求期間的加載提示
  */
 import {Loading} from "@element-plus/icons-vue";
+import {useI18n} from 'vue-i18n'
+
+const {t} = useI18n()
 
 defineProps<{
   /** 加載提示文字，默認"加載中..." */
@@ -13,9 +16,10 @@ defineProps<{
 </script>
 
 <template>
+  <!-- 原文 fallback：加載中... -->
   <div class="loading-spinner" :class="{ 'is-fullscreen': fullscreen }">
     <el-icon :size="36" class="spin-icon"><Loading /></el-icon>
-    <span class="spin-text">{{ text ?? '加載中...' }}</span>
+    <span class="spin-text">{{ text ?? t('loading.default') }}</span>
   </div>
 </template>
 

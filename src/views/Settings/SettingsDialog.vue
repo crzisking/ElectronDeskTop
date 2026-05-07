@@ -21,10 +21,13 @@
  * （仍然用 el-dialog 包裹，只是內部換成 left-rail + content 結構）。
  */
 
+import {useI18n} from 'vue-i18n'
 import UpdateSection from './sections/UpdateSection.vue'
 import LanguageSection from './sections/LanguageSection.vue'
 import LogSection from './sections/LogSection.vue'
 import { Setting } from '@element-plus/icons-vue'
+
+const {t} = useI18n()
 
 defineProps<{
   /** 彈窗是否顯示（v-model:modelValue） */
@@ -57,34 +60,36 @@ function close() {
           <el-icon :size="18"><Setting /></el-icon>
         </div>
         <div class="header-text">
-          <div class="header-title">設定</div>
-          <div class="header-subtitle">管理應用偏好與更新</div>
+          <!-- 原文 title：設定；subtitle：管理應用偏好與更新 -->
+          <div class="header-title">{{ t('settings.title') }}</div>
+          <div class="header-subtitle">{{ t('settings.subtitle') }}</div>
         </div>
       </div>
     </template>
 
     <div class="settings-dialog__body">
-      <!-- 軟體更新分區 -->
+      <!-- 軟體更新分區（原文：軟體更新）-->
       <section class="settings-category">
-        <div class="settings-category__title">軟體更新</div>
+        <div class="settings-category__title">{{ t('settings.sections.update') }}</div>
         <UpdateSection />
       </section>
 
-      <!-- 語言分區（預留） -->
+      <!-- 語言分區（原文：語言）-->
       <section class="settings-category">
-        <div class="settings-category__title">語言</div>
+        <div class="settings-category__title">{{ t('settings.sections.language') }}</div>
         <LanguageSection />
       </section>
 
-      <!-- 日誌與診斷分區 -->
+      <!-- 日誌與診斷分區（原文：日誌與診斷）-->
       <section class="settings-category">
-        <div class="settings-category__title">日誌與診斷</div>
+        <div class="settings-category__title">{{ t('settings.sections.log') }}</div>
         <LogSection />
       </section>
     </div>
 
+    <!-- 原文：關閉 -->
     <template #footer>
-      <el-button @click="close">關閉</el-button>
+      <el-button @click="close">{{ t('common.close') }}</el-button>
     </template>
   </el-dialog>
 </template>

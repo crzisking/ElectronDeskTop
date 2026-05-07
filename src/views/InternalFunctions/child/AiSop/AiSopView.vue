@@ -13,12 +13,15 @@
 
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {ArrowLeft, ChromeFilled, UploadFilled} from '@element-plus/icons-vue'
 import type {UploadFile} from 'element-plus'
 import {ElMessage} from 'element-plus'
 import IframeContainer from '@/components/common/IframeContainer.vue'
 import {useConfigStore} from '@/stores/config.store'
 import {aiSopApi} from '@/api/modules/aisop.api'
+
+const {t} = useI18n()
 
 /**
  * AiSop 上傳響應的業務數據類型
@@ -84,11 +87,13 @@ function beforeUpload(rawFile: File): boolean {
   const ext = '.' + rawFile.name.split('.').pop()?.toLowerCase()
   const typeOk = ALLOWED_TYPES.includes(rawFile.type) || ALLOWED_EXTENSIONS.includes(ext)
   if (!typeOk) {
-    ElMessage.error('不支援的文件類型，僅允許 PDF、Word、Excel、PPT、圖片、文字檔')
+    // 原文：不支援的文件類型，僅允許 PDF、Word、Excel、PPT、圖片、文字檔
+    ElMessage.error(t('aisop.unsupportedType'))
     return false
   }
   if (rawFile.size > MAX_FILE_SIZE) {
-    ElMessage.error(`${rawFile.name} 超過 20MB，請壓縮後重試`)
+    // 原文：{name} 超過 20MB，請壓縮後重試
+    ElMessage.error(t('aisop.fileTooLarge', {name: rawFile.name}))
     return false
   }
   return true
@@ -97,12 +102,14 @@ function beforeUpload(rawFile: File): boolean {
 /** 上傳文件至泛微 */
 async function handleUpload() {
   if (!fanWeiTitle.value.trim()) {
-    ElMessage.warning('請填寫上傳標題')
+    // 原文：請填寫上傳標題
+    ElMessage.warning(t('aisop.titleRequired'))
     return
   }
 
   if (!fileList.value.length) {
-    ElMessage.warning('請選擇文件')
+    // 原文：請選擇文件
+    ElMessage.warning(t('aisop.fileRequired'))
     return
   }
 
@@ -116,10 +123,12 @@ async function handleUpload() {
   try {
     const res = await aiSopApi.upload(formData) as AiSopUploadResult
     const fileId = res?.data ?? res?.fileId ?? ''
-    ElMessage.success(`上傳成功！文件id：${fileId}`)
+    // 原文：上傳成功！文件id：{id}
+    ElMessage.success(t('aisop.uploadOk', {id: String(fileId)}))
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
-    ElMessage.error(`上傳失敗：${msg}`)
+    // 原文：上傳失敗：{msg}
+    ElMessage.error(t('aisop.uploadFailed', {msg}))
   } finally {
     fileList.value = []
     fanWeiTitle.value = ''
@@ -130,13 +139,14 @@ async function handleUpload() {
 <template>
   <div class="bpm-finder-view">
 
+    <!-- 原文：返回 / AiSop / 在瀏覽器開啟 -->
     <div class="toolbar">
       <el-button
           :icon="ArrowLeft"
           text
           @click="goBack"
       >
-        返回
+        {{ t('repair.back') }}
       </el-button>
 
       <span class="toolbar-title">
@@ -151,7 +161,7 @@ async function handleUpload() {
           :icon="ChromeFilled"
           @click="openInBrowser"
       >
-        在瀏覽器開啟
+        {{ t('ai.bpmFinder.openInBrowserBtn') }}
       </el-button>
     </div>
 
@@ -160,17 +170,16 @@ async function handleUpload() {
     <div class="content-layout">
 
       <!-- 左侧 -->
+      <!-- 原文 header：上傳文件至泛微發佈；placeholder：請輸入文檔標題；upload text：拖拽文件到這裡 或 點擊選擇；tip：支援 PDF...；button：上傳 -->
       <div class="left-panel">
         <el-card shadow="hover">
           <template #header>
-            <span>
-              上傳文件至泛微發佈
-            </span>
+            <span>{{ t('aisop.uploadHeader') }}</span>
           </template>
 
           <el-input
               v-model="fanWeiTitle"
-              placeholder="請輸入文檔標題"
+              :placeholder="t('aisop.titlePlaceholder')"
           />
 
           <el-upload
@@ -185,13 +194,13 @@ async function handleUpload() {
             </el-icon>
 
             <div class="el-upload__text">
-              拖拽文件到這裡 或
-              <em>點擊選擇</em>
+              {{ t('aisop.dragText1') }}
+              <em>{{ t('aisop.dragClick') }}</em>
             </div>
 
             <template #tip>
               <div class="el-upload__tip">
-                支援 PDF、Word、Excel、PPT、圖片、文字檔，最大 20MB
+                {{ t('aisop.tip') }}
               </div>
             </template>
           </el-upload>
@@ -200,7 +209,7 @@ async function handleUpload() {
               type="primary"
               @click="handleUpload"
           >
-            上傳
+            {{ t('aisop.uploadBtn') }}
           </el-button>
 
         </el-card>
@@ -217,9 +226,10 @@ async function handleUpload() {
               title="BPM Finder"
           />
 
+          <!-- 原文：尚未設定 Dify 網址 -->
           <el-empty
               v-else
-              description="尚未設定 Dify 網址"
+              :description="t('aisop.urlNotConfigured')"
               :image-size="120"
           />
 
