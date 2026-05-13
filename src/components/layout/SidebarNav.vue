@@ -95,9 +95,13 @@ function openSystemLink(link: SystemLinkItem) {
 /** 當前是否折疊 */
 const collapsed = computed(() => uiStore.sidebarCollapsed)
 
-/** 用戶顯示信息（fallback：未登錄時顯示佔位） */
-// 原文 fallback：訪客
-const userName = computed(() => authStore.user?.name ?? t('sidebar.guest'))
+/**
+ * 用戶顯示信息。
+ * AppLayout 由 requiresAuth 守衛保護,未登入會被導向 /login 而不會渲染側邊欄,
+ * 因此這裡 user 理論上必定有值;極端 race condition(認證完成前的一瞬)用空字串兜底,
+ * 不再用「訪客」之類的佔位文案 —— AD 失敗就是登入失敗,直接走 /login,沒有訪客身份。
+ */
+const userName = computed(() => authStore.user?.name ?? '')
 const userInitial = computed(() => userName.value.charAt(0))
 
 /** 切換折疊狀態 */
