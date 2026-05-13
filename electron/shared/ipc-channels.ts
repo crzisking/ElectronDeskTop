@@ -5,8 +5,31 @@
  */
 export const IpcChannels = {
 
-  // 註：原 AUTH_* IPC 頻道已移除 —— Token 改為僅放渲染端 Pinia store（auth.store.ts），
-  // 不再持久化到磁盤，關閉應用即丟失，下次啟動需重新登錄。
+  // ─── 認證 / AD 自動登入 ─────────────────────────────────────────────
+  // 註：Token 仍然只放渲染端 Pinia store（auth.store.ts），不持久化到磁盤。
+  // 此處新增的 AUTH_GET_AD_ACCOUNT 只用來取本機 Windows 帳號名（非 token），
+  // 渲染端拿到帳號名後自行去後端換 token。
+
+  /**
+   * AUTH_GET_AD_ACCOUNT：取得當前 Windows 登入帳號名（如 "jacky.chen"）。
+   * 主進程透過 os.userInfo().username 取得；非 Windows 平台返回空字串。
+   * preload.auth.getAdAccount → auth.handlers。invoke。
+   */
+  AUTH_GET_AD_ACCOUNT: 'auth:get-ad-account',
+
+  /**
+   * AUTH_AD_LOGIN：用 AD 帳號名向後端換 JWT。
+   *
+   * 為什麼放主進程而非渲染端直接 axios:
+   *  - 渲染端 (localhost:5173) 打跨域接口會觸發 CORS preflight,後端未配合則被擋
+   *  - 主進程是 Node 環境,沒有 CORS,可直接打
+   *  - 同時把 Authorization header 等敏感常數留在主進程,不暴露給網頁端
+   *
+   * payload: account 字串
+   * 返回: JWT 字串(空字串視為失敗)
+   * preload.auth.adLogin → auth.handlers。invoke。
+   */
+  AUTH_AD_LOGIN: 'auth:ad-login',
 
   // ─── 配置管理 ──────────────────────────────────────────────────────────
   /** CONFIG_READ：讀取完整 AppConfig。preload.config.read → config.handlers。invoke。 */

@@ -34,6 +34,8 @@ const IPC = {
     UPDATE_CHECK: 'update:check',
     UPDATE_DOWNLOAD: 'update:download',
     UPDATE_QUIT_AND_INSTALL: 'update:quit-and-install',
+    AUTH_GET_AD_ACCOUNT: 'auth:get-ad-account',
+    AUTH_AD_LOGIN: 'auth:ad-login',
     PUSH_UPDATE_CHECKING: 'push:update-checking',
     PUSH_UPDATE_AVAILABLE: 'push:update-available',
     PUSH_UPDATE_NOT_AVAILABLE: 'push:update-not-available',
@@ -114,6 +116,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
       check: () => ipcRenderer.invoke(IPC.UPDATE_CHECK),
       download: () => ipcRenderer.invoke(IPC.UPDATE_DOWNLOAD),
       quitAndInstall: () => ipcRenderer.invoke(IPC.UPDATE_QUIT_AND_INSTALL)
+  },
+
+  /**
+   * 認證相關。
+   * getAdAccount() 取本機 Windows 帳號名(域機環境下即為 AD 帳號),
+   * 用於 AD 自動登入流程。非 Windows 平台返回空字串。
+   */
+  auth: {
+      getAdAccount: () => ipcRenderer.invoke(IPC.AUTH_GET_AD_ACCOUNT) as Promise<string>,
+      adLogin: (account: string) =>
+          ipcRenderer.invoke(IPC.AUTH_AD_LOGIN, account) as Promise<string>
   },
 
   /**

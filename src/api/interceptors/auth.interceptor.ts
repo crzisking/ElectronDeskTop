@@ -69,6 +69,25 @@ function getError(key: ErrorKey): string {
 //   會話過期能正常觸發。
 let _sessionExpiredPromise: Promise<void> | null = null
 
+// ── 401 → AD 自動重登單例鎖 ────────────────────────────────────────────
+//
+// 多個並發請求同時 401 時,只允許一次 AD 重登;其餘請求 await 同一個 Promise,
+// 拿到 true(已成功取新 token)後各自重試自己的請求。
+//
+// resolve(true)  → AD 重登成功,呼叫方應重發原請求
+// resolve(false) → AD 重登失敗,呼叫方應走原彈窗 + /login 流程
+let _adReloginPromise: Promise<boolean> | null = null
+
+/**
+ * 判斷請求 URL 是否為 AD 換 token 接口本身。
+ * 用於避免「AD 接口 401 → 又去打 AD 接口」的死循環。
+ */
+function isAdTokenEndpoint(url: string | undefined): boolean {
+  if (!url) return false
+  return url.includes('/oauth/api/portal/OAuth/ad/get/token')
+      || url.includes('/api/portal/OAuth/ad/get/token')
+}
+
 /**
  * 為指定 Axios 實例附加完整的請求/響應攔截器
  * @param instance 要附加攔截器的 Axios 實例
@@ -131,32 +150,71 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
 
       switch (error.response?.status) {
         case 401: {
-          // 並發 401 全部復用同一個 Promise，避免多次彈窗 / 多次跳轉
+          const authStore = useAuthStore()
+          const originalConfig = error.config as (InternalAxiosRequestConfig & { _adRetried?: boolean }) | undefined
+
+          // ── 先嘗試 AD 自動重登 ───────────────────────────────────────
+          //
+          // 滿足以下任一條件則跳過 AD 重試,直接走原彈窗 + /login:
+          //  1. 沒有 originalConfig(理論不會,保險判斷)
+          //  2. 失敗的請求本身就是 AD 接口(避免死循環)
+          //  3. 此請求已經是 AD 重試後的二次失敗(標記 _adRetried,避免無限重試)
+          //  4. 使用者本次 session 已主動登出(adLoginDisabledThisSession)
+          const canTryAdRelogin =
+              !!originalConfig
+              && !isAdTokenEndpoint(originalConfig.url)
+              && !originalConfig._adRetried
+              && !authStore.adLoginDisabledThisSession
+
+          if (canTryAdRelogin) {
+            // 並發 401 共用同一個 AD 重登 Promise,只跑一次
+            if (!_adReloginPromise) {
+              _adReloginPromise = authStore.loginByAd()
+                  .catch((err) => {
+                    logger.warn('401 → AD 自動重登拋例外', 'HttpClient', err)
+                    return false
+                  })
+                  .finally(() => {
+                    // 清空引用,允許下一輪 401 再次嘗試 AD
+                    _adReloginPromise = null
+                  })
+            }
+            const adOk = await _adReloginPromise
+            if (adOk) {
+              // AD 拿到新 token → 重發原請求一次。
+              // 標記 _adRetried 防止 token 又被後端拒(極端情況)時無限循環。
+              // 請求攔截器會自動把 store 內的新 token 注入 Authorization。
+              originalConfig!._adRetried = true
+              return instance.request(originalConfig!)
+            }
+            // AD 失敗 → 落入下方原本的彈窗 + /login 流程
+          }
+
+          // ── 原有流程:彈窗 + 登出 + 跳 /login ───────────────────────
+          // 並發 401 全部復用同一個 Promise,避免多次彈窗 / 多次跳轉
           if (!_sessionExpiredPromise) {
             _sessionExpiredPromise = ElMessageBox
                 .alert(getError('Session_expired'), 'Warning', {
                   confirmButtonText: getError('OK')
                 })
                 .then(async () => {
-                  const authStore = useAuthStore()
                   await authStore.logout()
                   await router.push({name: 'login'})
                 })
                 .catch(async () => {
-                  // 用戶點 X 關閉彈窗也走相同流程，避免懸空狀態
-                  const authStore = useAuthStore()
+                  // 用戶點 X 關閉彈窗也走相同流程,避免懸空狀態
                   await authStore.logout()
                   await router.push({name: 'login'})
-                  // 顯式 return undefined，否則 router.push 的 NavigationFailure
-                  // 會讓 catch 回呼的返回類型推導成非 void，破壞外層 Promise<void>
+                  // 顯式 return undefined,否則 router.push 的 NavigationFailure
+                  // 會讓 catch 回呼的返回類型推導成非 void,破壞外層 Promise<void>
                 })
                 .finally(() => {
-                  // 清空引用，允許下一輪會話過期再次觸發
+                  // 清空引用,允許下一輪會話過期再次觸發
                   _sessionExpiredPromise = null
                 })
           }
-          // 所有 401 都 await 同一個 Promise；Promise 完成後 reject 原始錯誤，
-          // 讓上層感知到失敗（也維持與其他 case 行為一致）
+          // 所有 401 都 await 同一個 Promise;Promise 完成後 reject 原始錯誤,
+          // 讓上層感知到失敗(也維持與其他 case 行為一致)
           await _sessionExpiredPromise
           break
         }

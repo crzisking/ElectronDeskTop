@@ -10,6 +10,7 @@ import {registerWindowHandlers} from './window.handlers'
 import {registerConfigHandlers} from './config.handlers'
 import {registerUpdateHandlers} from './update.handlers'
 import {registerLogHandlers} from './log.handlers'
+import {registerAuthHandlers} from './auth.handlers'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
 import type {WindowManager} from '../window-manager'
@@ -70,6 +71,7 @@ export function registerAllHandlers(
   registerConfigHandlers(configManager)
   registerUpdateHandlers(updateMgr)
   registerLogHandlers()
+  registerAuthHandlers()
 
   // ─── 浮球 IPC ──────────────────────────────────────────────────────────
 

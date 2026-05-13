@@ -44,5 +44,23 @@ export const authApi = {
       '/api/portal/oauth/login',
       credentials
     )
+  },
+
+  /**
+   * AD 自動登入 —— 以 Windows 本機帳號換取 JWT。
+   *
+   * 注意:此呼叫透過 IPC 委派給主進程執行(electron/main/ipc-handlers/auth.handlers.ts)。
+   * 為什麼不在渲染端直接 axios:
+   *  - dev 模式 (localhost:5173) 是瀏覽器 origin,跨域請求會觸發 CORS preflight,
+   *    後端未配 Access-Control-Allow-Origin 則被擋
+   *  - 主進程是 Node 環境,沒有 CORS,可直接打
+   *  - 同時把 endpoint URL 與固定 Authorization 收斂到主進程,不暴露給網頁端
+   *
+   * @param account Windows 帳號名(os.userInfo().username 取得)
+   * @returns JWT 字串;空字串視為失敗(超時 / 網路錯誤 / 帳號未授權)
+   */
+  async adLogin(account: string): Promise<string> {
+    if (!account) return ''
+    return await window.electronAPI.auth.adLogin(account)
   }
 }

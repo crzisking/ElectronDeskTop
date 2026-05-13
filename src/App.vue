@@ -11,6 +11,7 @@ import {ElMessage} from 'element-plus'
 import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
+import {useAuthStore} from '@/stores/auth.store'
 import {useUpdate} from '@/composables/useUpdate'
 import {getElementLocale, isSupportedLocale, setLocale, type SupportedLocale} from '@/locales'
 import {logger} from "@/utils/logger";
@@ -19,6 +20,7 @@ import {IpcChannels} from '@shared/ipc-channels'
 const router = useRouter()
 const configStore = useConfigStore()
 const uiStore = useUiStore()
+const authStore = useAuthStore()
 const {t, locale} = useI18n()
 
 /**
@@ -79,7 +81,19 @@ onMounted(async () => {
     ElMessage.error(t('app.configLoadFailed'))
   }
 
-  // 2. 配置就緒後重新觸發守衛，讓路由按真實 auth 狀態決定
+  // 2. 嘗試 AD 自動登入（Windows 本機帳號 → 後端換 JWT → 寫入 store）。
+  //    成功:後續守衛通過 requiresAuth,直接進原本 initialTarget。
+  //    失敗:authStore 未認證,守衛把它導去 /login,使用者手動輸帳號密碼。
+  //    刻意不阻塞 await:這支是「能成功就好」的旁路;
+  //    若超時或網路慢,寧可走手動登入也不要卡白屏。
+  if (!authStore.isAuthenticated) {
+    await authStore.loginByAd().catch((err) => {
+      logger.warn('AD 自動登入流程異常', 'App.Vue', err)
+      return false
+    })
+  }
+
+  // 3. 配置就緒後重新觸發守衛，讓路由按真實 auth 狀態決定
   await router.replace(initialTarget).catch(() => undefined)
 
   // 4. 注冊主進程推送事件監聽
@@ -90,7 +104,7 @@ onMounted(async () => {
   // 5. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
   useUpdate().bootstrap()
 
-  // 6. 初始化完成，隱藏全屏加載遮罩
+  // 6. 初始化完成,隱藏全屏加載遮罩
   uiStore.hideGlobalLoading()
 })
 
