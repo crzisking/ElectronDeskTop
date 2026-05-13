@@ -48,7 +48,7 @@ export class WindowManager {
       frame: false,
       // ready-to-show 後才顯示，防白閃
       show: false,
-      backgroundColor: '#f5f7fa',
+      backgroundColor: '#ebe5d8',
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
@@ -109,6 +109,9 @@ export class WindowManager {
    * 必須 transparent + frame:false 才能呈現圓形浮球外觀。
    */
   createFloatingBallWindow(): BrowserWindow {
+    // 視窗緊貼球體外接正方形（80×80），不留 padding。
+    // 已去掉 box-shadow，沒有半透明陰影需要緩衝邊；同時最小化四角透明區，
+    // 拖動時 Windows DWM 不會把多餘的透明矩形描出來。
     this.floatingBallWindow = new BrowserWindow({
       width: 80,
       height: 80,

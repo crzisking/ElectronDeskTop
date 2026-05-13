@@ -22,7 +22,7 @@
 :root {
   /* ── 暖色基底（米色/奶白色階） ──────────────────────────── */
   --app-bg-canvas:     #ebe5d8;   /* 整個應用最外層背景色 */
-  --app-bg-sidebar:    #f4eee2;   /* 側邊欄底色 */
+  --app-bg-sidebar:    #ebe5d8;   /* 側邊欄底色（與 canvas 統一暖米色） */
   --app-bg-surface:    #ffffff;   /* 卡片、面板表面色 */
   --app-bg-elevated:   #faf6ec;   /* 略微高於底色的區塊（搜索框、tag） */
   --app-bg-muted:      #efe9dc;   /* 比 canvas 略深的中性色，用於分區 */

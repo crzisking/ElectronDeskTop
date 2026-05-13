@@ -127,30 +127,17 @@ function onContextmenu(event: MouseEvent) {
   height: 80px;
   border-radius: 50%;
   background: #fff;
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.2),
-    0 2px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   user-select: none;
-  transition: transform 0.15s, box-shadow 0.15s;
   position: relative;
 }
 
-.floating-ball:hover {
-  transform: scale(1.08);
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.25),
-    0 4px 10px rgba(0, 0, 0, 0.15);
-}
-
-/* 拖動中 */
+/* 拖動中：僅切換游標，不縮放，避免被 80×80 視窗邊緣切到 */
 .floating-ball.is-dragging {
   cursor: grabbing;
-  transform: scale(0.95);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* 浮球內 Logo 圖片 */

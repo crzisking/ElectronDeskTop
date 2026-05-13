@@ -54,7 +54,7 @@ function closeWindow() {
     <div class="title-bar-drag">
       <!-- 應用 Logo（拖動區，無標題文字） -->
       <div class="title-bar-brand">
-        <img class="app-icon" src="@/assets/logo.png" alt="ichia" />
+        <img class="app-icon" src="@/assets/title.png" alt="ichia" />
       </div>
     </div>
 
@@ -103,7 +103,6 @@ function closeWindow() {
   color: var(--app-text-primary);
   flex-shrink: 0;
   user-select: none;
-  border-bottom: 1px solid var(--app-border-subtle);
 }
 
 /* 拖動區域：佔滿剩餘空間 */
@@ -113,7 +112,7 @@ function closeWindow() {
   align-items: center;
   height: 100%;
   -webkit-app-region: drag;
-  padding-left: 16px;
+  padding-left: 32px;
 }
 
 .title-bar-brand {
@@ -123,10 +122,12 @@ function closeWindow() {
 }
 
 .app-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  /* 寬字標 logo：固定高度、寬度自適應，保留原比例 */
+  height: 40px;
+  width: auto;
   object-fit: contain;
+  /* 視覺微調：往下偏移一點，避免貼齊標題欄頂部 */
+  margin-top: 8px;
 }
 
 .app-title {
