@@ -48,7 +48,7 @@ export class WindowManager {
       frame: false,
       // ready-to-show 後才顯示，防白閃
       show: false,
-      backgroundColor: '#ebe5d8',
+      backgroundColor: '#f3f4f6',
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,

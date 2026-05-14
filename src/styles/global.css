@@ -20,35 +20,42 @@
    設計 Token（顏色、字體、間距、圓角、陰影）
    ════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── 暖色基底（米色/奶白色階） ──────────────────────────── */
-  --app-bg-canvas:     #ebe5d8;   /* 整個應用最外層背景色 */
-  --app-bg-sidebar:    #ebe5d8;   /* 側邊欄底色（與 canvas 統一暖米色） */
-  --app-bg-surface:    #ffffff;   /* 卡片、面板表面色 */
-  --app-bg-elevated:   #faf6ec;   /* 略微高於底色的區塊（搜索框、tag） */
-  --app-bg-muted:      #efe9dc;   /* 比 canvas 略深的中性色，用於分區 */
+  /* ── 淺灰系設計語言 ──────────────────────────────────────
+     參考 Linear / Notion / Vercel 等現代 SaaS:
+     - 整體淺灰底,留白為主,不使用深色 sidebar
+     - 內容卡白底 + 細微陰影,卡片之間用淺灰 canvas 分隔
+     - 品牌藍 #008bbe 留給 active state / primary 按鈕 / accent icon,
+       不大面積使用,確保它每次出現都是「焦點」 */
 
-  /* ── 文字顏色 ───────────────────────────────────────────── */
-  --app-text-primary:   #1a1a1a;   /* 主要文字、標題 */
-  --app-text-secondary: #5c5c5c;   /* 描述、副標題 */
-  --app-text-muted:     #8f8f8f;   /* 占位、輔助 */
-  --app-text-inverse:   #ffffff;   /* 深色背景上的文字 */
+  /* 主背景:極淡冷灰,接近白但有區隔 */
+  --app-bg-canvas:     #f3f4f6;   /* 應用最外層 - 淺灰底,讓白卡片浮起 */
+  --app-bg-sidebar:    #f3f4f6;   /* 側邊欄與 canvas 同色,視覺上連為一片 */
+  --app-bg-surface:    #ffffff;   /* 卡片白 */
+  --app-bg-elevated:   #f9fafb;   /* 白卡片內的搜索框 / tag 底,比白略灰一點 */
+  --app-bg-muted:      #e5e7eb;   /* 分區、icon placeholder 等中性灰 */
 
-  /* ── 邊框 ──────────────────────────────────────────────── */
-  --app-border-subtle:  rgba(26, 26, 26, 0.06);
-  --app-border-default: rgba(26, 26, 26, 0.10);
-  --app-border-strong:  rgba(26, 26, 26, 0.16);
+  /* ── 文字色階(中性深灰,白底上閱讀最舒服) ────────────── */
+  --app-text-primary:   #111827;   /* 主要文字、標題 */
+  --app-text-secondary: #4b5563;   /* 描述、副標題 */
+  --app-text-muted:     #9ca3af;   /* 占位、輔助 */
+  --app-text-inverse:   #ffffff;   /* 深色 pill 上的文字 */
 
-  /* ── 強調色 ────────────────────────────────────────────── */
-  --app-accent:         #b88860;   /* 金色點綴（標題斜體段） */
-  --app-accent-soft:    #e6cfb0;
-  --app-brand:          #1f5fbf;   /* 品牌藍（logo 字） */
-  --app-success:        #4f7d3a;   /* 暖綠 */
-  --app-warning:        #c98a3c;   /* 暖橙 */
-  --app-danger:         #a34b3c;   /* 暖紅 */
+  /* ── 邊框(極細的中性灰透明) ──────────────────────────── */
+  --app-border-subtle:  rgba(17, 24, 39, 0.06);
+  --app-border-default: rgba(17, 24, 39, 0.10);
+  --app-border-strong:  rgba(17, 24, 39, 0.16);
 
-  /* 黑/白翻轉（用於 active filter、active nav） */
-  --app-ink:            #1a1a1a;
-  --app-ink-soft:       #2a2a2a;
+  /* ── 強調色(僅作為焦點點綴) ──────────────────────────── */
+  --app-accent:         #008bbe;   /* ichia 品牌藍 */
+  --app-accent-soft:    #e0f2fa;   /* 品牌藍極淡底,用於 tag */
+  --app-brand:          #008bbe;
+  --app-success:        #16a34a;
+  --app-warning:        #d97706;
+  --app-danger:         #dc2626;
+
+  /* active pill 深色塊:回到接近黑的深灰,經典且耐看 */
+  --app-ink:            #111827;
+  --app-ink-soft:       #1f2937;
 
   /* ── 圓角 ──────────────────────────────────────────────── */
   --app-radius-xs:  4px;
@@ -58,11 +65,11 @@
   --app-radius-xl:  20px;
   --app-radius-pill: 999px;
 
-  /* ── 陰影 ──────────────────────────────────────────────── */
-  --app-shadow-sm:  0 1px 2px rgba(26, 26, 26, 0.04);
-  --app-shadow-md:  0 1px 2px rgba(26, 26, 26, 0.04), 0 8px 24px rgba(26, 26, 26, 0.05);
-  --app-shadow-lg:  0 4px 12px rgba(26, 26, 26, 0.06), 0 20px 48px rgba(26, 26, 26, 0.08);
-  --app-shadow-card-hover: 0 2px 6px rgba(26, 26, 26, 0.06), 0 16px 36px rgba(26, 26, 26, 0.10);
+  /* ── 陰影(細而軟,讓白卡在淺灰底上「浮」起來) ─────────── */
+  --app-shadow-sm:  0 1px 2px rgba(17, 24, 39, 0.04);
+  --app-shadow-md:  0 1px 3px rgba(17, 24, 39, 0.05), 0 4px 12px rgba(17, 24, 39, 0.04);
+  --app-shadow-lg:  0 4px 16px rgba(17, 24, 39, 0.06), 0 16px 40px rgba(17, 24, 39, 0.08);
+  --app-shadow-card-hover: 0 2px 6px rgba(17, 24, 39, 0.06), 0 12px 28px rgba(17, 24, 39, 0.09);
 
   /* ── 字體 ──────────────────────────────────────────────── */
     /* Windows 中文用戶優先級：Segoe UI（英文）→ Microsoft JhengHei（繁中）；
@@ -107,24 +114,25 @@
      Element Plus 變量覆蓋（讓所有 el-* 組件自動跟隨主題）
      ════════════════════════════════════════════════════════ */
 
-  /* 主色：用 ink 替代藍，整體偏黑 */
-  --el-color-primary:          #1a1a1a;
-  --el-color-primary-light-3:  #4a4a4a;
-  --el-color-primary-light-5:  #8f8f8f;
-  --el-color-primary-light-7:  #c4c4c4;
-  --el-color-primary-light-8:  #dcdcdc;
-  --el-color-primary-light-9:  #f0eee9;
-  --el-color-primary-dark-2:   #000000;
+  /* 主色:ichia 品牌藍 #008bbe,所有 el-button primary / el-tag primary / el-pagination active 自動套用
+     淺色階按與白色混合比例算出:light-N 表示混入 (N×10)% 白 */
+  --el-color-primary:          #008bbe;
+  --el-color-primary-light-3:  #4cadcf;
+  --el-color-primary-light-5:  #80c5de;
+  --el-color-primary-light-7:  #b3dded;
+  --el-color-primary-light-8:  #cce9f2;
+  --el-color-primary-light-9:  #e6f4f7;
+  --el-color-primary-dark-2:   #006f98;
 
-  /* 強調色：金色（代替 success/warning 顏色） */
-  --el-color-warning:          #c98a3c;
-  --el-color-warning-light-9:  #faf2e6;
-  --el-color-success:          #4f7d3a;
-  --el-color-success-light-9:  #eff4ea;
-  --el-color-danger:           #a34b3c;
-  --el-color-danger-light-9:   #f5e9e6;
-  --el-color-info:             #6b6b6b;
-  --el-color-info-light-9:     #f1efe9;
+  /* 狀態色(冷靜飽和,搭配淺灰底) */
+  --el-color-warning:          #d97706;
+  --el-color-warning-light-9:  #fef3e8;
+  --el-color-success:          #16a34a;
+  --el-color-success-light-9:  #e8f5ec;
+  --el-color-danger:           #dc2626;
+  --el-color-danger-light-9:   #fde7e7;
+  --el-color-info:             #6b7280;
+  --el-color-info-light-9:     #f0f1f3;
 
   /* 背景色 */
   --el-bg-color:               #ffffff;
@@ -148,7 +156,7 @@
   /* 填充色 */
   --el-fill-color:         var(--app-bg-elevated);
   --el-fill-color-light:   var(--app-bg-elevated);
-  --el-fill-color-lighter: #fbf8f1;
+  --el-fill-color-lighter: #f8fbfc;
   --el-fill-color-blank:   #ffffff;
 
   /* 圓角 */
@@ -213,12 +221,12 @@ textarea,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(26, 26, 26, 0.12);
+  background: rgba(17, 24, 39, 0.16);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(26, 26, 26, 0.24);
+  background: rgba(17, 24, 39, 0.3);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -414,8 +422,8 @@ textarea,
 }
 
 .app-tag--accent {
-  background: #f6e7d0;
-  color: #8a5a24;
+  background: var(--app-accent-soft);
+  color: var(--app-ink-soft);
   border-color: transparent;
 }
 
@@ -426,7 +434,7 @@ textarea,
 }
 
 .app-tag--brand {
-  background: #e6efff;
+  background: var(--app-accent-soft);
   color: var(--app-brand);
   border-color: transparent;
 }
@@ -574,13 +582,13 @@ textarea,
 }
 
 .el-tag--warning {
-  background: #f6e7d0;
-  color: #8a5a24;
+  background: #fef3e8;
+  color: var(--app-warning);
   border-color: transparent;
 }
 
 .el-tag--success {
-  background: #e7eddc;
+  background: #e8f5ec;
   color: var(--app-success);
   border-color: transparent;
 }
@@ -592,7 +600,7 @@ textarea,
 }
 
 .el-tag--danger {
-  background: #f0d9d4;
+  background: #fde7e7;
   color: var(--app-danger);
   border-color: transparent;
 }

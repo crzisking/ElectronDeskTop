@@ -104,13 +104,13 @@ function navigate() {
 }
 
 .nav-item:hover {
-  background: var(--app-bg-elevated);
+  background: var(--app-bg-surface);
   color: var(--app-text-primary);
 }
 
-/* 激活狀態：黑色 pill + 白色文字 */
+/* 激活狀態:品牌藍 pill + 白字,在淺灰底上是唯一的色彩焦點 */
 .nav-item.is-active {
-  background: var(--app-ink);
+  background: var(--app-brand);
   color: var(--app-text-inverse);
 }
 
@@ -150,14 +150,15 @@ function navigate() {
   letter-spacing: 0.08em;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--app-bg-elevated);
+  background: var(--app-bg-muted);
   color: var(--app-text-muted);
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
 
+/* 激活時 pill 已變品牌藍,徽標用半透明白做次層 */
 .nav-item.is-active .nav-badge {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.22);
   color: var(--app-text-inverse);
 }
 </style>

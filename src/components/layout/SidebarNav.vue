@@ -247,7 +247,6 @@ function openSettings() {
   height: 100%;
   background: var(--app-bg-sidebar);
   border-radius: var(--app-radius-lg);
-  border: 1px solid var(--app-border-subtle);
   padding: 22px 14px 14px;
   flex-shrink: 0;
   overflow: hidden;
@@ -315,7 +314,7 @@ function openSettings() {
 }
 
 .nav-item:hover {
-  background: var(--app-bg-elevated);
+  background: var(--app-bg-surface);
   color: var(--app-text-primary);
 }
 
@@ -368,14 +367,14 @@ function openSettings() {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: var(--app-bg-surface);
-  border: 1px solid var(--app-border-subtle);
+  /* 品牌藍底 + 白字,小而搶眼的使用者標記 */
+  background: var(--app-brand);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 13px;
   font-weight: 600;
-  color: var(--app-text-primary);
+  color: var(--app-text-inverse);
   flex-shrink: 0;
 }
 
@@ -469,7 +468,7 @@ function openSettings() {
 }
 
 .collapse-handle:hover {
-  background: var(--app-bg-elevated);
+  background: var(--app-bg-surface);
   color: var(--app-text-primary);
 }
 
