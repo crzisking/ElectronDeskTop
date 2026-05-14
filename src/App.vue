@@ -93,8 +93,13 @@ onMounted(async () => {
     })
   }
 
-  // 3. 配置就緒後重新觸發守衛，讓路由按真實 auth 狀態決定
-  await router.replace(initialTarget).catch(() => undefined)
+  // 3. 配置就緒、AD 嘗試完成後,根據 auth 狀態決定最終路由。
+  // 在此明確判斷 isAuthenticated,沒登入就 replace 去 /login(不同路由,guard 會跑)。
+  if (!authStore.isAuthenticated) {
+    await router.replace({name: 'login'}).catch(() => undefined)
+  } else {
+    await router.replace(initialTarget).catch(() => undefined)
+  }
 
   // 4. 注冊主進程推送事件監聽
   window.electronAPI.on(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
