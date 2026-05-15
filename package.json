@@ -113,7 +113,8 @@
       ],
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "${productName}.${ext}",
+      "include": "build/installer.nsh"
     },
     "publish": [
       {

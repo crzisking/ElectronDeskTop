@@ -13,6 +13,7 @@ import {UpdateManager} from './update-manager'
 import {registerAllHandlers} from './ipc-handlers'
 import {logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
+import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -79,6 +80,10 @@ app.whenReady().then(async () => {
 
   // Windows 任務欄分組 / 通知所需的 AppUserModelId
   app.setAppUserModelId('com.ichia.desktop.client')
+
+  // 強制註冊開機自啟(公司軟體政策)。idempotent,失敗也不影響啟動。
+  // dev 環境 / portable 版 / 非 Windows 平台會在函式內自行跳過。
+  ensureAutoLaunchRegistered()
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
   if (!app.isPackaged) {
