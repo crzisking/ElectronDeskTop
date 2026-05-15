@@ -107,7 +107,17 @@ onMounted(async () => {
   window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
 
   // 5. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
-  useUpdate().bootstrap()
+  const update = useUpdate()
+  update.bootstrap()
+
+  // 5.1 AD 自動登入成功時,順帶觸發一次靜默檢查更新。
+  //     舊流程靠 LoginView 在登入成功後呼叫 loginCheck(),AD 免密登入會繞過 LoginView,
+  //     若不在此處補上,使用者免密登入後永遠收不到「有新版本」的通知,只能等下次手動檢查。
+  //     必須放在 bootstrap() 之後 —— bootstrap 才會訂閱 push:update-* 事件,
+  //     提前呼叫 check 可能漏掉回應。
+  if (authStore.isAuthenticated) {
+    void update.loginCheck()
+  }
 
   // 6. 初始化完成,隱藏全屏加載遮罩
   uiStore.hideGlobalLoading()
