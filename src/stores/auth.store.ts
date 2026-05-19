@@ -103,7 +103,9 @@ export const useAuthStore = defineStore('auth', () => {
     let token = ''
     try {
       token = await authApi.adLogin(account)
-      console.log('AD 換 token 結果:', token)
+      // 走 logger 讓這條紀錄落入 SQLite logs 表(同時 DevTools console 仍可見)。
+      // 不印完整 token,只印長度確認接口是否回傳有效字串,避免 token 落地敏感資訊。
+      logger.debug(`AD 換 token 完成,長度=${token.length}`, 'Auth')
     } catch (err) {
       logger.warn(`AD 換 token 接口失敗,帳號=${account}`, 'Auth', err as Error)
       return false

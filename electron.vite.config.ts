@@ -9,18 +9,42 @@
  * 輸出目錄：out/main / out/preload / out/renderer
  */
 import {resolve} from 'path'
+import {cpSync, existsSync, mkdirSync} from 'fs'
 import {defineConfig, externalizeDepsPlugin} from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import {ElementPlusResolver} from 'unplugin-vue-components/resolvers'
 
+/**
+ * 把 drizzle migrations 整個目錄(SQL + meta/)拷貝到 out/main/migrations/。
+ *
+ * 為什麼自寫而不用 vite-plugin-static-copy:
+ *  - 那個套件的 glob 行為會把來源目錄結構帶過去,變成 out/main/migrations/electron/main/db/migrations/...
+ *  - 我們要的是「攤平」—— DatabaseManager 預期 migrations 直接在 out/main/migrations/ 下
+ *  - 直接 cpSync 一行解決,維護成本更低
+ */
+function copyMigrationsPlugin() {
+  return {
+    name: 'copy-drizzle-migrations',
+    closeBundle() {
+      const src = resolve(__dirname, 'electron/main/db/migrations')
+      const dest = resolve(__dirname, 'out/main/migrations')
+      if (!existsSync(src)) return
+      mkdirSync(dest, {recursive: true})
+      cpSync(src, dest, {recursive: true})
+    },
+  }
+}
+
 export default defineConfig({
   // ─── 主進程配置 ────────────────────────────────────────────────
   main: {
     plugins: [
       // 將所有 node_modules 依賴標記為 external（主進程直接 require，不打包進去）
-      externalizeDepsPlugin()
+      externalizeDepsPlugin(),
+      // drizzle migrations 拷貝(自寫 plugin,見檔頂註解)
+      copyMigrationsPlugin()
     ],
     build: {
       rollupOptions: {

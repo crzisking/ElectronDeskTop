@@ -11,9 +11,11 @@ import {TrayManager} from './tray-manager'
 import {ConfigManager} from './config-manager'
 import {UpdateManager} from './update-manager'
 import {registerAllHandlers} from './ipc-handlers'
-import {logger} from './utils/logger'
+import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
+import {DatabaseManager} from './db/database-manager'
+import {LogService} from './db/services/log.service'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -21,6 +23,7 @@ let floatingBallMgr: FloatingBallManager
 let trayManager: TrayManager
 let configManager: ConfigManager
 let updateMgr: UpdateManager
+let dbManager: DatabaseManager | null = null
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -70,6 +73,13 @@ function gracefulShutdown(): void {
   trayManager?.destroy()
   floatingBallMgr?.dispose()
   updateMgr?.dispose()
+  // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
+  // 用 try/catch 防止 close 拋出阻礙退出流程
+  try {
+    dbManager?.close()
+  } catch (err) {
+    console.error('[App] DB close 失敗', err)
+  }
   windowManager?.destroyAll()
 }
 
@@ -84,6 +94,25 @@ app.whenReady().then(async () => {
   // 強制註冊開機自啟(公司軟體政策)。idempotent,失敗也不影響啟動。
   // dev 環境 / portable 版 / 非 Windows 平台會在函式內自行跳過。
   ensureAutoLaunchRegistered()
+
+  // 初始化 SQLite + 把 LogService 接到 logger,讓後續所有 logger.* 雙寫到 DB。
+  // 失敗只 console.error(因為此時 logger 還沒接 DB,寫了也沒意義);
+  // 不 attach 的情況下,logger 內 _logService?.write(...) 自動 noop,
+  // 文件寫入跟 console 仍正常,App 照常啟動。
+  try {
+    dbManager = new DatabaseManager()
+    dbManager.init()
+    const logService = new LogService(dbManager)
+    attachLogService(logService)
+    // 對齊 log-file-writer 的 RETENTION_DAYS=14
+    const deleted = logService.cleanupOlderThan(14)
+    if (deleted > 0) {
+      logger.info(`啟動清理:刪除 ${deleted} 筆 14 天前的舊日誌`, 'DB')
+    }
+  } catch (err) {
+    console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
+    dbManager = null
+  }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
   if (!app.isPackaged) {

@@ -98,35 +98,42 @@ function consolePrefix(level: LogLevel, module?: string): string {
 const isDev = import.meta.env.DEV
 
 /**
- * 寫文件的策略：
- *  - 只有 error 級別會落地到 renderer-YYYY-MM-DD.log
- *  - debug / info / warn 只走 console
+ * 寫入策略(本期重構後):
+ *  - console:全等級都走(dev 看 DevTools)
+ *  - 主進程 txt 檔:**只 error** 寫(主進程 writeRendererLog 內判斷,維持原行為)
+ *  - 主進程 SQLite:**全等級**寫(主進程 LogService.write,給後續查詢用)
  *
- * 跟主進程 logger 對齊。生產環境只關心錯誤，info 級別在生產環境也只走 console
- * （DevTools 開不開都不影響——錯誤該寫的還是會寫）。
+ * 渲染端只負責「轉發到主進程」,**所有等級都 forward**;
+ * 「txt 只 error / DB 全等級」的分流邏輯都在主進程那邊處理,渲染端不操心。
+ *
+ * IPC 流量保護:既有 LOG_WRITE handler 已實作 100/秒節流,本期不需要動。
  */
 export const logger = {
-  /** 調試信息（僅 console，dev 模式才輸出） */
+  /** 調試信息(console:dev 才印;forward:全環境,讓主進程 DB 拿到完整時間線) */
   debug(message: string, module?: string, ...args: unknown[]): void {
-    if (!isDev) return
-    console.debug(consolePrefix('DEBUG', module), message, ...args)
+    if (isDev) {
+      console.debug(consolePrefix('DEBUG', module), message, ...args)
+    }
+    forwardToMain('DEBUG', message, module, args)
   },
 
-  /** 普通信息（僅 console，不寫文件、不走 IPC） */
+  /** 普通信息(console + forward) */
   info(message: string, module?: string, ...args: unknown[]): void {
     console.info(consolePrefix('INFO', module), message, ...args)
+    forwardToMain('INFO', message, module, args)
   },
 
-  /** 警告（僅 console，不寫文件、不走 IPC） */
+  /** 警告(console + forward) */
   warn(message: string, module?: string, ...args: unknown[]): void {
     console.warn(consolePrefix('WARN', module), message, ...args)
+    forwardToMain('WARN', message, module, args)
   },
 
-  /** 錯誤（console + IPC 寫文件，唯一會落地的級別） */
+  /** 錯誤(console + forward;主進程那端唯一會落地 txt 的等級) */
   error(message: string, module?: string, ...args: unknown[]): void {
     console.error(consolePrefix('ERROR', module), message, ...args)
     forwardToMain('ERROR', message, module, args)
-  }
+  },
 }
 
 /**
