@@ -5,9 +5,9 @@
  */
 
 import {app, Menu, nativeImage, Tray} from 'electron'
-import {join} from 'path'
 import {existsSync} from 'fs'
 import {logger} from './utils/logger'
+import {resolveResourcePath} from './utils/resources-path'
 import {IpcChannels} from '../shared/ipc-channels'
 import type {WindowManager} from './window-manager'
 import type {ConfigManager} from './config-manager'
@@ -140,15 +140,12 @@ export class TrayManager {
 
   /**
    * 取托盤圖標路徑。
-   * macOS 用 Template 圖標（檔名含 Template 後綴）自適應暗色模式。
+   * macOS 用 Template 圖標(檔名含 Template 後綴)自適應暗色模式。
+   * 路徑透過 resolveResourcePath 處理 dev / prod(app.asar)差異。
    */
   private getTrayIconPath(): string {
-    const resourcesDir = join(app.getAppPath(), 'resources', 'icons')
-
-    if (process.platform === 'darwin') {
-      return join(resourcesDir, 'tray-iconTemplate.png')
-    }
-    return join(resourcesDir, 'tray-icon.png')
+    const fileName = process.platform === 'darwin' ? 'tray-iconTemplate.png' : 'tray-icon.png'
+    return resolveResourcePath('icons', fileName)
   }
 
   /** 銷毀托盤（before-quit / quitAndInstall 時呼叫） */

@@ -8,11 +8,18 @@ import {app, BrowserWindow, screen} from 'electron'
 import {join} from 'path'
 import {logger} from './utils/logger'
 import {safeOpenExternal} from './utils/safe-shell'
+import {resolveResourcePath} from './utils/resources-path'
 
 const isDev = !app.isPackaged
 
-/** 應用圖標（Windows 任務欄、窗口標題欄使用） */
-const appIconPath = join(__dirname, '../../resources/icons/icon.ico')
+/**
+ * 應用圖標(Windows 任務欄、窗口標題欄使用)。
+ * 走 resolveResourcePath:
+ *  - dev:  <projectRoot>/resources/icons/icon.ico
+ *  - prod: <install>/resources/resources/icons/icon.ico
+ * 原本用 `__dirname + '../../resources/...'` 在 prod 會指向 app.asar 內部找不到。
+ */
+const appIconPath = resolveResourcePath('icons', 'icon.ico')
 
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null
