@@ -20,6 +20,9 @@ export class WindowManager {
   /** 浮球窗口應用生命週期內持久存在，僅 show/hide 切換 */
   private floatingBallWindow: BrowserWindow | null = null
 
+  /** 日誌查看器子視窗(密碼解鎖後才開,關閉即銷毀,下次開重建) */
+  private logViewerWindow: BrowserWindow | null = null
+
   /**
    * 是否進入「應用退出中」狀態。
    * true 後主窗口的 close 事件不再 preventDefault，讓窗口正常關閉。
@@ -157,6 +160,69 @@ export class WindowManager {
 
     logger.info('浮球窗口已創建', 'WindowManager')
     return this.floatingBallWindow
+  }
+
+  /**
+   * 建立日誌查看器子視窗。
+   *
+   * 跟主窗 / 浮球窗都不一樣:
+   *  - 不持久化,關閉即銷毀,下次重新建。避免閒置時占資源
+   *  - 用獨立 preload (`log-viewer.preload.js`),只暴露 logQuery 一個 IPC
+   *  - 大尺寸 + frame:true 沿用系統標題欄,管理員看著舒服
+   *
+   * 呼叫前主進程已驗過解鎖狀態(見 log-viewer.handlers.ts),這裡不再重複驗。
+   */
+  createLogViewerWindow(): BrowserWindow {
+    // 已存在 → 拉到前台聚焦,不重建
+    if (this.logViewerWindow && !this.logViewerWindow.isDestroyed()) {
+      this.logViewerWindow.show()
+      this.logViewerWindow.focus()
+      return this.logViewerWindow
+    }
+
+    this.logViewerWindow = new BrowserWindow({
+      width: 1100,
+      height: 720,
+      minWidth: 900,
+      minHeight: 500,
+      icon: appIconPath,
+      title: '日誌查看器',
+      // 用系統原生標題欄,管理員工具不需要花哨 UI
+      frame: true,
+      show: false,
+      backgroundColor: '#f3f4f6',
+      // 主窗的子視窗,主窗最小化時它也跟著消失(避免遺留視窗)
+      parent: this.mainWindow ?? undefined,
+      webPreferences: {
+        preload: join(__dirname, '../preload/log-viewer.preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        devTools: isDev,
+      },
+    })
+
+    if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+      this.logViewerWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/log-viewer.html`)
+    } else {
+      this.logViewerWindow.loadFile(join(__dirname, '../renderer/log-viewer.html'))
+    }
+
+    this.logViewerWindow.once('ready-to-show', () => {
+      this.logViewerWindow?.show()
+      if (isDev) {
+        this.logViewerWindow?.webContents.openDevTools({mode: 'detach'})
+      }
+      logger.info('日誌查看器已開啟', 'WindowManager')
+    })
+
+    // 關閉後清空引用,下次開啟重建
+    this.logViewerWindow.on('closed', () => {
+      this.logViewerWindow = null
+      logger.info('日誌查看器已關閉', 'WindowManager')
+    })
+
+    return this.logViewerWindow
   }
 
   /** 顯示主窗口、隱藏浮球 */
@@ -338,6 +404,8 @@ export class WindowManager {
 
   /** 銷毀所有窗口（quitAndInstall / 托盤退出時呼叫） */
   destroyAll(): void {
+    this.logViewerWindow?.destroy()
+    this.logViewerWindow = null
     this.floatingBallWindow?.destroy()
     this.floatingBallWindow = null
     this.mainWindow?.destroy()

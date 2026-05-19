@@ -78,7 +78,9 @@ export default defineConfig({
           // 主窗口預加載腳本 → out/preload/index.js
           index: resolve('electron/preload/index.ts'),
           // 浮球窗口預加載腳本 → out/preload/floatingBall.js
-          floatingBall: resolve('electron/preload/floating-ball.preload.ts')
+          floatingBall: resolve('electron/preload/floating-ball.preload.ts'),
+          // 日誌查看器子視窗預加載腳本 → out/preload/log-viewer.preload.js
+          'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts')
         }
       }
     }
@@ -104,7 +106,9 @@ export default defineConfig({
           // 主窗口 HTML 入口 → out/renderer/index.html
           index: resolve('src/index.html'),
           // 浮球窗口 HTML 入口 → out/renderer/floating-ball.html
-          floatingBall: resolve('src/floating-ball.html')
+          floatingBall: resolve('src/floating-ball.html'),
+          // 日誌查看器子視窗 HTML 入口 → out/renderer/log-viewer.html
+          logViewer: resolve('src/log-viewer.html')
         }
       }
     },

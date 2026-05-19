@@ -5,6 +5,8 @@
 /.idea
 /logs
 app.db
+app.db-shm
+app.db-wal
 
 # 環境變量（帶 .local 後綴的包含本機密碼/Token，不提交）
 # .env.development 和 .env.production 本身可以提交（無敏感信息）

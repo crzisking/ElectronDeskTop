@@ -115,7 +115,14 @@
     "copyFailed": "Copy failed, please copy manually",
     "retentionTitle": "Retention",
     "retentionDesc": "Logs older than 14 days are auto-purged",
-    "retentionValue": "14 days"
+    "retentionValue": "14 days",
+    "viewerTitle": "Log Viewer",
+    "viewerDesc": "Enter password to browse, filter and search all local logs",
+    "viewerOpenBtn": "Open",
+    "viewerPrompt": "Enter password to open log viewer",
+    "viewerEmpty": "Password cannot be empty",
+    "viewerWrongPassword": "Wrong password",
+    "viewerFailed": "Failed to open log viewer"
   },
 
   "platform": {

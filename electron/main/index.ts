@@ -24,6 +24,7 @@ let trayManager: TrayManager
 let configManager: ConfigManager
 let updateMgr: UpdateManager
 let dbManager: DatabaseManager | null = null
+let logService: LogService | null = null
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -102,7 +103,7 @@ app.whenReady().then(async () => {
   try {
     dbManager = new DatabaseManager()
     dbManager.init()
-    const logService = new LogService(dbManager)
+    logService = new LogService(dbManager)
     attachLogService(logService)
     // 對齊 log-file-writer 的 RETENTION_DAYS=14
     const deleted = logService.cleanupOlderThan(14)
@@ -112,6 +113,7 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
+    logService = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -161,7 +163,7 @@ app.whenReady().then(async () => {
   // 注入統一的退出清理函數，避免 update-manager 中重複退出邏輯
   updateMgr.setQuitCallback(gracefulShutdown)
 
-  registerAllHandlers(windowManager, configManager, floatingBallMgr, updateMgr)
+  registerAllHandlers(windowManager, configManager, floatingBallMgr, updateMgr, logService)
 
   // 在 IPC handler 註冊後才 init，托盤菜單點擊才能正確觸發處理器
   trayManager.init()

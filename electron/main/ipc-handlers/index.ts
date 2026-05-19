@@ -11,12 +11,14 @@ import {registerConfigHandlers} from './config.handlers'
 import {registerUpdateHandlers} from './update.handlers'
 import {registerLogHandlers} from './log.handlers'
 import {registerAuthHandlers} from './auth.handlers'
+import {registerLogViewerHandlers} from './log-viewer.handlers'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
 import type {UpdateManager} from '../update-manager'
+import type {LogService} from '../db/services/log.service'
 
 /**
  * 主進程小型 i18n 字典 — 僅用於原生菜單（浮球右鍵菜單、Tray 等）。
@@ -64,7 +66,8 @@ export function registerAllHandlers(
   windowManager: WindowManager,
   configManager: ConfigManager,
   floatingBallMgr: FloatingBallManager,
-  updateMgr: UpdateManager
+  updateMgr: UpdateManager,
+  logService: LogService | null
 ): void {
 
   registerWindowHandlers(windowManager)
@@ -72,6 +75,7 @@ export function registerAllHandlers(
   registerUpdateHandlers(updateMgr)
   registerLogHandlers()
   registerAuthHandlers()
+  registerLogViewerHandlers(logService, windowManager)
 
   // ─── 浮球 IPC ──────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@
  * 設計文件:[docs/08-本地數據庫設計.md §11](../../../../docs/08-本地數據庫設計.md)
  */
 
-import {and, desc, eq, gte, inArray, like, lt, type SQL} from 'drizzle-orm'
+import {and, desc, eq, gte, inArray, like, lt, sql, type SQL} from 'drizzle-orm'
 import type {DatabaseManager} from '../database-manager'
 import {logs, type LogLevel, type LogRow, type LogSource} from '../schema/logs'
 
@@ -67,9 +67,39 @@ export class LogService {
     }
   }
 
-  /** 預留查詢(本期不對 renderer 開放) */
+  /** 查詢日誌(給日誌查看器用)。按 createdAt 倒序,內建分頁。 */
   query(params: LogQueryParams): LogRow[] {
-    const db = this.dbManager.getDb()
+    if (!this.dbManager.isReady()) return []
+    const conds = this.buildWhere(params)
+    return this.dbManager
+      .getDb()
+      .select()
+      .from(logs)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(logs.createdAt))
+      .limit(params.limit ?? 200)
+      .offset(params.offset ?? 0)
+      .all()
+  }
+
+  /**
+   * 用相同的 where 條件數總筆數,給日誌查看器分頁器顯示「總共 N 筆」用。
+   * 跟 query() 共用相同的條件組裝邏輯。
+   */
+  count(params: LogQueryParams): number {
+    if (!this.dbManager.isReady()) return 0
+    const conds = this.buildWhere(params)
+    const row = this.dbManager
+      .getDb()
+      .select({n: sql<number>`count(*)`})
+      .from(logs)
+      .where(conds.length ? and(...conds) : undefined)
+      .get()
+    return row?.n ?? 0
+  }
+
+  /** 抽出共用的 where 條件組裝,給 query / count 共用 */
+  private buildWhere(params: LogQueryParams): SQL[] {
     const conds: SQL[] = []
     if (params.level) {
       conds.push(
@@ -81,15 +111,7 @@ export class LogService {
     if (params.since != null) conds.push(gte(logs.createdAt, params.since))
     if (params.until != null) conds.push(lt(logs.createdAt, params.until))
     if (params.search) conds.push(like(logs.message, `%${params.search}%`))
-
-    return db
-      .select()
-      .from(logs)
-      .where(conds.length ? and(...conds) : undefined)
-      .orderBy(desc(logs.createdAt))
-      .limit(params.limit ?? 200)
-      .offset(params.offset ?? 0)
-      .all()
+    return conds
   }
 
   /**

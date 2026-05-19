@@ -41,7 +41,9 @@ const IPC = {
     PUSH_UPDATE_NOT_AVAILABLE: 'push:update-not-available',
     PUSH_UPDATE_PROGRESS: 'push:update-progress',
     PUSH_UPDATE_DOWNLOADED: 'push:update-downloaded',
-    PUSH_UPDATE_ERROR: 'push:update-error'
+    PUSH_UPDATE_ERROR: 'push:update-error',
+    LOG_VIEWER_UNLOCK: 'log-viewer:unlock',
+    WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer'
 } as const
 
 /**
@@ -127,6 +129,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
       getAdAccount: () => ipcRenderer.invoke(IPC.AUTH_GET_AD_ACCOUNT) as Promise<string>,
       adLogin: (account: string) =>
           ipcRenderer.invoke(IPC.AUTH_AD_LOGIN, account) as Promise<string>
+  },
+
+  /**
+   * 日誌查看器(密碼保護)。
+   *  - unlock(password):驗密碼,成功返回 true,本 session 內後續可開窗 / 查詢
+   *  - openWindow():開啟日誌查看器子視窗(必須先 unlock 成功)
+   *  查詢 API 在獨立的 log-viewer.preload.js 內暴露,主窗不需要
+   */
+  logViewer: {
+      unlock: (password: string) =>
+          ipcRenderer.invoke(IPC.LOG_VIEWER_UNLOCK, password) as Promise<boolean>,
+      openWindow: () => ipcRenderer.send(IPC.WINDOW_OPEN_LOG_VIEWER)
   },
 
   /**

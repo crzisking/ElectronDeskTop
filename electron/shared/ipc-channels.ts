@@ -146,7 +146,30 @@ export const IpcChannels = {
   LOG_WRITE: 'log:write',
 
   /** LOG_OPEN_FOLDER：在系統檔案總管中打開日誌資料夾，返回絕對路徑。invoke。 */
-  LOG_OPEN_FOLDER: 'log:open-folder'
+  LOG_OPEN_FOLDER: 'log:open-folder',
+
+  // ─── 日誌查看器(密碼保護,只給內部排查用) ────────────────────────────
+  /**
+   * LOG_VIEWER_UNLOCK:渲染端送密碼,主進程比對 → 成功標記本 session 已解鎖。
+   * payload:string(使用者輸入的密碼)
+   * 返回:boolean(true=密碼正確且已解鎖,false=密碼錯誤)
+   * 失敗不報錯訊息細節,避免暴力試對提示。invoke。
+   */
+  LOG_VIEWER_UNLOCK: 'log-viewer:unlock',
+
+  /**
+   * LOG_QUERY:查詢 logs 表(僅限已解鎖 session)。
+   * payload:LogQueryParams({ level, source, since, until, search, limit, offset })
+   * 返回:{ rows: LogRow[], total: number }
+   * 未解鎖時主進程直接 throw,渲染端 invoke 會 reject。invoke。
+   */
+  LOG_QUERY: 'log-viewer:query',
+
+  /**
+   * WINDOW_OPEN_LOG_VIEWER:開啟日誌查看器子視窗(必須先 unlock)。
+   * 主進程內部會再次驗證解鎖狀態。send(單向)。
+   */
+  WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer'
 
 } as const
 

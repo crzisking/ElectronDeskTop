@@ -12,10 +12,10 @@
  */
 
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {useI18n} from 'vue-i18n'
 import SettingsRow from '../components/SettingsRow.vue'
-import { FolderOpened, DocumentCopy } from '@element-plus/icons-vue'
+import { FolderOpened, DocumentCopy, View } from '@element-plus/icons-vue'
 import { logger } from '@/utils/logger'
 
 const {t} = useI18n()
@@ -40,6 +40,48 @@ async function handleOpen() {
   } catch (err) {
     logger.error('呼叫 log.openFolder 失敗', 'LogSection', err)
     ElMessage.error(t('log.openFailed'))
+  }
+}
+
+/**
+ * 打開日誌查看器(密碼保護)。
+ *
+ * 流程:
+ *  1. 彈密碼輸入框
+ *  2. 主進程比對密碼,成功則本 session 內標記已解鎖
+ *  3. 解鎖後請主進程開啟獨立子視窗
+ *
+ * 密碼錯誤靜默提示「密碼錯誤」,不洩漏其他細節。
+ * 已解鎖 session 內再次點按鈕仍會彈密碼框 —— 防止有人離席後別人趁機開,
+ * 簡單但有效。若要省事,改成「已解鎖則直接開窗」也行,看實際需求調整。
+ */
+async function handleOpenViewer() {
+  let password: string
+  try {
+    const result = await ElMessageBox.prompt(t('log.viewerPrompt'), t('log.viewerTitle'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
+      inputType: 'password',
+      inputValidator: (val) => (val ? true : t('log.viewerEmpty')),
+    })
+    password = result.value
+  } catch {
+    // 使用者取消,正常流程,不報錯
+    return
+  }
+
+  try {
+    const ok = await window.electronAPI.logViewer.unlock(password)
+    if (!ok) {
+      ElMessage.error(t('log.viewerWrongPassword'))
+      logger.warn('日誌查看器密碼錯誤', 'LogSection')
+      return
+    }
+    window.electronAPI.logViewer.openWindow()
+    logger.info('使用者打開日誌查看器', 'LogSection')
+  } catch (err) {
+    logger.error('日誌查看器解鎖/開啟失敗', 'LogSection', err)
+    ElMessage.error(t('log.viewerFailed'))
   }
 }
 
@@ -106,6 +148,14 @@ async function copyPath() {
     <!-- 原文 title：保留策略；description：超過 14 天的舊日誌會自動清理；value：14 天 -->
     <SettingsRow :title="t('log.retentionTitle')" :description="t('log.retentionDesc')" compact>
       <span class="meta-text">{{ t('log.retentionValue') }}</span>
+    </SettingsRow>
+
+    <!-- 日誌查看器(密碼保護;按鈕對所有人可見,真要看需要密碼) -->
+    <!-- 原文 title:日誌查看器;description:輸入密碼後可瀏覽、篩選、搜尋本機所有日誌 -->
+    <SettingsRow :title="t('log.viewerTitle')" :description="t('log.viewerDesc')">
+      <el-button size="small" :icon="View" @click="handleOpenViewer">
+        {{ t('log.viewerOpenBtn') }}
+      </el-button>
     </SettingsRow>
   </div>
 </template>

@@ -117,7 +117,14 @@
     "copyFailed": "複製失敗，請手動複製",
     "retentionTitle": "保留策略",
     "retentionDesc": "超過 14 天的舊日誌會自動清理",
-    "retentionValue": "14 天"
+    "retentionValue": "14 天",
+    "viewerTitle": "日誌查看器",
+    "viewerDesc": "輸入密碼後可瀏覽、篩選、搜尋本機所有日誌",
+    "viewerOpenBtn": "開啟",
+    "viewerPrompt": "請輸入密碼以開啟日誌查看器",
+    "viewerEmpty": "密碼不可為空",
+    "viewerWrongPassword": "密碼錯誤",
+    "viewerFailed": "開啟日誌查看器失敗"
   },
 
   "platform": {
