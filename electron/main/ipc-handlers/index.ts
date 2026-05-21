@@ -59,7 +59,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     workRecordService,
   } = ctx
 
-  registerWindowHandlers(windowManager)
+  registerWindowHandlers(windowManager, configManager)
   registerConfigHandlers(configManager)
   registerUpdateHandlers(updateMgr)
   registerLogHandlers()

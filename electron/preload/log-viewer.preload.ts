@@ -1,12 +1,14 @@
 /**
  * 日誌查看器子視窗 preload。
  *
- * 只暴露最小 API:
- *  - logQuery:查 logs 表
- *  - close:關閉自己的視窗(原生 frame 已有 ✕,但提供 API 備用)
+ * 只暴露最小 API:logQuery 查 logs 表。
+ * 不需要 log.write / config / 浮球等其他 API —— 子視窗目的單一,縮減暴露面降低風險。
  *
- * 不需要 log.write / config / 浮球等其他 API —— 子視窗目的單一,
- * 縮減暴露面降低被誤用 / 攻擊風險。
+ * ⚠️ channel 內聯不走 @shared/ipc-channels 的原因:
+ *   sandbox: true 下 Electron 不解析 chunks/,3 個 preload 共用模組會被 Rollup 抽 chunk。
+ *   見 floating-ball.preload.ts 內的說明。
+ *
+ * 🔗 source of truth:electron/shared/ipc-channels/log.ts(LOG_QUERY)
  */
 
 import {contextBridge, ipcRenderer} from 'electron'

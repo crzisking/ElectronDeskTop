@@ -15,8 +15,10 @@
 import {createHttpClient} from '@/api/http-client'
 import type {WorkAnalyzeResponse} from './types'
 
+// 走 VITE_WORK_COLLECT_API_URL,跟 repair 解耦(雖然當前指向同一個 tmbom 後端,
+// 但語義上 work-collect 應該有自己的環境變數,日後拆服務不必動代碼)。
 const WORK_BASE_URL: string =
-  (import.meta.env.VITE_REPAIR_API_URL as string | undefined) ?? 'http://localhost:5247'
+  (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
 
 let _client: ReturnType<typeof createHttpClient> | null = null
 function getClient() {
@@ -44,7 +46,12 @@ export const workCollectApi = {
     capturedAt: number
   ): Promise<WorkAnalyzeResponse> {
     const form = new FormData()
-    form.append('screenshot', new Blob([jpeg], {type: 'image/jpeg'}), 'screenshot.jpg')
+    // IPC 過來的 Uint8Array 底層可能是 ArrayBufferLike(TS 嚴格認為含 SharedArrayBuffer),
+    // DOM Blob 只接 ArrayBuffer。複製一份到全新 ArrayBuffer 上的 Uint8Array,
+    // ~150KB 一次拷貝可忽略,換 TS 通過 + 跨進程邊界安全。
+    const jpegCopy = new Uint8Array(jpeg.byteLength)
+    jpegCopy.set(jpeg)
+    form.append('screenshot', new Blob([jpegCopy], {type: 'image/jpeg'}), 'screenshot.jpg')
     form.append('activeWindow', activeWindow)
     form.append('appName', appName)
     form.append('allWindows', JSON.stringify(allWindows))

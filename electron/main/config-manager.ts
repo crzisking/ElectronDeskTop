@@ -106,12 +106,17 @@ export class ConfigManager {
 
   /**
    * 加載配置文件並與 DEFAULT_CONFIG 深合並。
-   * 生產環境每次啟動都從 extraResources 覆蓋 userData，確保版本升級後配置與代碼同步。
+   *
+   * 生產環境僅在 userData/app-config.json 不存在時(首次安裝 / 用戶手動刪除),才從 extraResources 複製預設。
+   * 之前版本「每次啟動都覆蓋」會把 IPC `CONFIG_WRITE` 寫入的使用者設定(WorkCollect 開關、
+   * 浮球位置、語言偏好等)清掉,等同設定永遠救不回來。
+   *
+   * 版本升級的「新增 config 欄位」由 deepMerge(DEFAULT_CONFIG, parsed) 處理,
+   * 不需要靠覆蓋整個檔案。
    */
   async load(): Promise<void> {
     try {
-      // 用戶不會手動編輯此檔，直接覆蓋是安全的
-      if (app.isPackaged) {
+      if (app.isPackaged && !existsSync(this.configFilePath)) {
         await this.copyDefaultConfig()
       }
 

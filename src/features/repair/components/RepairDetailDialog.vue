@@ -31,7 +31,7 @@
 import {useI18n} from 'vue-i18n'
 import {Document} from '@element-plus/icons-vue'
 import DOMPurify from 'dompurify'
-import type {RepairDetail, RepairResultAttachment} from './types'
+import type {RepairDetail, RepairResultAttachment} from '../types'
 
 const {t} = useI18n()
 

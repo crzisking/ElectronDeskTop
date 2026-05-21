@@ -1,12 +1,11 @@
 /**
  * 浮球相關 IPC handlers。
  *
- * 從 ipc-handlers/index.ts 抽出,避免 index.ts 變成神物件。
  * 涵蓋:
- *  - BALL_*:拖動 / 顯隱 / 取座標
- *  - OPEN_CHILD_WINDOW:從統一平台卡片開外部 URL 子視窗(白名單)
- *  - APP_QUIT:整個應用退出
- *  - BALL_SHOW_CONTEXT_MENU:浮球右鍵原生菜單(由 config.floatingBall.quickMenu 驅動)
+ *  - BALL_*:拖動 / 顯隱 / 取座標 / 右鍵菜單
+ *  - APP_QUIT:整個應用退出(浮球右鍵的「結束應用程式」走這條)
+ *
+ * 注:OPEN_CHILD_WINDOW 是統一平台卡片用,跟浮球無關,在 window.handlers.ts 註冊。
  */
 
 import {app, ipcMain, Menu} from 'electron'
@@ -76,26 +75,6 @@ export function registerFloatingBallHandlers(
   /** BALL_GET_POSITION:浮球渲染進程查詢自身座標 { x, y } */
   ipcMain.handle(IpcChannels.BALL_GET_POSITION, () => {
     return windowManager.getFloatingBallPosition()
-  })
-
-  /**
-   * OPEN_CHILD_WINDOW:用 electron-window 模式打開子視窗。
-   * 安全:從 app-config.json 的系統列表提取域名白名單,只允許打開已配置的系統 URL。
-   */
-  ipcMain.handle(IpcChannels.OPEN_CHILD_WINDOW, (_event, url: string, title: string) => {
-    const config = configManager.getConfig()
-    const allowedDomains = config.unifiedPlatform.systems
-      .map((sys) => {
-        try {
-          return new URL(sys.url).hostname
-        } catch {
-          return ''
-        }
-      })
-      .filter(Boolean)
-
-    windowManager.openChildWindow(url, title, allowedDomains)
-    logger.info(`打開子窗口: ${title}`, 'IPC:window')
   })
 
   /** APP_QUIT:完全退出應用,浮球右鍵菜單「結束應用程式」用 */

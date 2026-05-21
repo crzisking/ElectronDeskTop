@@ -1,18 +1,28 @@
 /**
- * 窗口控制 IPC Handler（最小化/最大化/關閉/顯示/隱藏/查詢最大化狀態）。
- * 用於：主窗口自訂標題欄按鈕。
+ * 窗口控制 IPC Handler。
+ *
+ * 涵蓋:
+ *  - WINDOW_*:主視窗最小化 / 最大化 / 關閉 / 顯示 / 隱藏 / 查詢最大化狀態
+ *  - OPEN_CHILD_WINDOW:統一平台卡片 (openMode='electron-window') 開外部 URL 的子視窗
+ *
+ * 用於:主視窗自訂標題欄按鈕 + 統一平台頁。
  */
 
-import { ipcMain } from 'electron'
-import { IpcChannels } from '../../shared/ipc-channels'
-import { logger } from '../utils/logger'
-import type { WindowManager } from '../window-manager'
+import {ipcMain} from 'electron'
+import {IpcChannels} from '../../shared/ipc-channels'
+import {logger} from '../utils/logger'
+import type {WindowManager} from '../window-manager'
+import type {ConfigManager} from '../config-manager'
 
 /**
  * 註冊所有窗口控制 IPC Handler。
- * @param windowManager 窗口管理器實例
+ * @param windowManager 視窗管理器
+ * @param configManager 配置管理器(OPEN_CHILD_WINDOW 需要讀 unifiedPlatform.systems 做白名單)
  */
-export function registerWindowHandlers(windowManager: WindowManager): void {
+export function registerWindowHandlers(
+  windowManager: WindowManager,
+  configManager: ConfigManager
+): void {
   ipcMain.on(IpcChannels.WINDOW_MINIMIZE, () => {
     const win = windowManager.getMainWindow()
     win?.minimize()
@@ -52,5 +62,28 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
     return win?.isMaximized() ?? false
   })
 
-  logger.info('窗口 IPC Handlers 已注冊', 'IPC:window')
+  /**
+   * OPEN_CHILD_WINDOW:用 electron-window 模式打開子視窗。
+   *
+   * 用於統一平台頁卡片 openMode='electron-window'(避開 iframe X-Frame-Options 限制)。
+   * 安全策略:從 app-config.json 的系統列表抽出域名作白名單,只放行已配置的系統 URL,
+   * 避免渲染端能任意傳 URL 開新窗。
+   */
+  ipcMain.handle(IpcChannels.OPEN_CHILD_WINDOW, (_event, url: string, title: string) => {
+    const config = configManager.getConfig()
+    const allowedDomains = config.unifiedPlatform.systems
+      .map((sys) => {
+        try {
+          return new URL(sys.url).hostname
+        } catch {
+          return ''
+        }
+      })
+      .filter(Boolean)
+
+    windowManager.openChildWindow(url, title, allowedDomains)
+    logger.info(`打開子窗口: ${title}`, 'IPC:window')
+  })
+
+  logger.info('窗口 IPC Handlers 已註冊', 'IPC:window')
 }
