@@ -6,10 +6,13 @@
 import {CATEGORY_LABEL, CATEGORY_TAG_TYPE} from '../category-colors'
 import type {WorkRecord} from '../types'
 
-defineProps<{
-  records: WorkRecord[]
-  loading?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    records: WorkRecord[]
+    loading?: boolean
+  }>(),
+  {loading: false}
+)
 
 /** Unix ms 格式化成 HH:mm */
 function formatTime(ms: number): string {

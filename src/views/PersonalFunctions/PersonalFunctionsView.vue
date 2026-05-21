@@ -52,17 +52,14 @@ function handleOpen(tool: PersonalTool) {
   }
 
   if (tool.openMode === 'native-window') {
-    switch (tool.routeName) {
-      case 'todo':
-        // todoWindow 由代辦事項 feature 落地時暴露;尚未實作就 warn
-        if (window.electronAPI?.todoWindow?.toggle) {
-          window.electronAPI.todoWindow.toggle()
-        } else {
-          logger.warn('代辦事項視窗尚未實作', 'PersonalFunctions')
-        }
-        break
-      default:
-        logger.warn('未知的 native-window dispatch key', 'PersonalFunctions', {routeName: tool.routeName})
+    // generic native-window dispatcher。實作見 docs/12-代辦事項設計.md §7.3。
+    // 目前 todo feature 尚未落地,electronAPI.nativeWindow 還沒在 preload 暴露;
+    // 用 optional chaining + cast,實作完成後型別會自然對齊,**這段 view 程式碼不必再改**。
+    const nativeWindow = (window.electronAPI as any).nativeWindow
+    if (nativeWindow?.toggle && tool.routeName) {
+      nativeWindow.toggle(tool.routeName)
+    } else {
+      logger.warn('native-window 尚未實作,無法開啟', 'PersonalFunctions', {routeName: tool.routeName})
     }
   }
 }
