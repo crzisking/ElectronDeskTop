@@ -26,8 +26,9 @@ const DEFAULT_CONFIG = {
   sidebar: {
     defaultCollapsed: false,
     items: [
-      {id: 'unified-platform', label: '統一平台', icon: 'Grid', routeName: 'unified-platform', enabled: true},
-      {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true}
+      {id: 'unified-platform',   label: '統一平台', icon: 'Grid', routeName: 'unified-platform',   enabled: true},
+      {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true},
+      {id: 'personal-functions', label: '個人功能', icon: 'User', routeName: 'personal-functions', enabled: true}
     ]
   },
   systemLinks: {
@@ -68,6 +69,12 @@ const DEFAULT_CONFIG = {
     tools: [
       { id: 'bpmUserFinder', name: 'bpm負責人查詢', description: '查找對應的bpm表單負責人', icon: 'Edit',  enabled: true, openMode: 'page', routeName: 'ai-bpm-finder', url: '' },
       { id: 'itRepair',      name: 'IT 報修',       description: '提交設備故障或 IT 問題',  icon: 'Tools', enabled: true, openMode: 'page', routeName: 'it-repair' }
+    ]
+  },
+  // 個人功能 — sidebar 第三個主功能,放工作採集 / 代辦事項等
+  personalFunctions: {
+    tools: [
+      { id: 'workCollect', name: '工作自動採集', description: '每 5 分鐘自動分析螢幕內容', icon: 'Aim', enabled: true, openMode: 'page', routeName: 'work-collect' }
     ]
   },
   update: {

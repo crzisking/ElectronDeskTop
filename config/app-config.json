@@ -24,6 +24,13 @@
         "icon": "Grid",
         "routeName": "internal-functions",
         "enabled": true
+      },
+      {
+        "id": "personal-functions",
+        "label": "個人功能",
+        "icon": "User",
+        "routeName": "personal-functions",
+        "enabled": true
       }
     ],
     "_comment": "左側導航欄配置",
@@ -205,7 +212,15 @@
         "enabled": true,
         "openMode": "page",
         "routeName": "it-repair"
-      },
+      }
+    ],
+    "_comment": "內部功能頁面配置 — 流程 / 支援類工具(報修、AI SOP 等)。個人類功能已移到 personalFunctions 區段",
+    "_comment_apiBaseUrl": "AI 類功能的後端 API 基礎 URL，非 AI 工具可忽略此欄位",
+    "_comment_apiTimeout": "API 請求超時時間，單位為毫秒（ms）。例如 30000 = 30 秒",
+    "_comment_tools": "功能入口列表陣列。每個條目：id（唯一標識）、name（顯示名稱）、description（功能描述）、icon（Element Plus 圖標名稱）、enabled（是否啟用）、openMode（'page' 跳轉子路由 / 'external' 外部瀏覽器）、routeName（page 模式對應的 Vue Router 路由名稱）、url（external 模式或 iframe 嵌入的網址）"
+  },
+  "personalFunctions": {
+    "tools": [
       {
         "id": "workCollect",
         "name": "工作自動採集",
@@ -216,10 +231,8 @@
         "routeName": "work-collect"
       }
     ],
-    "_comment": "內部功能頁面配置 — 可同時放 AI 工具與公司內部系統功能入口",
-    "_comment_apiBaseUrl": "AI 類功能的後端 API 基礎 URL，非 AI 工具可忽略此欄位",
-    "_comment_apiTimeout": "API 請求超時時間，單位為毫秒（ms）。例如 30000 = 30 秒",
-    "_comment_tools": "功能入口列表陣列。每個條目：id（唯一標識）、name（顯示名稱）、description（功能描述）、icon（Element Plus 圖標名稱）、enabled（是否啟用）、openMode（'page' 跳轉子路由 / 'external' 外部瀏覽器）、routeName（page 模式對應的 Vue Router 路由名稱）、url（external 模式或 iframe 嵌入的網址）"
+    "_comment": "個人功能 — 為使用者個人服務、會持續產生資料的功能。代辦事項(routeName='todo', openMode='native-window')規劃中,待 docs/12 落地後加入",
+    "_comment_tools": "每個條目：id、name、description、icon（Element Plus）、enabled、openMode（'page' 走 router.push / 'native-window' 派發 IPC 開常駐視窗）、routeName"
   },
   "update": {
     "enabled": true,

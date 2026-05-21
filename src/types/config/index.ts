@@ -21,6 +21,7 @@ import type {SystemLinksConfig} from './system-links.types'
 import type {FloatingBallConfig} from './floating-ball.types'
 import type {UnifiedPlatformConfig} from './unified-platform.types'
 import type {InternalFunctionsConfig} from './internal-functions.types'
+import type {PersonalFunctionsConfig} from './personal-functions.types'
 import type {UpdateConfig} from './update.types'
 import type {WorkCollectConfig} from './work-collect.types'
 
@@ -54,6 +55,9 @@ export interface AppConfig {
   /** 內部功能配置 */
   internalFunctions: InternalFunctionsConfig
 
+  /** 個人功能配置(sidebar 第三個主功能入口,跟內部功能 / 統一平台同層級) */
+  personalFunctions: PersonalFunctionsConfig
+
   /** 自動更新配置 */
   update: UpdateConfig
 
@@ -68,5 +72,6 @@ export type {SystemLinksConfig, SystemLinkItem} from './system-links.types'
 export type {FloatingBallConfig, QuickMenuItem, QuickMenuAction} from './floating-ball.types'
 export type {UnifiedPlatformConfig, SystemLink} from './unified-platform.types'
 export type {InternalFunctionsConfig, InternalTool} from './internal-functions.types'
+export type {PersonalFunctionsConfig, PersonalTool} from './personal-functions.types'
 export type {UpdateConfig} from './update.types'
 export type {WorkCollectConfig} from './work-collect.types'

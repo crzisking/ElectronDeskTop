@@ -281,10 +281,19 @@
     "login": "Sign In",
     "unifiedPlatform": "Unified Platform",
     "internalFunctions": "Internal Tools",
+    "personalFunctions": "Personal",
     "bpmFinder": "BPM Owner Lookup",
     "aiSop": "AI SOP Generator",
     "itRepair": "IT Repair",
     "workCollect": "Work Auto-Capture"
+  },
+
+  "personal": {
+    "title": "Personal Functions",
+    "subtitle": "Features dedicated to you",
+    "mySection": "My Features",
+    "comingSoonDesc": "More personal features coming",
+    "emptyAll": "No personal tools configured. Add entries in personalFunctions.tools in app-config.json"
   },
 
   "config": {

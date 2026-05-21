@@ -283,10 +283,19 @@
     "login": "登入",
     "unifiedPlatform": "統一平台",
     "internalFunctions": "內部功能",
+    "personalFunctions": "個人功能",
     "bpmFinder": "BPM 負責人查詢",
     "aiSop": "AI SOP 生成",
     "itRepair": "IT 報修",
     "workCollect": "工作自動採集"
+  },
+
+  "personal": {
+    "title": "個人功能",
+    "subtitle": "為你個人服務的功能",
+    "mySection": "我的功能",
+    "comingSoonDesc": "更多個人化功能陸續推出",
+    "emptyAll": "尚未配置個人功能,請在 app-config.json 的 personalFunctions.tools 中添加"
   },
 
   "config": {

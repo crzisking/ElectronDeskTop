@@ -58,6 +58,17 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      // 個人功能入口 — 跟內部功能 / 統一平台同層級的主功能;原文 title：個人功能
+      {
+        path: 'personal-functions',
+        name: 'personal-functions',
+        component: () => import('@/views/PersonalFunctions/PersonalFunctionsView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'router.personalFunctions'
+        }
+      },
+
       // BPM 負責人查詢；原文 title：BPM 負責人查詢
       {
         path: 'ai-bpm-finder',
