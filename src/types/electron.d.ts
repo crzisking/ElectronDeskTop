@@ -9,7 +9,7 @@
  */
 
 import type {AppConfig} from './config.types'
-import type {WorkRecord} from './work-record.types'
+import type {WorkRecord, WorkResultPayload} from '@/features/work-collect/types'
 
 // 確保此文件被視為模塊（避免全局聲明衝突）
 export {}
@@ -101,7 +101,7 @@ declare global {
        *   push:update-checking / push:update-available / push:update-not-available
        *   push:update-progress / push:update-downloaded / push:update-error
        *
-       * 渲染層通常透過 useUpdate composable（src/composables/useUpdate.ts）
+       * 渲染層通常透過 useUpdate composable（src/features/update/use-update.ts）
        * 統一封裝這些事件監聽 + 對應 UI 提示，不直接呼叫此處的方法。
        */
       update: {
@@ -130,12 +130,6 @@ declare global {
       // ─── 工作自動採集 ──────────────────────────────────────
       workCollect: {
         /**
-         * 把 JWT token + 後端 API base URL 推給主進程 scheduler。
-         * 登入成功 / token 更新時呼叫。token 為 null 表示登出,scheduler 之後 tick 會 skip。
-         */
-        setAuth: (payload: {token: string | null; apiBaseUrl: string}) => void
-
-        /**
          * 切換採集開關。主進程會寫進 config 並啟停 scheduler。
          * @returns 切換後的 enabled 狀態
          */
@@ -147,6 +141,12 @@ declare global {
          * @returns 按時間升序的紀錄陣列
          */
         list: (params: {since: number; until: number}) => Promise<WorkRecord[]>
+
+        /**
+         * 把 AI 分析結果回送主進程,由 main handler 寫進 DB 並推 PUSH_WORK_RECORD_NEW。
+         * payload 形狀:WorkResultPayload(見 src/features/work-collect/types.ts)
+         */
+        sendResult: (payload: WorkResultPayload) => void
       }
 
       // ─── 認證 ───────────────────────────────────────────────

@@ -11,4 +11,4 @@
 
 export * from './auth.types'
 export * from './ai.types'
-export * from './repair.types'
+// repair 型別已搬進 feature 模組,如需 import 直接走 '@/features/repair/types'

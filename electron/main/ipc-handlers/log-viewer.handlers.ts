@@ -20,7 +20,7 @@
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
-import type {LogService, LogQueryParams} from '../db/services/log.service'
+import type {LogService, LogQueryParams} from '../db/features/logs/service'
 import type {WindowManager} from '../window-manager'
 
 /**

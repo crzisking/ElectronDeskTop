@@ -15,8 +15,8 @@ import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 import {DatabaseManager} from './db/database-manager'
-import {LogService} from './db/services/log.service'
-import {WorkRecordService} from './db/services/work-record.service'
+import {LogService} from './db/features/logs/service'
+import {WorkRecordService} from './db/features/work-collect/service'
 import {WorkCollectorScheduler} from './work-collector'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
@@ -171,18 +171,19 @@ app.whenReady().then(async () => {
   // 注入統一的退出清理函數，避免 update-manager 中重複退出邏輯
   updateMgr.setQuitCallback(gracefulShutdown)
 
-  // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用
-  // 啟動時機:渲染端登入後送 token + apiBaseUrl 過來 + config.enabled=true 才會跑
-  workCollector = new WorkCollectorScheduler(
-    configManager,
-    workRecordService!,    // service 可能為 null(DB init 失敗),scheduler 內 svc.insert 已防 null
-    windowManager
-  )
+  // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用。
+  // scheduler 只負責 timer + capture + 推 IPC;HTTP 與 DB 寫入都在 handler / renderer 那側。
+  workCollector = new WorkCollectorScheduler(configManager, windowManager)
 
-  registerAllHandlers(
-    windowManager, configManager, floatingBallMgr, updateMgr,
-    logService, workCollector, workRecordService
-  )
+  registerAllHandlers({
+    windowManager,
+    configManager,
+    floatingBallMgr,
+    updateMgr,
+    logService,
+    workCollector,
+    workRecordService,
+  })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
   workCollector.start()

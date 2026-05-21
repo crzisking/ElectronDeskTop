@@ -15,7 +15,7 @@ import {drizzle, type BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
 import {migrate} from 'drizzle-orm/better-sqlite3/migrator'
 import {app} from 'electron'
 import path from 'path'
-import * as schema from './schema'
+import * as schema from './features'
 
 export class DatabaseManager {
   private sqlite: Database.Database | null = null

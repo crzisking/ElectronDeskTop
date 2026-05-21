@@ -1,39 +1,40 @@
 /**
  * 工作採集 IPC handler。
  *
- * 三個 channel:
- *  - WORK_COLLECT_SET_AUTH:渲染端 → 主進程,送 token + apiBaseUrl 進來
+ * Channels:
  *  - WORK_COLLECT_TOGGLE:切換採集開關,改 config 並啟停 scheduler
  *  - WORK_COLLECT_LIST:查詢採集紀錄,給流水線 UI 用
+ *  - WORK_COLLECT_RESULT:渲染端拿到 AI 結果後送回,主進程寫 DB + 推 PUSH_WORK_RECORD_NEW
  *
- * 主進程也透過 PUSH_WORK_RECORD_NEW 推播事件給渲染端,
- * 但那是 scheduler 內 webContents.send 直接觸發,不需要 handler。
+ * 主進程 scheduler 透過 PUSH_WORK_COLLECT_TICK 推採集事件給渲染端,
+ * 那是 scheduler 內 webContents.send 直接觸發,不需要 handler。
  */
 
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import type {ConfigManager} from '../config-manager'
+import type {WindowManager} from '../window-manager'
 import type {WorkCollectorScheduler} from '../work-collector'
-import type {WorkRecordService} from '../db/services/work-record.service'
+import type {WorkRecordService} from '../db/features/work-collect/service'
+import type {WorkCategory} from '../db/features/work-collect/schema'
+
+/** WORK_COLLECT_RESULT 的 payload 形狀,跟 renderer 端 IPC 呼叫對齊 */
+interface WorkResultPayload {
+  capturedAt: number
+  activeApp: string | null
+  activeWindowTitle: string | null
+  category: WorkCategory
+  description: string
+  confidence: number
+}
 
 export function registerWorkCollectHandlers(
   scheduler: WorkCollectorScheduler,
   recordService: WorkRecordService | null,
-  configManager: ConfigManager
+  configManager: ConfigManager,
+  windowManager: WindowManager
 ): void {
-
-  // ── 設定 auth context(token + apiBaseUrl)─────────────────────────
-  ipcMain.on(
-    IpcChannels.WORK_COLLECT_SET_AUTH,
-    (_event, payload: {token: string | null; apiBaseUrl: string}) => {
-      scheduler.setAuthContext(payload.token, payload.apiBaseUrl)
-      logger.debug(
-        `Auth context 更新 token=${payload.token ? '***' : 'null'} url=${payload.apiBaseUrl}`,
-        'IPC:work'
-      )
-    }
-  )
 
   // ── 切換採集開關 ──────────────────────────────────────────────────
   ipcMain.handle(
@@ -63,6 +64,31 @@ export function registerWorkCollectHandlers(
     (_event, params: {since: number; until: number}) => {
       if (!recordService) return []
       return recordService.listByRange(params.since, params.until)
+    }
+  )
+
+  // ── 渲染端回送 AI 結果 → 寫 DB + 通知刷新 ────────────────────────
+  ipcMain.on(
+    IpcChannels.WORK_COLLECT_RESULT,
+    (_event, payload: WorkResultPayload) => {
+      if (!recordService) {
+        logger.warn('WORK_COLLECT_RESULT 來了但 DB service 不可用', 'IPC:work')
+        return
+      }
+
+      recordService.insert({
+        capturedAt: payload.capturedAt,
+        activeApp: payload.activeApp,
+        activeWindowTitle: payload.activeWindowTitle,
+        category: payload.category,
+        description: payload.description,
+        confidence: payload.confidence,
+      })
+
+      // 通知渲染端刷新流水線(可能不只是觸發的那扇窗,future-proof)
+      windowManager.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)
+
+      logger.debug(`紀錄已寫入 category=${payload.category}`, 'IPC:work')
     }
   )
 }

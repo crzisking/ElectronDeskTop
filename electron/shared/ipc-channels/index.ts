@@ -1,0 +1,42 @@
+/**
+ * IPC Channels 統一出口 — 按 feature 拆檔合成單一物件。
+ *
+ * 為什麼 spread 合成而不是 namespace:
+ *  - 既有所有 consumer 都用 `IpcChannels.XXX` 平坦存取(不是 `IpcChannels.Auth.XXX`),
+ *    為了零 breaking change,維持平坦 key。
+ *  - feature 拆檔只是視覺分組,執行期仍是一個 const,跟原本完全等價。
+ *
+ * 新增 channel 步驟:
+ *  1. 在對應 feature 檔內加 key/value(例:work-collect.ts 加 WORK_COLLECT_X)
+ *  2. 不需要動 index.ts —— spread 會自動帶進來
+ *  3. preload 端記得在 `electron/preload/index.ts` 同步白名單 / bridge 方法
+ */
+
+import {AuthChannels} from './auth'
+import {ConfigChannels} from './config'
+import {WindowChannels} from './window'
+import {FloatingBallChannels} from './floating-ball'
+import {UpdateChannels} from './update'
+import {LogChannels} from './log'
+import {WorkCollectChannels} from './work-collect'
+
+export const IpcChannels = {
+  ...AuthChannels,
+  ...ConfigChannels,
+  ...WindowChannels,
+  ...FloatingBallChannels,
+  ...UpdateChannels,
+  ...LogChannels,
+  ...WorkCollectChannels,
+} as const
+
+// 分組常數本身也 export,需要更細粒度的 import 時可以走這條
+export {
+  AuthChannels,
+  ConfigChannels,
+  WindowChannels,
+  FloatingBallChannels,
+  UpdateChannels,
+  LogChannels,
+  WorkCollectChannels,
+}

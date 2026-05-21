@@ -5,15 +5,15 @@
  * 佈局由路由配置的 AppLayout 渲染，這裡只負責全局副作用。
  */
 
-import {computed, onMounted, onUnmounted, watch} from 'vue'
+import {computed, onMounted, onUnmounted} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage} from 'element-plus'
 import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
-import {useUpdate} from '@/composables/useUpdate'
-import {workCollectApi} from '@/api/modules/work-collect.api'
+import {useWorkCollectStore} from '@/features/work-collect/store'
+import {useUpdate} from '@/features/update/use-update'
 import {getElementLocale, isSupportedLocale, setLocale, type SupportedLocale} from '@/locales'
 import {logger} from "@/utils/logger";
 import {IpcChannels} from '@shared/ipc-channels'
@@ -107,15 +107,12 @@ onMounted(async () => {
   window.electronAPI.on(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
   window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
 
-  // 4.1 把當前 token 推給主進程 WorkCollectorScheduler。
-  //     主進程定時採集需要 JWT 才能呼叫後端 AI 接口;watch 在後面註冊,所以這裡先送一次初值。
-  //     token 為 null 時主進程 tick 會自動 skip,所以不論是否登入都安全送一次。
-  workCollectApi.syncAuth(authStore.accessToken)
-  // 之後只要 token 變動(登入 / 登出 / 刷新)都同步到主進程,scheduler 永遠拿到最新 token
-  watch(
-    () => authStore.accessToken,
-    (newToken) => workCollectApi.syncAuth(newToken)
-  )
+  // 4.1 訂閱主進程工作採集事件。
+  //     PUSH_WORK_COLLECT_TICK:scheduler 每 N 分鐘採集到截圖 → renderer 走 createHttpClient 打後端 AI
+  //     PUSH_WORK_RECORD_NEW :DB 寫入完成 → renderer 重 query 流水線
+  //     必須在這裡(App level)訂閱,不能等使用者進 WorkCollect 子頁,
+  //     否則 scheduler tick 推來時沒人接,採集白做。
+  useWorkCollectStore().bootstrap()
 
   // 5. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
   const update = useUpdate()

@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 import {useI18n} from 'vue-i18n'
 import { useConfigStore } from '@/stores/config.store'
-import { useUpdate } from '@/composables/useUpdate'
+import { useUpdate } from '@/features/update/use-update'
 import SettingsRow from '../components/SettingsRow.vue'
 import { Loading, Refresh } from '@element-plus/icons-vue'
 

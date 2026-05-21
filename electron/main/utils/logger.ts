@@ -14,8 +14,8 @@
  */
 
 import {writeLine} from './log-file-writer'
-import type {LogLevel} from '../db/schema/logs'
-import type {LogService} from '../db/services/log.service'
+import type {LogLevel} from '../db/features/logs/schema'
+import type {LogService} from '../db/features/logs/service'
 
 // ─── DB 後端注入 ────────────────────────────────────────────────────────
 //

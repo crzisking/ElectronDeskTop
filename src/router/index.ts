@@ -62,7 +62,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'ai-bpm-finder',
         name: 'ai-bpm-finder',
-        component: () => import('@/views/InternalFunctions/child/BpmFinderView.vue'),
+        component: () => import('@/features/bpm-finder/BpmFinderView.vue'),
         meta: {
           requiresAuth: true,
           title: 'router.bpmFinder'
@@ -73,7 +73,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'it-repair',
         name: 'it-repair',
-        component: () => import('@/views/InternalFunctions/child/ITRepair/ITRepairView.vue'),
+        component: () => import('@/features/repair/ITRepairView.vue'),
         meta: {
           requiresAuth: true,
           title: 'router.itRepair'
@@ -84,7 +84,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'ai-sop',
         name: 'ai-sop',
-        component: () => import('@/views/InternalFunctions/child/AiSop/AiSopView.vue'),
+        component: () => import('@/features/ai-sop/AiSopView.vue'),
         meta: {
           requiresAuth: true,
           title: 'router.aiSop'
@@ -95,7 +95,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'work-collect',
         name: 'work-collect',
-        component: () => import('@/views/InternalFunctions/child/WorkCollect/WorkCollectView.vue'),
+        component: () => import('@/features/work-collect/WorkCollectView.vue'),
         meta: {
           requiresAuth: true,
           title: 'router.workCollect'
