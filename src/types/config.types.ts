@@ -98,6 +98,46 @@ export interface AppConfig {
    * 詳細結構見 UpdateConfig interface
    */
   update: UpdateConfig
+
+  /**
+   * 工作採集配置
+   * 對應 JSON：{ "workCollect": { "enabled": true, "intervalMinutes": 5, ... } }
+   * 詳細結構見 WorkCollectConfig interface
+   */
+  workCollect: WorkCollectConfig
+}
+
+// ── 工作採集 ──────────────────────────────────────────────────────────
+// 對應 JSON：
+// "workCollect": {
+//   "enabled": true,
+//   "intervalMinutes": 5,
+//   "workStartHour": 8,
+//   "workEndHour": 17
+// }
+export interface WorkCollectConfig {
+  /**
+   * 工作採集總開關。false 時 scheduler 不啟動,完全不採集 / 不上傳。
+   * 渲染端的「啟用採集」開關透過 CONFIG_WRITE 寫入此欄位。
+   */
+  enabled: boolean
+
+  /**
+   * 採集間隔(分鐘)。預設 5,允許範圍 1-60。
+   */
+  intervalMinutes: number
+
+  /**
+   * 工時開始小時(24h),預設 8(早上 8 點)。
+   * 採集只在 [workStartHour, workEndHour) 區間內進行,其餘時段 tick 跳過。
+   */
+  workStartHour: number
+
+  /**
+   * 工時結束小時(24h),預設 17(下午 5 點),「不含」此小時。
+   * 設 17 表示 17:00:00 整就停止採集(覆蓋 8:00 ~ 16:59:59)。
+   */
+  workEndHour: number
 }
 
 // ── 自動更新 ──────────────────────────────────────────────────────────

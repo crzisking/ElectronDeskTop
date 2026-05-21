@@ -285,7 +285,8 @@
     "internalFunctions": "內部功能",
     "bpmFinder": "BPM 負責人查詢",
     "aiSop": "AI SOP 生成",
-    "itRepair": "IT 報修"
+    "itRepair": "IT 報修",
+    "workCollect": "工作自動採集"
   },
 
   "config": {

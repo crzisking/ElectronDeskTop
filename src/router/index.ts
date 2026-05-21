@@ -89,6 +89,17 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: 'router.aiSop'
         }
+      },
+
+      // 工作自動採集 — 內部用,定時截圖 → 後端 AI 分析 → 流水線
+      {
+        path: 'work-collect',
+        name: 'work-collect',
+        component: () => import('@/views/InternalFunctions/child/WorkCollect/WorkCollectView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'router.workCollect'
+        }
       }
 
     ]

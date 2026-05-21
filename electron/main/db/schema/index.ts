@@ -4,3 +4,4 @@
  * 讓 `db.query.<tableName>.findMany()` 等 relational API 都能用。
  */
 export * from './logs'
+export * from './work-records'

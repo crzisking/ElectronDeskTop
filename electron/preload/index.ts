@@ -43,7 +43,11 @@ const IPC = {
     PUSH_UPDATE_DOWNLOADED: 'push:update-downloaded',
     PUSH_UPDATE_ERROR: 'push:update-error',
     LOG_VIEWER_UNLOCK: 'log-viewer:unlock',
-    WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer'
+    WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer',
+    WORK_COLLECT_SET_AUTH: 'work:set-auth',
+    WORK_COLLECT_TOGGLE: 'work:toggle',
+    WORK_COLLECT_LIST: 'work:list',
+    PUSH_WORK_RECORD_NEW: 'push:work-record-new'
 } as const
 
 /**
@@ -144,6 +148,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
+   * 工作自動採集。
+   * 渲染端職責:
+   *  - 登入成功後呼叫 setAuth(token, apiBaseUrl),把後端認證 + URL 推給主進程 scheduler
+   *  - 內部功能頁切換 toggle → 走 toggle(enabled)
+   *  - 流水線 UI 載入 → 走 list({since, until})
+   * 採集邏輯主進程跑,渲染端不關心 setInterval 細節。
+   */
+  workCollect: {
+      setAuth: (payload: {token: string | null; apiBaseUrl: string}) =>
+          ipcRenderer.send(IPC.WORK_COLLECT_SET_AUTH, payload),
+      toggle: (enabled: boolean) =>
+          ipcRenderer.invoke(IPC.WORK_COLLECT_TOGGLE, enabled) as Promise<boolean>,
+      list: (params: {since: number; until: number}) =>
+          ipcRenderer.invoke(IPC.WORK_COLLECT_LIST, params)
+  },
+
+  /**
    * 訂閱主進程推送事件。
    * 走白名單避免渲染端監聽任意 channel。
    *
@@ -163,7 +184,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         IPC.PUSH_UPDATE_NOT_AVAILABLE,
         IPC.PUSH_UPDATE_PROGRESS,
         IPC.PUSH_UPDATE_DOWNLOADED,
-        IPC.PUSH_UPDATE_ERROR
+        IPC.PUSH_UPDATE_ERROR,
+      // 工作採集:scheduler 寫入新紀錄後通知渲染端刷新流水線
+        IPC.PUSH_WORK_RECORD_NEW
     ] as string[]
 
     if (ALLOWED_CHANNELS.includes(channel)) {

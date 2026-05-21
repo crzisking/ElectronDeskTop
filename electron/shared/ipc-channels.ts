@@ -169,7 +169,34 @@ export const IpcChannels = {
    * WINDOW_OPEN_LOG_VIEWER:開啟日誌查看器子視窗(必須先 unlock)。
    * 主進程內部會再次驗證解鎖狀態。send(單向)。
    */
-  WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer'
+  WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer',
+
+  // ─── 工作自動採集 ──────────────────────────────────────────────────
+  /**
+   * WORK_COLLECT_SET_AUTH:渲染端登入成功 / app 啟動時呼叫,把 token + apiBaseUrl
+   * 同步給主進程 scheduler。主進程 fetch 後端 AI 接口需要這兩樣。send。
+   * payload:{ token: string | null, apiBaseUrl: string }
+   */
+  WORK_COLLECT_SET_AUTH: 'work:set-auth',
+
+  /**
+   * WORK_COLLECT_TOGGLE:切換採集開關。主進程內 1) 寫進 config 2) 啟動 / 停止 scheduler。
+   * payload:boolean。invoke。返回:當前 enabled 狀態。
+   */
+  WORK_COLLECT_TOGGLE: 'work:toggle',
+
+  /**
+   * WORK_COLLECT_LIST:查詢採集紀錄,給流水線 UI 用。
+   * payload:{ since: number, until: number }(Unix ms)
+   * 返回:WorkRecord[](按 capturedAt 升序)。invoke。
+   */
+  WORK_COLLECT_LIST: 'work:list',
+
+  /**
+   * PUSH_WORK_RECORD_NEW:採集成功寫進 DB 後,主進程通知渲染端刷新流水線。
+   * 渲染端 store 訂閱此事件,收到後重 query 今日資料。send(主 → 渲染)。
+   */
+  PUSH_WORK_RECORD_NEW: 'push:work-record-new'
 
 } as const
 

@@ -12,6 +12,7 @@ import {registerUpdateHandlers} from './update.handlers'
 import {registerLogHandlers} from './log.handlers'
 import {registerAuthHandlers} from './auth.handlers'
 import {registerLogViewerHandlers} from './log-viewer.handlers'
+import {registerWorkCollectHandlers} from './work-collect.handlers'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
 import type {WindowManager} from '../window-manager'
@@ -19,6 +20,8 @@ import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
 import type {UpdateManager} from '../update-manager'
 import type {LogService} from '../db/services/log.service'
+import type {WorkRecordService} from '../db/services/work-record.service'
+import type {WorkCollectorScheduler} from '../work-collector'
 
 /**
  * 主進程小型 i18n 字典 — 僅用於原生菜單（浮球右鍵菜單、Tray 等）。
@@ -61,13 +64,18 @@ function localizeMenuLabel(itemId: string, fallback: string, lang: string): stri
  * @param configManager   配置管理器
  * @param floatingBallMgr 浮球管理器
  * @param updateMgr       自動更新管理器
+ * @param logService
+ * @param workCollector
+ * @param workRecordService
  */
 export function registerAllHandlers(
   windowManager: WindowManager,
   configManager: ConfigManager,
   floatingBallMgr: FloatingBallManager,
   updateMgr: UpdateManager,
-  logService: LogService | null
+  logService: LogService | null,
+  workCollector: WorkCollectorScheduler,
+  workRecordService: WorkRecordService | null
 ): void {
 
   registerWindowHandlers(windowManager)
@@ -76,6 +84,7 @@ export function registerAllHandlers(
   registerLogHandlers()
   registerAuthHandlers()
   registerLogViewerHandlers(logService, windowManager)
+  registerWorkCollectHandlers(workCollector, workRecordService, configManager)
 
   // ─── 浮球 IPC ──────────────────────────────────────────────────────────
 

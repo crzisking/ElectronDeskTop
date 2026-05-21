@@ -16,6 +16,8 @@ import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 import {DatabaseManager} from './db/database-manager'
 import {LogService} from './db/services/log.service'
+import {WorkRecordService} from './db/services/work-record.service'
+import {WorkCollectorScheduler} from './work-collector'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -25,6 +27,8 @@ let configManager: ConfigManager
 let updateMgr: UpdateManager
 let dbManager: DatabaseManager | null = null
 let logService: LogService | null = null
+let workRecordService: WorkRecordService | null = null
+let workCollector: WorkCollectorScheduler
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -74,6 +78,7 @@ function gracefulShutdown(): void {
   trayManager?.destroy()
   floatingBallMgr?.dispose()
   updateMgr?.dispose()
+  workCollector?.dispose()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
   // 用 try/catch 防止 close 拋出阻礙退出流程
   try {
@@ -110,10 +115,13 @@ app.whenReady().then(async () => {
     if (deleted > 0) {
       logger.info(`啟動清理:刪除 ${deleted} 筆 14 天前的舊日誌`, 'DB')
     }
+    // 同一個 dbManager,連 work_records service 也一起建
+    workRecordService = new WorkRecordService(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
     logService = null
+    workRecordService = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -163,7 +171,21 @@ app.whenReady().then(async () => {
   // 注入統一的退出清理函數，避免 update-manager 中重複退出邏輯
   updateMgr.setQuitCallback(gracefulShutdown)
 
-  registerAllHandlers(windowManager, configManager, floatingBallMgr, updateMgr, logService)
+  // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用
+  // 啟動時機:渲染端登入後送 token + apiBaseUrl 過來 + config.enabled=true 才會跑
+  workCollector = new WorkCollectorScheduler(
+    configManager,
+    workRecordService!,    // service 可能為 null(DB init 失敗),scheduler 內 svc.insert 已防 null
+    windowManager
+  )
+
+  registerAllHandlers(
+    windowManager, configManager, floatingBallMgr, updateMgr,
+    logService, workCollector, workRecordService
+  )
+
+  // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
+  workCollector.start()
 
   // 在 IPC handler 註冊後才 init，托盤菜單點擊才能正確觸發處理器
   trayManager.init()

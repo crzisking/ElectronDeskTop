@@ -205,6 +205,15 @@
         "enabled": true,
         "openMode": "page",
         "routeName": "it-repair"
+      },
+      {
+        "id": "workCollect",
+        "name": "工作自動採集",
+        "description": "每 5 分鐘自動分析螢幕內容，產生個人工作流水線（工時內 + 螢幕未鎖才採集）",
+        "icon": "Aim",
+        "enabled": true,
+        "openMode": "page",
+        "routeName": "work-collect"
       }
     ],
     "_comment": "內部功能頁面配置 — 可同時放 AI 工具與公司內部系統功能入口",
@@ -226,6 +235,17 @@
     "_comment_dailyCheckTime": "每日定時檢查時刻（24 小時制 HH:MM）。空字串 '' 則不啟用定時檢查",
     "_comment_autoDownload": "發現新版時是否自動下載（true 背景下載，false 先問用戶）",
     "_comment_autoInstallOnAppQuit": "下載完成後是否在應用退出時靜默安裝（true 下次退出自動裝，false 必須點立即重啟）"
+  },
+  "workCollect": {
+    "enabled": false,
+    "intervalMinutes": 5,
+    "workStartHour": 8,
+    "workEndHour": 17,
+    "_comment": "工作自動採集配置 — 定時截圖 + 視窗清單 → 後端 AI 判斷 → 寫入本機 SQLite",
+    "_comment_enabled": "總開關，預設關閉。使用者在內部功能頁開啟後 CONFIG_WRITE 改 true",
+    "_comment_intervalMinutes": "採集間隔分鐘，預設 5。允許範圍 1-60",
+    "_comment_workStartHour": "工時開始小時(24h)，預設 8 = 早上 8 點",
+    "_comment_workEndHour": "工時結束小時(24h)，預設 17 = 下午 5 點(此小時不含)；採集只在 [start, end) 區間內"
   },
   "_comment": "此 JSON 文件中所有以 '_comment' 開頭的欄位均為注釋，不參與程式邏輯，僅供開發人員閱讀參考",
   "_comment_version": "版本號不再寫在此文件，運行時由主進程 app.getVersion() 注入（唯一真實源是 package.json）"

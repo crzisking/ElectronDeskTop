@@ -77,6 +77,13 @@ const DEFAULT_CONFIG = {
     dailyCheckTime: '11:00',
     autoDownload: true,
     autoInstallOnAppQuit: false
+  },
+  // 工作自動採集 — 預設關閉,使用者在內部功能頁開啟才生效
+  workCollect: {
+    enabled: false,
+    intervalMinutes: 5,
+    workStartHour: 8,
+    workEndHour: 17
   }
 } as Omit<AppConfig, 'version'>
 

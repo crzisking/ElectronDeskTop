@@ -283,7 +283,8 @@
     "internalFunctions": "Internal Tools",
     "bpmFinder": "BPM Owner Lookup",
     "aiSop": "AI SOP Generator",
-    "itRepair": "IT Repair"
+    "itRepair": "IT Repair",
+    "workCollect": "Work Auto-Capture"
   },
 
   "config": {
@@ -310,7 +311,8 @@
     "tools": {
       "bpmUserFinder": { "name": "BPM Owner Lookup", "description": "Find the owner of a BPM form" },
       "AiSop":         { "name": "AI SOP Generator", "description": "Generate SOP from text" },
-      "itRepair":      { "name": "IT Repair",        "description": "Submit device or IT issues, view your tickets" }
+      "itRepair":      { "name": "IT Repair",        "description": "Submit device or IT issues, view your tickets" },
+      "workCollect":   { "name": "Work Auto-Capture", "description": "Auto-analyze your screen every 5 min (work hours only, paused when locked)" }
     }
   }
 }

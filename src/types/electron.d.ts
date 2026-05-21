@@ -9,6 +9,7 @@
  */
 
 import type {AppConfig} from './config.types'
+import type {WorkRecord} from './work-record.types'
 
 // 確保此文件被視為模塊（避免全局聲明衝突）
 export {}
@@ -124,6 +125,28 @@ declare global {
          * 開啟日誌查看器子視窗。必須先 unlock 成功;否則主進程會靜默拒絕。
          */
         openWindow: () => void
+      }
+
+      // ─── 工作自動採集 ──────────────────────────────────────
+      workCollect: {
+        /**
+         * 把 JWT token + 後端 API base URL 推給主進程 scheduler。
+         * 登入成功 / token 更新時呼叫。token 為 null 表示登出,scheduler 之後 tick 會 skip。
+         */
+        setAuth: (payload: {token: string | null; apiBaseUrl: string}) => void
+
+        /**
+         * 切換採集開關。主進程會寫進 config 並啟停 scheduler。
+         * @returns 切換後的 enabled 狀態
+         */
+        toggle: (enabled: boolean) => Promise<boolean>
+
+        /**
+         * 查詢採集紀錄,給流水線 UI 顯示用。
+         * @param params since/until 用 Unix ms,半開區間 [since, until)
+         * @returns 按時間升序的紀錄陣列
+         */
+        list: (params: {since: number; until: number}) => Promise<WorkRecord[]>
       }
 
       // ─── 認證 ───────────────────────────────────────────────
