@@ -132,8 +132,10 @@ export class ConfigManager {
         const parsed = JSON.parse(raw) as Partial<AppConfig>
         // 即便舊版 JSON 仍有 version 字段也忽略，version 改由 app.getVersion() 注入
         if ('version' in parsed) delete (parsed as Record<string, unknown>).version
-        // 深合並確保新增字段有默認值
-        this.config = this.deepMerge(DEFAULT_CONFIG, parsed) as Omit<AppConfig, 'version'>
+        // 深合並確保新增字段有默認值；列表型配置再按 id 補齊新版預設入口。
+        this.config = this.withDefaultListItems(
+          this.deepMerge(DEFAULT_CONFIG, parsed) as Omit<AppConfig, 'version'>
+        )
         logger.info('配置文件加載成功', 'ConfigManager')
       } else {
         logger.warn('配置文件不存在，使用默認配置', 'ConfigManager')
@@ -227,5 +229,33 @@ export class ConfigManager {
     }
 
     return result
+  }
+
+  /**
+   * 補齊舊版 userData/app-config.json 缺少的新版入口。
+   * array 不能在 deepMerge 中通用合併，否則會破壞用戶自定義列表；這裡只處理有穩定 id 的內建入口。
+   */
+  private withDefaultListItems(config: Omit<AppConfig, 'version'>): Omit<AppConfig, 'version'> {
+    return {
+      ...config,
+      sidebar: {
+        ...config.sidebar,
+        items: this.appendMissingById(config.sidebar.items, DEFAULT_CONFIG.sidebar.items),
+      },
+      personalFunctions: {
+        ...config.personalFunctions,
+        tools: this.appendMissingById(config.personalFunctions.tools, DEFAULT_CONFIG.personalFunctions.tools),
+      },
+    }
+  }
+
+  /**
+   * 保留 existing 的內容和順序，只把 defaults 中缺少的 id 追加到尾部。
+   */
+  private appendMissingById<T extends {id: string}>(existing: T[] | undefined, defaults: T[]): T[] {
+    const current = Array.isArray(existing) ? existing : []
+    const seen = new Set(current.map((item) => item.id))
+    const missing = defaults.filter((item) => !seen.has(item.id))
+    return missing.length > 0 ? [...current, ...missing] : current
   }
 }
