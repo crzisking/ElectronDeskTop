@@ -8,7 +8,7 @@ import {app} from 'electron'
 import {copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'fs'
 import {dirname, join} from 'path'
 import {logger} from './utils/logger'
-import type {AppConfig} from '../../src/types/config.types'
+import type {AppConfig} from '../../src/types/config'
 
 /**
  * 代碼兜底默認配置。
@@ -71,7 +71,7 @@ const DEFAULT_CONFIG = {
       { id: 'itRepair',      name: 'IT 報修',       description: '提交設備故障或 IT 問題',  icon: 'Tools', enabled: true, openMode: 'page', routeName: 'it-repair' }
     ]
   },
-  // 個人功能 — sidebar 第三個主功能,放工作採集 / 代辦事項等
+  // 個人功能 — sidebar 第三個主功能,目前收錄工作自動採集
   personalFunctions: {
     tools: [
       { id: 'workCollect', name: '工作自動採集', description: '每 5 分鐘自動分析螢幕內容', icon: 'Aim', enabled: true, openMode: 'page', routeName: 'work-collect' }

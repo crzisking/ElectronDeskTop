@@ -110,8 +110,18 @@ export const useUserProfileStore = defineStore('userProfile', () => {
         return
       }
 
-      // 6. 更新 store cache
-      profile.value = await window.electronAPI.userProfile.getActive()
+      // 6. 直接用手上的 fresh data 組 profile,**不再 IPC 讀回 DB**。
+      //    舊版會 getActive() 再讀一次,理論上應該拿到剛 upsert 的 row,
+      //    但若 DB 異常仍可能回 null,造成 profileState='ready' + profile=null 的不一致狀態。
+      //    現在用已知非空的資料直接組,順便省一次 IPC round trip。
+      profile.value = {
+        userId: currentUserId,
+        dingId: fresh.userId,
+        unionId: fresh.unionId,
+        displayName: fresh.name || null,
+        email: null,
+        syncedAt: Date.now(),
+      }
       profileState.value = 'ready'
     } catch (err) {
       // axios 攔截器 throw 的 unified response Fail / 網路錯誤都會走到這
