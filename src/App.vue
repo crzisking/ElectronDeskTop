@@ -13,6 +13,7 @@ import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useWorkCollectStore} from '@/features/work-collect/store'
+import {useUserProfileStore} from '@/features/user-profile/store'
 import {useUpdate} from '@/features/update/use-update'
 import {getElementLocale, isSupportedLocale, setLocale, type SupportedLocale} from '@/locales'
 import {logger} from "@/utils/logger";
@@ -99,6 +100,10 @@ onMounted(async () => {
   if (!authStore.isAuthenticated) {
     await router.replace({name: 'login'}).catch(() => undefined)
   } else {
+    // AD 自動登入成功 → 同步使用者身份(拉 dingId/unionId 進本機 SQLite)。
+    // store 內已 catch 失敗,不阻塞後續流程;不 await 讓導頁先行。
+    // 表單登入路徑由 LoginView 自己負責呼叫一次,避免重複同步。
+    void useUserProfileStore().syncAfterLogin()
     await router.replace(initialTarget).catch(() => undefined)
   }
 

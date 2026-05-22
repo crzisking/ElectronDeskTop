@@ -14,6 +14,7 @@ import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {useAuthStore} from '@/stores/auth.store'
 import {useUpdate} from '@/features/update/use-update'
+import {useUserProfileStore} from '@/features/user-profile/store'
 import {logger} from '@/utils/logger'
 import {Lock, User} from '@element-plus/icons-vue'
 import type {FormInstance, FormRules} from 'element-plus'
@@ -83,6 +84,11 @@ async function handleLogin() {
 
   try {
     await authStore.login(form.userName, form.password)
+
+    // 登錄成功 → 同步使用者身份(從 /api/UserInfo/ding/userinfo 拉 dingId / unionId 寫進本機 SQLite)。
+    // 失敗不阻塞登入(store 內已 catch,UI 後續可從 userProfileStore.profileError 讀錯誤)。
+    // 不 await:讓登入跳轉先行,身份同步背景完成。
+    void useUserProfileStore().syncAfterLogin()
 
     // 登錄成功 → 觸發一次靜默更新檢查（不 await，不阻塞跳轉）
     // 與每日 11:00 的定時檢查互補：用戶每次重新登錄即可立刻得知是否有新版

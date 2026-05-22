@@ -17,6 +17,8 @@ import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 import {DatabaseManager} from './db/database-manager'
 import {LogService} from './db/features/logs/service'
 import {WorkRecordService} from './db/features/work-collect/service'
+import {UserProfileService} from './db/features/user-profile/service'
+import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler} from './work-collector'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
@@ -28,6 +30,8 @@ let updateMgr: UpdateManager
 let dbManager: DatabaseManager | null = null
 let logService: LogService | null = null
 let workRecordService: WorkRecordService | null = null
+let userProfileService: UserProfileService | null = null
+let accountChangeCleaner: AccountChangeCleaner | null = null
 let workCollector: WorkCollectorScheduler
 
 /**
@@ -115,13 +119,17 @@ app.whenReady().then(async () => {
     if (deleted > 0) {
       logger.info(`啟動清理:刪除 ${deleted} 筆 14 天前的舊日誌`, 'DB')
     }
-    // 同一個 dbManager,連 work_records service 也一起建
+    // 同一個 dbManager,連 work_records / user_profiles service 一起建
     workRecordService = new WorkRecordService(dbManager)
+    userProfileService = new UserProfileService(dbManager)
+    accountChangeCleaner = new AccountChangeCleaner(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
     logService = null
     workRecordService = null
+    userProfileService = null
+    accountChangeCleaner = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -183,6 +191,8 @@ app.whenReady().then(async () => {
     logService,
     workCollector,
     workRecordService,
+    userProfileService,
+    accountChangeCleaner,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)

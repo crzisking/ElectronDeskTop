@@ -231,8 +231,8 @@
         "routeName": "work-collect"
       }
     ],
-    "_comment": "個人功能 — 為使用者個人服務、會持續產生資料的功能。代辦事項(routeName='todo', openMode='native-window')規劃中,待 docs/12 落地後加入",
-    "_comment_tools": "每個條目：id、name、description、icon（Element Plus）、enabled、openMode（'page' 走 router.push / 'native-window' 派發 IPC 開常駐視窗）、routeName"
+    "_comment": "個人功能 — 為使用者個人服務、會持續產生資料的功能",
+    "_comment_tools": "每個條目：id、name、description、icon（Element Plus）、enabled、openMode（'page' 走 router.push）、routeName"
   },
   "update": {
     "enabled": true,
@@ -250,7 +250,7 @@
     "_comment_autoInstallOnAppQuit": "下載完成後是否在應用退出時靜默安裝（true 下次退出自動裝，false 必須點立即重啟）"
   },
   "workCollect": {
-    "enabled": false,
+    "enabled": true,
     "intervalMinutes": 5,
     "workStartHour": 8,
     "workEndHour": 17,

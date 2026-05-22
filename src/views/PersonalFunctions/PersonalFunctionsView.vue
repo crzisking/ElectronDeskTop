@@ -5,7 +5,6 @@
  * 跟「內部功能」「統一平台」同層級的主功能,展示「為使用者個人服務」的卡片清單。
  * 目前收錄:
  *   - 工作自動採集(openMode: 'page',走 router.push)
- *   - 代辦事項(規劃中,openMode: 'native-window',點擊派發 IPC 開常駐視窗)
  *
  * 卡片由 config.personalFunctions.tools 驅動,改 JSON 不重打包就能加 / 改 / 隱藏入口。
  */
@@ -38,29 +37,12 @@ const tools = computed<PersonalTool[]>(
   () => configStore.appConfig?.personalFunctions?.tools.filter((tl) => tl.enabled) ?? []
 )
 
-/**
- * 點擊卡片分派處理。
- *  - 'page'          → router.push({ name })
- *  - 'native-window' → 派發 IPC 開常駐視窗(目前只支援 'todo',未來其他常駐視窗在此擴展)
- */
+/** 點擊卡片 → router.push */
 function handleOpen(tool: PersonalTool) {
   if (tool.openMode === 'page' && tool.routeName) {
     router.push({name: tool.routeName}).catch((err) => {
       logger.warn('個人功能路由跳轉失敗', 'PersonalFunctions', {routeName: tool.routeName, err})
     })
-    return
-  }
-
-  if (tool.openMode === 'native-window') {
-    // generic native-window dispatcher。實作見 docs/12-代辦事項設計.md §7.3。
-    // 目前 todo feature 尚未落地,electronAPI.nativeWindow 還沒在 preload 暴露;
-    // 用 optional chaining + cast,實作完成後型別會自然對齊,**這段 view 程式碼不必再改**。
-    const nativeWindow = (window.electronAPI as any).nativeWindow
-    if (nativeWindow?.toggle && tool.routeName) {
-      nativeWindow.toggle(tool.routeName)
-    } else {
-      logger.warn('native-window 尚未實作,無法開啟', 'PersonalFunctions', {routeName: tool.routeName})
-    }
   }
 }
 

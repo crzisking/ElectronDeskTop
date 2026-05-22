@@ -14,3 +14,4 @@
 
 export * from './logs/schema'
 export * from './work-collect/schema'
+export * from './user-profile/schema'
