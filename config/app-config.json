@@ -250,7 +250,7 @@
     "_comment_autoInstallOnAppQuit": "下載完成後是否在應用退出時靜默安裝（true 下次退出自動裝，false 必須點立即重啟）"
   },
   "workCollect": {
-    "enabled": true,
+    "enabled": false,
     "intervalMinutes": 5,
     "workStartHour": 8,
     "workEndHour": 17,
