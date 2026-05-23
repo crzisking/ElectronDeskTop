@@ -1,26 +1,26 @@
 <script setup lang="ts">
 /**
- * 類別佔比環形圖 (ECharts Donut)
+ * 週檢視：每日總採集柱狀圖
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
 import type { WorkRecord } from '../types'
-import { useDonutOption } from '../composables/useChartOptions'
+import { useWeekDailyBarOption } from '../composables/useChartOptions'
 
 const props = defineProps<{
   records: WorkRecord[]
 }>()
 
 const recordsRef = toRef(props, 'records')
-const option = useDonutOption(recordsRef)
+const option = useWeekDailyBarOption(recordsRef)
 </script>
 
 <template>
-  <div class="donut-card">
-    <div class="donut-card__title">類別佔比</div>
+  <div class="week-daily-bar">
+    <div class="week-daily-bar__title">每日採集總數</div>
     <VChart
-      class="donut-card__chart"
+      class="week-daily-bar__chart"
       :option="option"
       autoresize
     />
@@ -28,24 +28,22 @@ const option = useDonutOption(recordsRef)
 </template>
 
 <style scoped>
-.donut-card {
-  padding: 16px 18px;
+.week-daily-bar {
+  padding: 16px 18px 8px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  display: flex;
-  flex-direction: column;
 }
 
-.donut-card__title {
+.week-daily-bar__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.donut-card__chart {
+.week-daily-bar__chart {
   width: 100%;
-  height: 240px;
+  height: 220px;
 }
 </style>

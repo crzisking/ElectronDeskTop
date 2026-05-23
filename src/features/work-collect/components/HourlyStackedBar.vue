@@ -1,26 +1,28 @@
 <script setup lang="ts">
 /**
- * 類別佔比環形圖 (ECharts Donut)
+ * 每小時活動分布堆疊柱狀圖 (ECharts)
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
 import type { WorkRecord } from '../types'
-import { useDonutOption } from '../composables/useChartOptions'
+import { useHourlyStackedOption } from '../composables/useChartOptions'
 
 const props = defineProps<{
   records: WorkRecord[]
+  startHour: number
+  endHour: number
 }>()
 
 const recordsRef = toRef(props, 'records')
-const option = useDonutOption(recordsRef)
+const option = useHourlyStackedOption(recordsRef, props.startHour, props.endHour)
 </script>
 
 <template>
-  <div class="donut-card">
-    <div class="donut-card__title">類別佔比</div>
+  <div class="hourly-bar">
+    <div class="hourly-bar__title">每小時活動分布</div>
     <VChart
-      class="donut-card__chart"
+      class="hourly-bar__chart"
       :option="option"
       autoresize
     />
@@ -28,24 +30,22 @@ const option = useDonutOption(recordsRef)
 </template>
 
 <style scoped>
-.donut-card {
-  padding: 16px 18px;
+.hourly-bar {
+  padding: 16px 18px 8px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  display: flex;
-  flex-direction: column;
 }
 
-.donut-card__title {
+.hourly-bar__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.donut-card__chart {
+.hourly-bar__chart {
   width: 100%;
-  height: 240px;
+  height: 220px;
 }
 </style>

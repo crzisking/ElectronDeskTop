@@ -1,26 +1,31 @@
 <script setup lang="ts">
 /**
- * 類別佔比環形圖 (ECharts Donut)
+ * 每週活動熱力圖 (ECharts Heatmap)
+ *
+ * 7 行(週一~日) × N 列(工時小時)，顏色深度反映活動密度。
+ * 效仿 GitHub contribution graph。
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
 import type { WorkRecord } from '../types'
-import { useDonutOption } from '../composables/useChartOptions'
+import { useWeeklyHeatmapOption } from '../composables/useChartOptions'
 
 const props = defineProps<{
   records: WorkRecord[]
+  startHour: number
+  endHour: number
 }>()
 
 const recordsRef = toRef(props, 'records')
-const option = useDonutOption(recordsRef)
+const option = useWeeklyHeatmapOption(recordsRef, props.startHour, props.endHour)
 </script>
 
 <template>
-  <div class="donut-card">
-    <div class="donut-card__title">類別佔比</div>
+  <div class="weekly-heatmap">
+    <div class="weekly-heatmap__title">每週活動熱力圖</div>
     <VChart
-      class="donut-card__chart"
+      class="weekly-heatmap__chart"
       :option="option"
       autoresize
     />
@@ -28,23 +33,21 @@ const option = useDonutOption(recordsRef)
 </template>
 
 <style scoped>
-.donut-card {
-  padding: 16px 18px;
+.weekly-heatmap {
+  padding: 16px 18px 8px;
   background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  display: flex;
-  flex-direction: column;
 }
 
-.donut-card__title {
+.weekly-heatmap__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.donut-card__chart {
+.weekly-heatmap__chart {
   width: 100%;
   height: 240px;
 }
