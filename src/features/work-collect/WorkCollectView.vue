@@ -276,19 +276,27 @@ onMounted(async () => {
 }
 
 /* 主圖區:左 2/3 柱狀,右 1/3 donut */
+/* minmax(0, Nfr) 是關鍵 ── grid item 預設 min-width: auto,內容寬就撐開不縮,
+   把它改成 minmax(0, Nfr) 允許縮到任何寬度,圖表才會跟著視窗縮放 */
 .charts-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 16px;
+}
+
+/* 雙重保險:每個 grid item / chart 子容器都允許縮小,讓 ECharts autoresize 抓到正確寬度 */
+.charts-row > * {
+  min-width: 0;
 }
 
 .charts-row--bottom {
   /* 熱力圖 + 應用排名 同一行 */
 }
 
-@media (max-width: 880px) {
+/* 視窗較窄時切成單欄堆疊。1100 比之前的 880 大,讓 donut 在主視窗 + sidebar 場景下提早讓位 */
+@media (max-width: 1100px) {
   .charts-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
