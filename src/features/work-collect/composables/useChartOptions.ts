@@ -8,10 +8,10 @@
  *   每個 use*Option 內部呼叫 useI18n() 拿 t + locale;
  *   computed 內讀 `locale.value` 建立 reactive 依賴 —— 語言切換時 chart option 自動重算。
  */
-import { computed, type Ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { CATEGORY_COLOR, CATEGORY_LABEL_KEY, CATEGORY_ORDER } from '../category-colors'
-import type { WorkCategory, WorkRecord } from '../types'
+import {computed, type Ref} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {CATEGORY_COLOR, CATEGORY_LABEL_KEY, CATEGORY_ORDER} from '../category-colors'
+import type {WorkCategory, WorkRecord} from '../types'
 
 type CategoryCounts = Record<WorkCategory, number>
 
@@ -440,17 +440,33 @@ export function useAppRankOption(records: Ref<WorkRecord[]>, topN: number = 5) {
 
     const appColors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#A78BFA']
 
+    /** Y 軸標籤過長時截斷顯示;hover 時 tooltip 仍顯示完整名 */
+    const LABEL_MAX = 14
+    const truncate = (name: string): string =>
+        name.length > LABEL_MAX ? name.slice(0, LABEL_MAX) + '…' : name
+
     return {
       tooltip: {
+        // axis trigger + shadow pointer:整條 Y 軸列(含 label)都能觸發 tooltip
         trigger: 'axis' as const,
         axisPointer: { type: 'shadow' as const },
+        // 自定 formatter:p.name 是 yAxis 完整字串,不會被 truncate 影響
+        formatter: (params: any[]) => {
+          if (!params || !params.length) return ''
+          const p = params[0]
+          return `<strong>${p.name}</strong><br/>${p.marker} ${p.value}`
+        },
       },
-      grid: { top: 4, bottom: 4, left: 80, right: 40 },
+      grid: {top: 4, bottom: 4, left: 90, right: 40},
       xAxis: { type: 'value' as const, minInterval: 1 },
       yAxis: {
         type: 'category' as const,
         data: sorted.map(([name]) => name),
-        axisLabel: { fontSize: 11 },
+        axisLabel: {
+          fontSize: 11,
+          // 截斷邏輯;ECharts 內部仍存原值,tooltip / axisPointer 顯示時走原值
+          formatter: truncate,
+        },
       },
       series: [{
         type: 'bar' as const,
