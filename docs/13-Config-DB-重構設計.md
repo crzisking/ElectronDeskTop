@@ -1,21 +1,22 @@
 # Config 持久化從 JSON 遷移到 SQLite 設計
 
-> 取代 `config/app-config.json` 為唯一 runtime source。
+> **方案 A:完全棄用 JSON**。
 > 所有設定項落地到 SQLite,跟 `logs` / `work_records` / `user_profiles` 共用 `app.db`。
-> JSON 檔變成**首次啟動的 seed 來源**,之後 runtime 不再讀 JSON。
+> Seed 來源是 code 內的 `DEFAULT_CONFIG` 常數,**不 ship 也不讀任何 JSON 檔**。
+> 既有使用者升級時:userData 內舊 JSON 會被刪除,設定還原 default(已知取捨)。
 
 ---
 
 ## 目錄
 
 1. [動機](#1-動機)
-2. [取捨與選型](#2-取捨與選型)
-3. [表結構](#3-表結構)
-4. [讀寫流程](#4-讀寫流程)
-5. [既有契約如何保留](#5-既有契約如何保留)
-6. [首次啟動 / 升級 / Seed 邏輯](#6-首次啟動--升級--seed-邏輯)
-7. [熱重載對策](#7-熱重載對策)
-8. [未來的 UI 編輯能力](#8-未來的-ui-編輯能力)
+2. [既有機制盤點](#2-既有機制盤點)
+3. [取捨與選型](#3-取捨與選型)
+4. [表結構](#4-表結構)
+5. [讀寫流程](#5-讀寫流程)
+6. [既有契約如何保留](#6-既有契約如何保留)
+7. [Seed / 升級 / 既有使用者遷移](#7-seed--升級--既有使用者遷移)
+8. [跟既有機制的對應關係](#8-跟既有機制的對應關係)
 9. [資料邊界](#9-資料邊界)
 10. [影響檔案清單](#10-影響檔案清單)
 11. [MVP 切分](#11-mvp-切分)
@@ -28,69 +29,75 @@
 
 ### 現狀痛點
 
-JSON 模式跑了一段時間,累積以下問題:
+雖然 ConfigManager 已經做到「不覆蓋使用者設定」(`copyDefaultConfig` 加 `existsSync` 守衛、`appendMissingById` 補新 entry),但 JSON 模式仍有結構性問題:
 
-- **覆蓋風險**:`copyDefaultConfig()` 之前每次啟動覆蓋 userData(已修,但這個 bug 顯示 JSON 雙來源容易出事)
-- **手動同步**:`DEFAULT_CONFIG`(code)和 `app-config.json`(file)兩處要對齊,容易 drift
-- **註解雜物**:`_comment` / `_comment_xxx` 散在 JSON 內,排版混亂,改動容易遺漏
-- **deepMerge 行為微妙**:陣列整個替換 vs 物件深合並,新人不容易掌握
-- **多筆資料 CRUD 麻煩**:`sidebar.items`、`tools` 等陣列要 UI 編輯,得整檔 read-modify-write,沒有原子性
-- **跟 SQLite 升級體驗不對等**:`work_records`、`user_profiles` 經 SQLite 升級無痛保留;config 也走 userData 卻長期被 `copyDefaultConfig` 覆蓋邏輯困擾
+- **雙來源同步成本**:`DEFAULT_CONFIG`(code)和 `config/app-config.json`(file)兩處要對齊。改一個欄位要動兩處,新人容易漏。
+- **JSON 整檔讀寫沒原子性**:`writeConfig()` 走 `JSON.stringify(this.config)` 再 `writeFileSync`,中途任何 process kill / disk full 都可能留下半寫狀態的 JSON。
+- **註解碎屑**:`config/app-config.json` 有 41 個 `_comment` / `_comment_xxx` 欄位,排版混亂、改動易遺漏。
+- **多筆 CRUD 操作昂貴**:`sidebar.items`、`tools` 等陣列若想加 UI 編輯,得整檔 read-modify-write,沒有 row-level update。
+- **跟 SQLite 升級體驗不對等**:`work_records` / `user_profiles` 經 electron-updater 升級無痛保留;config 走 userData 雖然也保留,但跟其他 per-machine 資料不在同個機制裡,維護心智模型分裂。
 
 ### 為什麼選 SQLite
 
-- **基礎設施已就位**:`DatabaseManager` + `drizzle` + `better-sqlite3` 都跑得很穩,不引入新依賴
-- **升級保留**:跟 `work_records` 一樣,在 userData 內,electron-updater 升級不會被碰
-- **交易支援**:多表寫入走 `db.transaction()` 原子性
-- **可查詢**:`WHERE enabled = 1 ORDER BY order` 比 JSON `.filter(x => x.enabled)` 更自然
-- **少寫一段 JSON 解析容錯**:Type-safe schema (`$inferSelect` / `$inferInsert`) 自動產
+- **基礎設施已就位**:`DatabaseManager` + `drizzle-orm` + `better-sqlite3` 跑得穩;沒新依賴。
+- **交易支援**:多表寫入走 `db.transaction()`,原子性 ── 解決現行 JSON 整檔寫入的 race / 半寫風險。
+- **Row-level update**:改一筆 sidebar item 不必整陣列 stringify。
+- **可查詢**:`WHERE enabled = 1 ORDER BY ord` 比 `.filter()` 更自然,日後 UI 篩選 / 排序好寫。
+- **跟 work_records 共升級邏輯**:都在 `userData/app.db`,electron-updater 升級不會碰;drizzle migration 處理 schema 演進。
 
 ---
 
-## 2. 取捨與選型
+## 2. 既有機制盤點
 
-### 方案 A:單一 `app_config` KV 表
+重寫前先明確當前 ConfigManager 已有的能力,確保重構後**等價或更好**,不能退化:
 
-```sql
-app_config (key TEXT PRIMARY KEY, value TEXT JSON)
+| 既有機制 | 位置 | 行為 |
+|---|---|---|
+| `DEFAULT_CONFIG` | `config-manager.ts` 頂部常數 | 兜底預設;dev 缺檔 / prod 複製失敗時直接用 |
+| `app-config.json` seed | `config/app-config.json`(extraResources)| 打包進 `resources/`;首次安裝走 `copyDefaultConfig` 複製到 userData |
+| `copyDefaultConfig` 防覆蓋 | `load()` 內 `!existsSync` 守衛 | 已修;只有 userData 沒檔時才複製 |
+| `deepMerge` 深合並 | `load()` 內 | 讀進 userData JSON 後跟 `DEFAULT_CONFIG` 深合並,新增欄位有預設值;陣列直接替換不混合 |
+| `appendMissingById` 補種 | `load()` 末段 | 對 `sidebar.items` / `personalFunctions.tools` 兩個列表,按 `id` 補進使用者 JSON 內缺少的預設 entry(保留使用者順序,缺的追加尾部) |
+| `writeConfig(partial)` | IPC `CONFIG_WRITE` → ConfigManager | deepMerge + writeFileSync;成功後**不發 push** |
+| 渲染端同步 | `config.store.ts` `writeConfig()` | invoke 後**自己再呼叫一次 `loadConfig()`** 重抓最新 |
+| `PUSH_CONFIG_CHANGED` | `ipc-channels/config.ts` | **dead channel** —— App.vue 訂閱了,但專案內沒人 `send`。寫入後渲染端靠自己 reload,不需要 push |
+| `version` 注入 | `getConfig()` 內 | runtime 從 `app.getVersion()` 注入,不寫進 JSON |
+
+**重點**:重構後這些行為必須**全部保留或更好**(尤其 `appendMissingById` 的補新 entry、`writeConfig` 後渲染端自己 reload 的機制)。
+
+---
+
+## 3. 取捨與選型
+
+### 方案 A:單一 KV 表
+
+```
+app_config (key TEXT PK, value TEXT JSON)
 ```
 
-把每個 section 整包 `JSON.stringify` 存進 value。
+把每個 section 整包 `JSON.stringify` 存。
 
 | 優 | 缺 |
 |---|---|
-| 改動極小,1 張表搞定 | 失去關聯式優勢,還是要 JSON.parse |
-| schema 演化最自由 | 沒有欄位級型別,跟現在 JSON 沒本質差別 |
-| 查單一 section 快 | UI 改一筆 sidebar item 仍要整包 stringify 寫回 |
+| 改動極小 | 失去關聯式優勢,還是要 JSON.parse |
+| schema 演化自由 | 跟 JSON 本質無差別 |
 
-### 方案 B:每個 section 一張表(完全正規化)
+### 方案 B:全部正規化(每個 section 一張表)
 
-```
-app_settings                  (singleton)
-sidebar_items                 (collection)
-system_links                  (collection)
-floating_ball_settings        (singleton)
-quick_menu_items              (collection;FK to floating_ball 概念)
-unified_platform_systems      (collection)
-internal_tools                (collection)
-personal_tools                (collection)
-update_settings               (singleton)
-work_collect_settings         (singleton)
-```
+10 張表(`app_settings` / `sidebar_items` / `system_links` / `floating_ball_settings` / `quick_menu_items` / `unified_platform_systems` / `internal_tools` / `personal_tools` / `update_settings` / `work_collect_settings`)。
 
 | 優 | 缺 |
 |---|---|
-| 欄位級型別,drizzle infer 出 TypeScript type | 10 張表,migration 文件變多 |
-| Collection CRUD 自然(insert / update / delete 單行) | 寫入要懂得拆 partial → 對應表 |
-| 查 `enabled=1` 可下到 SQL,不必載到記憶體 | 啟動讀全 config 要 10 次 select(可在一個交易內完成) |
-| UI 編輯體驗最好 | 跟 JSON 對齊的 seed 邏輯複雜 |
+| 欄位級型別 | 10 張表,migration 文件變多 |
+| Collection CRUD 自然 | Singleton 表多半只有 1 行,空蕩 |
+| UI 編輯體驗最好 | seed 邏輯複雜 |
 
-### 方案 C(我選):混合
+### 方案 C(選定):混合
 
-- **Singleton 設定**:統一一張 `app_settings_kv` KV 表(key 例:`app.language`、`floatingBall.size`)
-- **Collection 設定**:每個集合一張表,有自己的欄位 + `order` 列
+- **Singleton 設定** → 統一 KV 表 `app_settings_kv`(key 例:`app.language`)
+- **Collection 設定** → 每個列表一張表 + `ord` 排序欄
 
-| 集合 | 表 |
+| 集合 | 表名 |
 |---|---|
 | sidebar.items | `sidebar_items` |
 | systemLinks.items | `system_links` |
@@ -99,329 +106,299 @@ work_collect_settings         (singleton)
 | internalFunctions.tools | `internal_tools` |
 | personalFunctions.tools | `personal_tools` |
 
-| Singleton 散值 | KV key |
-|---|---|
-| app.language | `app.language` |
-| app.startMinimized | `app.startMinimized` |
-| app.launchOnStartup | `app.launchOnStartup` |
-| sidebar.defaultCollapsed | `sidebar.defaultCollapsed` |
-| floatingBall.size | `floatingBall.size` |
-| floatingBall.opacity | `floatingBall.opacity` |
-| floatingBall.defaultPosition | `floatingBall.defaultPosition` (JSON `{x,y}`) |
-| floatingBall.snapToEdge | `floatingBall.snapToEdge` |
-| internalFunctions.apiBaseUrl | `internalFunctions.apiBaseUrl` |
-| internalFunctions.apiTimeout | `internalFunctions.apiTimeout` |
-| update.* | `update.enabled` / `update.feedUrl` / ... |
-| workCollect.* | `workCollect.enabled` / ... |
-
-**為什麼選 C 而非 B**:
-- Singleton 設定通常是平鋪 / 互不相關的個別值(語言、開機自啟、定時時間),做成 6-7 張單行表 schema 太碎
-- 用 KV 表存,欄位 schema 不會頻繁變,只動 ConfigManager 內的 key 列表
-- Collection 才真正需要正規化(CRUD、排序、enabled 過濾)
-
-**為什麼不選 A**:
-- KV 存整包 JSON 等於 JSON-in-DB,沒得到 DB 真正好處
-- Collection 場景(新增一個 sidebar item)還是要整包 stringify
+**為什麼選 C**:
+- Singleton 散值用 KV 不開單行表,schema 不會頻繁變
+- Collection 才真正需要正規化(CRUD / 排序 / enabled 過濾)
+- 比 A 多得到 row-level update;比 B 少 4 張空蕩 singleton 表
 
 ---
 
-## 3. 表結構
+## 4. 表結構
 
-DDL 走 drizzle schema,放在 `electron/main/db/features/config/`。
+放在 `electron/main/db/features/config/schema.ts`。
 
-### 3.1 `app_settings_kv`(singleton 群)
+### 4.1 `app_settings_kv`(singleton 群)
 
 ```ts
 app_settings_kv
-  key       TEXT PRIMARY KEY    -- 例:'app.language' / 'workCollect.intervalMinutes'
-  value     TEXT NOT NULL       -- JSON.stringify 過的值(數字 / 布林 / 物件統一字串化)
-  updatedAt INTEGER NOT NULL    -- Unix ms,最後寫入時間
+  key       TEXT PRIMARY KEY    -- 例 'app.language' / 'workCollect.intervalMinutes'
+  value     TEXT NOT NULL       -- 一律 JSON.stringify(數字 / 布林 / 物件統一字串化)
+  updatedAt INTEGER NOT NULL    -- Unix ms
 ```
+
+key 列表(對應現行 AppConfig 內所有 singleton 散值):
+
+| 區段 | keys |
+|---|---|
+| app | `app.language` / `app.startMinimized` / `app.launchOnStartup` |
+| sidebar | `sidebar.defaultCollapsed` |
+| floatingBall | `floatingBall.size` / `.opacity` / `.defaultPosition` / `.snapToEdge` |
+| internalFunctions | `internalFunctions.apiBaseUrl` / `.apiTimeout` |
+| update | `update.enabled` / `.feedUrl` / `.channel` / `.dailyCheckTime` / `.autoDownload` / `.autoInstallOnAppQuit` |
+| workCollect | `workCollect.enabled` / `.intervalMinutes` / `.workStartHour` / `.workEndHour` |
 
 **為什麼 value 一律 stringify**:
-- 避免 SQLite 的弱型別(`123` / `"123"` / `0` / `false` 混在 TEXT 欄位難判斷)
-- 反序列化集中在 ConfigManager 一處
-- 對使用者來說透明:仍然從 `configStore.appConfig.app.language` 拿到原始型別
+- 避免 SQLite 弱型別(`123` / `"123"` / `0` / `false` 混在 TEXT 難判斷)
+- 反序列化集中在 repository 一處
+- 對使用者透明:仍然 `configStore.appConfig.app.language` 拿到原始型別
 
-例:
-```
-key='app.language'                  value='"zh-TW"'
-key='workCollect.enabled'           value='false'
-key='floatingBall.defaultPosition'  value='{"x":100,"y":300}'
-```
-
-### 3.2 Collection 表(7 張,結構各自典型)
+### 4.2 Collection 表(6 張)
 
 ```ts
 sidebar_items
-  id        TEXT PRIMARY KEY        -- 'unified-platform' / 'internal-functions' / ...
+  id        TEXT PRIMARY KEY        -- 'unified-platform' 等
   label     TEXT NOT NULL
   icon      TEXT NOT NULL
   routeName TEXT NOT NULL
   enabled   INTEGER NOT NULL DEFAULT 1   -- 0/1 boolean
   badge     TEXT                          -- 可空
-  ord       INTEGER NOT NULL              -- 渲染順序(數字小的在前;不用 `order` 因為 SQL keyword)
+  ord       INTEGER NOT NULL              -- 渲染順序(數字小在前)
 
-INDEX idx_sidebar_items_order (ord)
+INDEX idx_sidebar_items_ord (ord)
 ```
 
 ```ts
-system_links
+system_links  (id, label, icon, url, enabled, ord)
+internal_tools  (id, name, description, icon, enabled, openMode, routeName?, url?, ord)
+personal_tools  (id, name, description, icon, enabled, openMode, routeName?, ord)
+unified_platform_systems  (id, name, description, url, iconUrl?, openMode, ssoEnabled, ssoTokenParam?, ord)
+
+quick_menu_items
   id        TEXT PRIMARY KEY
   label     TEXT NOT NULL
-  icon      TEXT NOT NULL
-  url       TEXT NOT NULL
+  icon      TEXT                              -- 可空
   enabled   INTEGER NOT NULL DEFAULT 1
+  separator INTEGER NOT NULL DEFAULT 0
+  -- action discriminated union 拆欄,組裝時依 actionType 還原
+  actionType      TEXT NOT NULL               -- 'show-main-window'/'navigate'/'open-url'/'quit-app'
+  actionRouteName TEXT                         -- actionType='navigate' 時用
+  actionUrl       TEXT                         -- actionType='open-url' 時用
+  actionTarget    TEXT                         -- 'browser'/'iframe'
   ord       INTEGER NOT NULL
 ```
 
-```ts
-quick_menu_items
-  id        TEXT PRIMARY KEY        -- 'menu-show-main' / 'menu-go-platform' / ...
-  label     TEXT NOT NULL
-  icon      TEXT                     -- 可空
-  enabled   INTEGER NOT NULL DEFAULT 1
-  separator INTEGER NOT NULL DEFAULT 0   -- 0/1
-  -- action 拆成多欄,因為 type 是 discriminated union
-  actionType      TEXT NOT NULL            -- 'show-main-window' / 'navigate' / 'open-url' / 'quit-app'
-  actionRouteName TEXT                     -- 只在 actionType='navigate' 時非空
-  actionUrl       TEXT                     -- 只在 actionType='open-url' 時非空
-  actionTarget    TEXT                     -- 只在 actionType='open-url' 時 'browser'/'iframe'
-  ord       INTEGER NOT NULL
-```
+### 4.3 命名規範
 
-```ts
-unified_platform_systems
-  id            TEXT PRIMARY KEY
-  name          TEXT NOT NULL
-  description   TEXT NOT NULL DEFAULT ''
-  url           TEXT NOT NULL
-  iconUrl       TEXT                     -- 可空
-  openMode      TEXT NOT NULL            -- 'iframe' / 'external-browser' / 'electron-window'
-  ssoEnabled    INTEGER NOT NULL DEFAULT 0
-  ssoTokenParam TEXT                     -- 可空
-  ord           INTEGER NOT NULL
-```
-
-```ts
-internal_tools
-  id          TEXT PRIMARY KEY
-  name        TEXT NOT NULL
-  description TEXT NOT NULL DEFAULT ''
-  icon        TEXT NOT NULL
-  enabled     INTEGER NOT NULL DEFAULT 1
-  openMode    TEXT NOT NULL            -- 'page' / 'external'
-  routeName   TEXT                     -- 可空
-  url         TEXT                     -- 可空
-  ord         INTEGER NOT NULL
-```
-
-```ts
-personal_tools
-  id          TEXT PRIMARY KEY
-  name        TEXT NOT NULL
-  description TEXT NOT NULL DEFAULT ''
-  icon        TEXT NOT NULL
-  enabled     INTEGER NOT NULL DEFAULT 1
-  openMode    TEXT NOT NULL            -- 'page'(目前只支援這一種)
-  routeName   TEXT                     -- 對應 vue router name
-  ord         INTEGER NOT NULL
-```
-
-### 3.3 為什麼用 `ord` 而非 `order`
-
-`order` 是 SQL keyword,drizzle 可以加引號處理,但跨工具(sqlite cli / DBeaver)輸入會踩坑。直接用 `ord` 避免歧義。
-
-### 3.4 為什麼 boolean 用 INTEGER 0/1
-
-SQLite 沒原生 boolean,drizzle 既有慣例就是用 INTEGER 0/1(看 `work_records.isDone` 一樣)。讀出來在 ConfigManager 內轉成 `boolean`。
+- **`ord` 而非 `order`** —— `order` 是 SQL keyword,跨工具(sqlite cli / DBeaver)輸入易踩坑
+- **boolean 用 INTEGER 0/1** —— SQLite 沒原生 boolean,跟 `work_records.isDone` / `user_profiles` 慣例一致
+- **欄位用 camelCase** —— 跟 `work_records` / `user_profiles` 既有表一致
 
 ---
 
-## 4. 讀寫流程
+## 5. 讀寫流程
 
-### 4.1 啟動讀全 config
-
-```
-DatabaseManager.init()
-   │
-ConfigManager.load()
-   │
-   ├─ 偵測「DB 內是否已有 config 種子」
-   │    └─ 簡單判斷:select count(*) from app_settings_kv,>0 表示已 seeded
-   ├─ 未 seeded → 走 §6 首次啟動 seed 邏輯
-   └─ 已 seeded → 讀全表組成 AppConfig:
-        ├─ select * from app_settings_kv        → 解 key 拆出 app/floatingBall/update/... 各 section 的 singleton 欄位
-        ├─ select * from sidebar_items          → 組 sidebar.items[]
-        ├─ select * from system_links           → 組 systemLinks.items[]
-        ├─ select * from quick_menu_items       → 組 floatingBall.quickMenu[]
-        ├─ select * from unified_platform_systems → 組 unifiedPlatform.systems[]
-        ├─ select * from internal_tools         → 組 internalFunctions.tools[]
-        └─ select * from personal_tools         → 組 personalFunctions.tools[]
-```
-
-所有 select 走同一個 readonly transaction,毫秒級完成。**外部 API 仍是 `getConfig(): AppConfig`,渲染端 / IPC consumer 0 感**。
-
-### 4.2 寫入(partial update)
+### 5.1 啟動讀全 config
 
 ```
-IPC CONFIG_WRITE(partial: Partial<AppConfig>)
+DatabaseManager.init()      (main/index.ts line 114,已先於 ConfigManager)
    │
-ConfigManager.writeConfig(partial)
+ConfigManager.load()        (line 148)
    │
-   走 db.transaction(tx => {
-     ├─ 遍歷 partial:
-     │   ├─ app.* / floatingBall.size 等 singleton → tx.upsert app_settings_kv (key, JSON.stringify(value))
-     │   ├─ sidebar.items / quickMenu / *.tools / systems
-     │   │   → 整個 collection 替換(delete + insert),保留 ord 順序
-     │   │   或 → 部分更新(若 partial 內某 collection 是 partial-of-list,需要 caller 約定;MVP 採整批替換,跟 deepMerge 現行陣列規則一致)
-     │   └─ ...
-     ├─ 整個 transaction 成功 → commit
-     └─ 任一寫入失敗 → rollback,DB 維持原狀
-   })
-   │
-   寫入成功後:
-   ├─ 重 load 一次 in-memory cache
-   └─ webContents.send(PUSH_CONFIG_CHANGED) 通知渲染端 reload
+   ├─ 判斷 DB 是否已 seeded
+   │    └─ select count(*) from app_settings_kv
+   │       >0 表示已 seeded(可能來自首次安裝 seed 或既有使用者升級遷移)
+   │       =0 表示首次啟動 → 走 §7 seed 流程
+   ├─ 讀全表組 AppConfig:
+   │    ├─ select * from app_settings_kv           → 解 key 拆出 app/floatingBall/update/... 各 singleton 欄位
+   │    ├─ select * from sidebar_items ORDER BY ord → 組 sidebar.items[]
+   │    ├─ select * from system_links ORDER BY ord
+   │    ├─ select * from quick_menu_items ORDER BY ord
+   │    ├─ select * from unified_platform_systems ORDER BY ord
+   │    ├─ select * from internal_tools ORDER BY ord
+   │    └─ select * from personal_tools ORDER BY ord
+   ├─ in-memory cache:組好的 AppConfig 存在 ConfigManager 內(getConfig() 直接回)
+   └─ 補種(§7.2):比對程式碼 default 跟 DB,把缺的 row 補進(對應現行 appendMissingById)
 ```
 
-### 4.3 「partial vs 整集合替換」的取捨
+所有 select 走同一個 readonly transaction,毫秒級完成。
+
+### 5.2 寫入(partial update)
+
+對齊現行行為 ── **不發 push,renderer 自己 reload**:
+
+```
+渲染端 store.writeConfig(partial)
+   │
+   ├─ await window.electronAPI.config.write(partial)   ← IPC invoke
+   │    │
+   │    └─ ConfigManager.writeConfig(partial)
+   │         走 db.transaction(tx => {
+   │           遍歷 partial:
+   │             ├─ singleton 欄位 → upsert app_settings_kv (key, JSON.stringify(value))
+   │             └─ collection 欄位 → DELETE FROM <table> + 重新 INSERT(整批替換)
+   │           transaction 內任一失敗 → rollback,DB 維持原狀
+   │         })
+   │    重新組裝 in-memory cache
+   │    return(invoke resolve)
+   │
+   └─ await loadConfig()    ← store 自己再呼叫一次 read 同步本地
+```
+
+**完全沒有 PUSH_CONFIG_CHANGED**(現行就沒人發,重構後也不引入)。
+
+### 5.3 整集合替換 vs row-level update 的取捨
 
 | 情境 | 策略 |
 |---|---|
-| `partial.workCollect.enabled = true`(改單個 singleton) | upsert 一個 KV row |
-| `partial.sidebar.items = [...]`(整個陣列傳進來) | DELETE FROM sidebar_items + INSERT 新陣列(走 transaction) |
-| **新增一個 sidebar item**(partial 只想加一筆) | 約定:**MVP 仍要傳完整陣列**,跟現行 deepMerge 陣列替換語意一致;未來可加 `SIDEBAR_ITEM_ADD` 等 targeted IPC |
+| `partial.workCollect.enabled = true`(單一 singleton) | upsert 一個 KV row |
+| `partial.sidebar.items = [...]`(整個陣列傳進來) | DELETE + 重新 INSERT(整批替換) |
 
-選 「整集合替換」是因為:
-- 跟現行 `deepMerge` 陣列行為一致,既有呼叫端不必改
-- 排序意圖明確(整批 ord 重排)
-- caller 端心智模型簡單:「我把整個陣列改成 X」
+選擇「整集合替換」是為了**跟現行 `deepMerge` 內陣列替換語意一致**(陣列不深合並,直接替換),既有 caller 不必改。
+
+⚠️ **Trade-off**:若未來 row 帶有「使用者個人化的 per-row 元資料」(例 `lastUsedAt` / `userNote`),整集合替換會抹掉。MVP 階段所有欄位都是「配置型」資料,無此風險;真要加 per-row 動態欄位時,須改成「row-level upsert + diff delete」。
 
 ---
 
-## 5. 既有契約如何保留
+## 6. 既有契約如何保留
 
-### 5.1 對外 type:`AppConfig` 不變
+### 6.1 對外 type `AppConfig` 不變
 
-`src/types/config/*` 整批 type 沿用。`getConfig()` 仍回 `AppConfig`,渲染端的 `configStore.appConfig.workCollect.enabled` 等 100+ 處讀取程式碼**完全不必改**。
+`src/types/config/*` 所有型別**沿用**。`getConfig()` 仍回 `AppConfig`,渲染端的 `configStore.appConfig.workCollect.enabled` 等 100+ 處讀取程式碼**完全不必改**。
 
-### 5.2 IPC 契約不變
+### 6.2 IPC 契約不變
 
-- `CONFIG_READ` → `Promise<AppConfig>`(內部從多表組裝,renderer 看不到差異)
+- `CONFIG_READ` → `Promise<AppConfig>`(內部從多表組裝)
 - `CONFIG_WRITE` → `Promise<void>`,payload `Partial<AppConfig>`(內部分派到表寫入)
+- `PUSH_CONFIG_CHANGED` 維持 channel 定義跟訂閱(App.vue 訂閱端不刪);**重構後一樣沒人發**,跟現行一致
 
-### 5.3 ConfigManager 對外 API 不變
+### 6.3 ConfigManager 對外 API 不變
 
 ```ts
 class ConfigManager {
-  async load(): Promise<void>                       // 一樣
-  getConfig(): AppConfig                            // 一樣
-  async writeConfig(partial: Partial<AppConfig>): Promise<void>  // 一樣
+  async load(): Promise<void>
+  getConfig(): AppConfig                 // 仍注入 version: app.getVersion()
+  async writeConfig(partial: Partial<AppConfig>): Promise<void>
+  getUpdateConfig(): AppConfig['update'] // 既有便利方法,保留
 }
 ```
 
-**只有內部實作改寫**(從 fs.readFileSync → drizzle select)。
+實作從 fs.readFileSync → drizzle select,**對外 API 0 變化**。
 
-### 5.4 DEFAULT_CONFIG 命運
+### 6.4 `version` 注入保留
 
-`DEFAULT_CONFIG` 從 ConfigManager 拿掉,移到 **seed 模組**(`electron/main/db/features/config/seed.ts`),只在「DB 還沒種子」時用一次。
+`getConfig()` 內 `{ ...this.config, version: app.getVersion() }` 這行**必須保留**(`AppConfig.version` 對外契約,electron-updater 比對 / UI 顯示都靠它)。
 
-Runtime 永遠以 DB 為 source of truth,沒有 fallback 概念(DB 啟動就保證有資料,因為啟動時 seed 過)。
+### 6.5 渲染端 store reload 機制不變
+
+`config.store.ts` 內 `writeConfig` 仍是 invoke 完自己 `loadConfig()`(line 86)。**不改 store**,只動 ConfigManager 內部實作。
 
 ---
 
-## 6. 首次啟動 / 升級 / Seed 邏輯
+## 7. Seed / 升級 / 既有使用者遷移
 
-### 6.1 三種啟動情境
+這是這份設計**最關鍵也最易出錯**的部分。三種情境必須處理對:
 
-| 情境 | DB 內 config 表狀態 | 動作 |
-|---|---|---|
-| **首次安裝**(乾淨環境) | 表存在但 row count = 0 | 從 `resources/app-config.json`(extraResources)讀,逐表 seed |
-| **同版本啟動**(已 seed 過) | row count > 0 | 直接讀,不動 seed |
-| **版本升級**(electron-updater 換包) | row count > 0 + 可能有新欄位 / 新 collection | 跑 drizzle migration 演進 schema;**不重 seed**(使用者已調整過的設定不能被覆蓋) |
+### 7.1 三種啟動情境(方案 A:完全棄用 JSON)
 
-### 6.2 新增 config 欄位的「補種子」策略
+| 情境 | DB `app_settings_kv` 狀態 | userData/app-config.json 狀態 | 動作 |
+|---|---|---|---|
+| **首次安裝**(乾淨環境) | 表存在但 count = 0 | 不存在 | 從 `DEFAULT_CONFIG`(code 常數)seed 進 DB |
+| **既有使用者升級**(從 JSON 版本上來) | count = 0 | 存在(可能含使用者已寫入的設定) | 從 `DEFAULT_CONFIG` seed,**設定還原 default**;舊 JSON 被 `cleanupLegacyJson()` 刪除 |
+| **同版本 / 已 seed 後啟動** | count > 0 | 不存在(已刪) | 不 seed,直接讀 DB |
+| **版本升級(已是 DB 模式)** | count > 0 | 不存在 | 不 seed;走 §7.2 「補種」處理新增 entry / 新欄位 |
 
-如果新版本加了一個 collection(例:`personal_tools` 新增「番茄鐘」入口卡片),既有使用者升級後需要這條 row。處理方式 **不靠 seed 重跑**,而是:
+### 7.2 Dev-owned vs User-owned Resync(取代原 `appendMissingById`)
 
-- **單一 row 補種**:在 drizzle migration 的 SQL 內直接 `INSERT OR IGNORE INTO personal_tools (id, name, ...) VALUES (...)`
-- 或在 ConfigManager.load() 完成後加一段「補種子」邏輯,比對程式碼預設清單跟 DB,缺哪些補哪些(略複雜,MVP 不做)
+設計目標:**開發者改 `defaults.ts` 後,使用者升級看到一致內容**。
 
-MVP 採方案 1:`INSERT OR IGNORE` 寫在 migration SQL 內,簡單粗暴。
+每次啟動 `ConfigManager.load()` 內呼叫 `resyncDevOwnedConfig(db)`,做兩件事:
 
-### 6.3 `app-config.json` 還留著嗎
-
-- **build 時**:仍打包進 `resources/app-config.json`(走 `extraResources`),作為**唯一 seed source**
-- **runtime**:**不再讀**;`ConfigManager` 內所有 `readFileSync(this.configFilePath)` 全部刪掉
-- **userData 內的 `app-config.json`**:升級後不會再產生新檔;舊安裝留下的可以保留(無害),也可在 migration 後一次性 cleanup
-- **dev mode**:跟 prod 同款,JSON 只作為 seed,要改設定走 UI 或直接編輯 DB
-
-### 6.4 第一次啟動的 seed 演算法
+#### 1. 6 張 collection 表 全部 dev-owned → 整批 reset
 
 ```ts
-function seedIfEmpty(db, jsonSeedPath) {
-  const count = db.select({c: count(*)}).from(appSettingsKv).get()
-  if (count.c > 0) return  // 已 seeded,跳過
+// 對每張表:DELETE 全部 + INSERT defaults
+sidebar_items / system_links / quick_menu_items / unified_platform_systems / internal_tools / personal_tools
+```
 
-  const seed = JSON.parse(fs.readFileSync(jsonSeedPath, 'utf-8'))
+效果:
+- 開發者改 `defaults.ts` 內順序 / 名稱 / icon / enabled → 升級後使用者看到一致
+- 新增 / 刪除 entry → 升級後使用者跟著新增 / 刪除
+- 使用者本地修改(如果未來有 UI)會被覆蓋 ── 接受這個取捨
+
+#### 2. KV 散值:按 `USER_OWNED_KEYS` 區分
+
+| 類型 | 鍵 | 升級時 |
+|---|---|---|
+| **Dev-owned**(基礎設施) | `internalFunctions.apiBaseUrl` / `apiTimeout` / `update.feedUrl` / `update.channel` / `update.dailyCheckTime` | upsert 成 default |
+| **Dev-owned**(公司強制策略) | `app.launchOnStartup` / `update.enabled` / `update.autoInstallOnAppQuit` | upsert 成 default(使用者改不掉) |
+| **User-owned** | `app.language` / `app.startMinimized` / `sidebar.defaultCollapsed` / `floatingBall.*` / `update.autoDownload` / `workCollect.*` | **保留**(使用者改過的不動) |
+
+判斷準則:
+- 「**結構性 / 部署性**」配置 → dev-owned(發版時統一推送)
+- 「**公司強制策略**」(開機自啟 / 自動更新 / 後台靜默安裝)→ dev-owned(使用者改不掉,啟動 reset)
+- 「**個人偏好性**」配置 → user-owned(保留)
+
+### 7.3 既有使用者遷移演算法
+
+```ts
+function seedOrMigrate(db, prodResourcesPath, devProjectPath, userDataPath) {
+  if (rowCount(app_settings_kv) > 0) return  // 已 seeded
+
+  // 1. 決定 seed 來源:優先既有使用者 JSON,其次 ship 的 default
+  const userDataJson = app.isPackaged ? userDataPath : null
+  const shipJson = app.isPackaged
+    ? join(process.resourcesPath, 'app-config.json')
+    : join(app.getAppPath(), 'config', 'app-config.json')
+
+  const seedSrc = userDataJson && existsSync(userDataJson) ? userDataJson : shipJson
+  if (!existsSync(seedSrc)) {
+    throw new Error('seed source 不存在,無法初始化 config')
+  }
+
+  const seed = JSON.parse(readFileSync(seedSrc, 'utf-8'))
+
+  // 2. 跟程式碼 DEFAULT_CONFIG 深合並(現行 deepMerge + appendMissingById 等價邏輯)
+  //    確保新增欄位 / 新增 entry 都有預設值
+  const merged = mergeWithDefaults(seed)
+
+  // 3. 寫入 DB(transaction)
   db.transaction(tx => {
-    // 1. singletons → app_settings_kv
-    flattenSingletons(seed).forEach(([key, value]) => {
+    // singletons → app_settings_kv
+    for (const [key, value] of flattenSingletons(merged)) {
       tx.insert(appSettingsKv).values({key, value: JSON.stringify(value), updatedAt: Date.now()}).run()
-    })
-    // 2. collections → 各表
-    seed.sidebar.items.forEach((item, ord) => tx.insert(sidebarItems).values({...item, ord}).run())
-    seed.systemLinks.items.forEach((item, ord) => ...)
-    seed.floatingBall.quickMenu.forEach((item, ord) => ...)
-    seed.unifiedPlatform.systems.forEach((sys, ord) => ...)
-    seed.internalFunctions.tools.forEach((tool, ord) => ...)
-    seed.personalFunctions.tools.forEach((tool, ord) => ...)
+    }
+    // collections → 各表
+    merged.sidebar.items.forEach((it, ord) => tx.insert(sidebarItems).values({...it, ord}).run())
+    // ...其他 5 張 collection 同款
   })
+
+  // 4. 若來源是 userData JSON(既有使用者遷移),改名保留備份
+  if (seedSrc === userDataJson) {
+    renameSync(userDataJson, userDataJson + `.migrated-${Date.now()}`)
+    logger.info('既有 JSON 設定已遷移進 DB,原檔已改名為 *.migrated-*', 'ConfigManager')
+  }
 }
 ```
 
-seed 失敗(JSON 壞 / DB 寫不進去)→ throw,讓 app 啟動失敗(讓使用者重灌),不要靜默繼續用空 config。
+關鍵點:
+- **既有使用者升上來不會丟設定** ── 他們在 userData JSON 內的所有設定值會被讀進 DB
+- **舊 JSON 不刪只改名** ── 萬一遷移有問題,DBA 還能撈出來救;改名後 ConfigManager 不再讀,不會混淆
+- **failure 立即 throw 讓 app 啟動失敗** ── 不要靜默繼續用空 config
+
+### 7.4 `app-config.json` 命運
+
+- **`config/app-config.json`(專案根)**:**刪除**
+- **`resources/app-config.json`(打包 ship)**:**不再 ship**;`package.json` 內 `extraResources` + `files` 條目已移除
+- **`userData/app-config.json`(舊版本遺留)**:`seed.ts` 內 `cleanupLegacyJson()` 啟動時偵測並刪除
+- **唯一 seed source**:`electron/main/db/features/config/defaults.ts` 內的 `DEFAULT_CONFIG`
 
 ---
 
-## 7. 熱重載對策
+## 8. 跟既有機制的對應關係
 
-### 7.1 現狀
+明確列出新舊機制的對應,讓 reviewer / 接手者快速看懂「砍掉什麼、由什麼取代」:
 
-`ConfigManager` 用 `chokidar` 監聽 `app-config.json` 改動,推 `PUSH_CONFIG_CHANGED` 給 renderer。
-
-### 7.2 重構後
-
-- 沒有 JSON 檔可以監聽
-- 改設定**只走 `CONFIG_WRITE` IPC**,寫入後 main 端主動推 `PUSH_CONFIG_CHANGED`
-- 渲染端體驗一致(收到 push → reload)
-
-### 7.3 失去的能力
-
-**「手動編輯 JSON 即時生效」這個 dev 場景沒了**。對策:
-
-- dev 階段要改設定 → 用 SQLite browser(DBeaver / DB Browser for SQLite)直接編 `app.db`(改完 app 不會自動感知,要重啟 — 或者寫個 dev 工具觸發手動 reload IPC)
-- 更乾淨:之後做設定 UI 後,改設定都走 UI
-- 罕見的「批量改 collection」場景 → 寫個 dev script 直接 INSERT/UPDATE DB
-
-評估:對內部團隊可接受;若團隊 push back,可以加一個 dev-only IPC `CONFIG_RELOAD` 給開發者手動觸發。
-
----
-
-## 8. 未來的 UI 編輯能力
-
-DB 化後,Settings 頁可以漸進開放編輯入口:
-
-| 設定項 | UI 編輯難度 | 排程 |
+| 既有(JSON 模式) | 重構後(DB 模式) | 備註 |
 |---|---|---|
-| 語言 / 浮球大小 / 採集開關等 singleton | 已有 / 簡單,改 toggle / slider 即可 | 既有 Settings 頁繼續做 |
-| sidebar.items 排序 / 啟用 | 中等,需要 drag-and-drop UI | 未來迭代 |
-| 內部功能 / 個人功能新增卡片 | 中等,form + icon picker | 未來迭代 |
-| 統一平台新增系統 | 中等 | 未來迭代 |
-| 浮球 quickMenu 編輯 | 偏複雜(discriminated union action) | 之後再說 |
-
-本次重構不開發 UI,只**讓未來開發 UI 變得可行**。
+| `DEFAULT_CONFIG`(code 常數) | 留在 `config/defaults.ts`,但**只作為 seed merge / backfill 比對基準**,runtime 不直接用 | 不是「fallback」是「比對源」,語意更清楚 |
+| `config/app-config.json`(ship) | 仍 ship,**只作為 seed source** | extraResources 配置不動 |
+| `userData/app-config.json` | **不再產生**,既有檔案首次啟動讀完改名保留 | 對既有使用者無痛 |
+| `copyDefaultConfig()` | **刪除** | 改名為 `seedOrMigrate()`,行為更明確 |
+| `deepMerge(DEFAULT_CONFIG, parsed)` | **只在 seed 階段執行一次**(merge with defaults 後寫進 DB) | runtime 直接讀 DB,不再 runtime merge |
+| `appendMissingById` 補種(只覆蓋 sidebar / personalFunctions.tools) | **升級為 `resyncDevOwnedConfig`**,覆蓋全 6 張 collection 表 + 部分 KV(dev-owned),user-owned KV 保留 | 行為加強:dev 改 defaults.ts 後使用者升級看到一致 |
+| `writeFileSync(JSON.stringify(...))` | `db.transaction(tx => { upsert / delete + insert })` | 原子性 + row-level update |
+| `getConfig()` in-memory cache | 同款 in-memory cache,但**從 DB 組裝**而非 JSON 解析 | 對外 API 不變 |
+| `PUSH_CONFIG_CHANGED` dead channel | **仍 dead** | 不引入新觸發點;訂閱端不刪以保留未來擴展空間 |
 
 ---
 
@@ -434,7 +411,7 @@ app.db (userData/app.db)
 ├── logs                      ← 跨帳號保留(技術日誌)
 ├── work_records              ← per-user;AccountChangeCleaner 會清
 ├── user_profiles             ← per-user;AccountChangeCleaner 會清
-└── 【新】config 相關表        ← 機器級設定,跨帳號保留(語言、浮球位置 etc.)
+└── 【新】config 相關表        ← 機器級設定,跨帳號保留
     ├── app_settings_kv
     ├── sidebar_items
     ├── system_links
@@ -444,14 +421,13 @@ app.db (userData/app.db)
     └── personal_tools
 ```
 
-config 表**屬於機器**(不是某個帳號),所以**不會被 `AccountChangeCleaner` 清掉**。
-這對齊 §6 「升級保留」的初衷 —— 使用者改過的設定永遠不被覆蓋。
+**config 表屬於機器**,跨帳號保留,**不會被 `AccountChangeCleaner` 清掉**(`account-change-cleaner.ts` 內部清空清單不加 config 表)。
 
-### 9.2 跟釘釘 / JWT 等敏感資料的隔離
+### 9.2 跟敏感資料隔離
 
-- config 沒有任何敏感資料(沒密碼 / 沒 token)
+- config 不含 password / token 等敏感資料
 - `update.feedUrl` 等內網 URL 算半敏感,但本來就 ship 在 JSON 內,DB 化不增加風險
-- DB 整體仍走 `userData/app.db`,跟 OS 帳號隔離(同台機器不同 Windows 使用者各自一份)
+- DB 整體仍在 `userData/app.db`,Windows OS 帳號級隔離
 
 ---
 
@@ -461,9 +437,10 @@ config 表**屬於機器**(不是某個帳號),所以**不會被 `AccountChangeC
 
 ```
 docs/13-Config-DB-重構設計.md                                本檔
-electron/main/db/features/config/schema.ts                    所有 config 表的 drizzle 定義
-electron/main/db/features/config/seed.ts                      第一次啟動時的 JSON → DB 種子邏輯
-electron/main/db/features/config/repository.ts                各表 CRUD(讀:組成 AppConfig;寫:partial 分派)
+electron/main/db/features/config/schema.ts                    7 張表的 drizzle 定義(1 KV + 6 collection)
+electron/main/db/features/config/repository.ts                CRUD:assembleAppConfig() + applyPartial() + backfillMissingEntries()
+electron/main/db/features/config/seed.ts                      seedOrMigrate():§7.3 演算法
+electron/main/db/features/config/defaults.ts                  舊 DEFAULT_CONFIG 搬過來(seed merge / backfill 用的比對基準)
 electron/main/db/migrations/000X_config_tables.sql            drizzle-kit 自動產
 ```
 
@@ -471,78 +448,75 @@ electron/main/db/migrations/000X_config_tables.sql            drizzle-kit 自動
 
 ```
 electron/main/config-manager.ts
-  ├─ 拿掉 DEFAULT_CONFIG(移到 seed.ts)
-  ├─ 拿掉 readFileSync / writeFileSync 邏輯
-  ├─ 拿掉 chokidar 檔案監聽
-  ├─ load() 改成:DatabaseManager.init() 後讀 DB,沒種子先 seed
-  ├─ getConfig() 改成從 in-memory cache 回傳(load 時組好)
-  └─ writeConfig() 改成 db.transaction 分派寫入
+  ├─ 刪 DEFAULT_CONFIG 常數(搬到 defaults.ts)
+  ├─ 刪 readFileSync / writeFileSync / copyDefaultConfig / deepMerge / withDefaultListItems / appendMissingById
+  ├─ constructor 改成接受 DatabaseManager(注入依賴)
+  ├─ load() 內呼叫 seedOrMigrate + assembleAppConfig + backfillMissingEntries
+  ├─ getConfig() 仍從 in-memory cache 回(保留 version 注入)
+  └─ writeConfig() 改走 repository.applyPartial(走 transaction)
 ```
 
 ### 小改
 
 ```
 electron/main/db/features/index.ts             drizzle barrel 加 config schema export
-electron/main/index.ts                          確保 DatabaseManager.init() 在 ConfigManager.load() 之前
-config/app-config.json                          內容不動(仍作為 seed);註解可順手收斂
-package.json                                     extraResources 確保 app-config.json 仍打包
+electron/main/index.ts                          ConfigManager constructor 改傳 dbManager(line 147 附近);順序不變(DB 仍先於 Config)
 ```
 
 ### 不動
 
 - `src/types/config/*` 所有 TypeScript 型別(維持 AppConfig 對外契約)
-- `src/stores/config.store.ts`(IPC 契約不變,內部完全感覺不到 source 換了)
-- 所有 `configStore.appConfig.X.Y` 的 100+ 處使用點
+- `src/stores/config.store.ts`(IPC 契約不變)
+- `electron/main/ipc-handlers/config.handlers.ts`(CONFIG_READ / CONFIG_WRITE 行為一致)
+- 所有 `configStore.appConfig.X.Y` 的 100+ 處消費點
+- `config/app-config.json`(內容不動,仍作為 ship seed;`_comment` 可選擇順手清,留下不影響功能)
+- `package.json` extraResources 配置(JSON 仍要 ship 進 `resources/`)
 
 ---
 
 ## 11. MVP 切分
 
-### Phase 1:Schema + Seed(最關鍵,不接 ConfigManager)
+### Phase 1:Schema + Seed + Migration(不接 ConfigManager)
 
-1. 寫 `config/schema.ts`(8 張表 drizzle 定義)
-2. 跑 `npm run db:generate` 產出 migration
-3. 寫 `config/seed.ts`(JSON → DB 邏輯)
-4. 寫 unit test:給一份 sample JSON,seed 完讀回 DB 比對
+1. 寫 `db/features/config/schema.ts`(7 張表 drizzle 定義)
+2. `npm run db:generate` 產 migration
+3. 寫 `db/features/config/defaults.ts`(把現行 `DEFAULT_CONFIG` 搬過去,**不刪 ConfigManager 內的**,並存階段)
+4. 寫 `db/features/config/seed.ts`:`seedOrMigrate()` 含「優先讀 userData JSON」邏輯
+5. 寫 `db/features/config/repository.ts`:`assembleAppConfig()` + `backfillMissingEntries()`(寫入暫不實作)
+6. **手動驗收**(專案沒測試框架,不寫 unit test):
+   - 刪掉 dev 環境 app.db + userData JSON,啟動 → 看 DB 是否從 ship JSON 正確 seed
+   - 模擬「既有使用者升級」:把含自訂值的 JSON 放 userData,啟動 → 看 DB 是否從該 JSON seed 並改名
 
-**驗收**:在隔離 sample 環境內,seed 過後能用 raw drizzle 把所有資料查回來,結構跟 JSON 一致。
+### Phase 2:ConfigManager 改寫(切換 runtime source)
 
-### Phase 2:ConfigManager 改寫
-
-1. 寫 `config/repository.ts`,提供:
-   - `assembleAppConfig(): AppConfig`(讀全表組成 AppConfig 物件)
-   - `applyPartial(partial: Partial<AppConfig>): void`(分派寫入,transactional)
-2. 改 `ConfigManager.load()`:DB 讀;未種子則 seed
-3. 改 `getConfig()` / `writeConfig()` 走 repository
-4. 拿掉 fs / chokidar
-5. 把舊 `DEFAULT_CONFIG` 程式碼搬去 seed.ts(刪掉 ConfigManager 內的)
-
-**驗收**:dev 啟動 app,所有頁面行為跟 JSON 模式一致;手動透過 Settings 改語言 → DB 內 `app.language` row 變動 → 重啟仍生效。
+1. 寫 `repository.applyPartial(partial)`(transaction 內分派寫入)
+2. ConfigManager 改成走 repository:`load` / `getConfig` / `writeConfig` 全改
+3. ConfigManager constructor 改接受 dbManager;main/index.ts line 147 同步改
+4. 刪掉 ConfigManager 內 `DEFAULT_CONFIG` 常數 + 所有 fs 操作 + `deepMerge` / `withDefaultListItems` / `appendMissingById` / `copyDefaultConfig`
+5. **手動驗收**:
+   - 既有功能行為一致(打開 app 各頁面正常)
+   - Settings 改語言 → DB row 變動 → 重啟仍生效
+   - Workcollect toggle 開關 → DB row 變動,跨重啟保留
+   - 統一平台 / 內部功能 / 個人功能卡片渲染正常
 
 ### Phase 3:Cleanup
 
-1. 刪 `chokidar` dep(若只此處用)
-2. 文檔更新:`docs/04-配置说明.md` 標明「runtime 走 DB,JSON 只是 seed」
-3. 給開發者寫個 `npm run config:dump` 把 DB 內 config 印 JSON 出來,便於 debug
-
-### Phase 4(後續迭代,不在這次)
-
-- Settings UI 直接編 collection(sidebar items / tools)
-- 配置匯出 / 匯入(備份用)
+1. config/app-config.json 內 `_comment*` 順手清掉(可選;留著無害但累贅)
+2. 更新 `docs/04-配置说明.md` 標明「runtime 走 DB,JSON 只是 seed」
+3. 加 `npm run config:dump` 把 DB 內 config 印 JSON 出來,方便 debug(可選,看實際 dev 需求)
 
 ---
 
 ## 12. Out of scope
 
-明確**不在這次重構範圍**的事:
-
-- ❌ 配置版本控制(誰在何時改了什麼)
-- ❌ 配置雲端同步(跨機器同步使用者設定)
-- ❌ Settings UI 開發新編輯介面
+- ❌ Settings UI 直接編 collection(sidebar items / tools)── 這次只把資料層搬家
 - ❌ 動態新增 sidebar item / tool 的 UI
-- ❌ 即時熱重載(編 JSON 即時生效這個 dev workflow)
+- ❌ 配置版本控制(誰在何時改了什麼)
+- ❌ 配置雲端同步(跨機器同步)
 - ❌ 多設定檔切換(profile A / B)
+- ❌ Deletion tombstone(「真正刪除」一個 entry,不再被 backfill 補回)
 - ❌ AccountChangeCleaner 對 config 表的清空(config 屬於機器,不該被帳號變更清掉)
+- ❌ 動 `PUSH_CONFIG_CHANGED` 觸發機制(現行就沒人發,重構後也不引入新觸發)
 
 ---
 
@@ -552,27 +526,26 @@ package.json                                     extraResources 確保 app-confi
 
 | 風險 | 機率 | 影響 | 緩解 |
 |---|---|---|---|
-| seed 邏輯 bug 導致首次啟動 config 不正確 | 中 | 高(app 行為錯亂) | Phase 1 unit test 必跑;先在 dev 環境驗 |
-| 升級時 migration 漏補新 row(例:加新 sidebar item) | 中 | 中(新功能入口看不到) | migration SQL 用 `INSERT OR IGNORE` 加 row;每個 PR 都要檢查 |
-| `Partial<AppConfig>` 分派寫入時遺漏某個 collection | 低 | 中(寫入靜默失敗) | repository 內 explicit 處理每個 key;單元測試覆蓋 |
-| chokidar 移除後 dev 體驗變差 | 高 | 低(只影響開發) | 可選做 dev-only `CONFIG_RELOAD` IPC |
-| 跨 OS 路徑 / 權限問題 | 低 | 高 | 沿用 `app.getPath('userData')`,跟 work_records 同基礎 |
+| seed / 遷移邏輯 bug → 既有使用者升級丟設定 | 中 | **高**(使用者投訴) | userData JSON 不刪只改名;Phase 1 手動驗收必跑;先在 dev 模擬遷移情境 |
+| backfill 對「使用者主動刪除過 entry」會補回 | 中 | 低(行為跟現行一致,使用者已習慣) | doc §7.2 寫明;未來想真正刪除須另設計 tombstone |
+| Partial<AppConfig> 寫入時遺漏某 collection 處理分支 | 低 | 中(寫入靜默失敗) | repository 內 explicit 處理每個 key;Phase 2 手動驗收每個 section |
+| 跨 OS 路徑 / 權限 | 低 | 高 | 沿用 `app.getPath('userData')` 跟 work_records 同基礎 |
+| ConfigManager constructor 簽名改 → main/index.ts 順序敏感 | 低 | 高 | DB 已先於 Config init(line 113-114 vs 147),順序不需動;只改 constructor 注入 |
 
 ### 回滾策略
 
-- 程式碼層:git revert 整個 PR
-- 資料層:DB 內新加的 config 表不影響其他資料,可以單獨 DROP
-- 既有 userData 內的 `app-config.json` 保留未刪 → revert 後 ConfigManager 重新讀 JSON,**等於回到重構前狀態**
+- **程式碼層**:git revert 整個 PR
+- **資料層**:新加的 7 張 config 表獨立於 work_records / user_profiles,可單獨 DROP
+- **使用者資料**:userData 內的 `.migrated-<ts>` 改名 JSON 可改回 `app-config.json`,revert 後 ConfigManager 重新讀 JSON → 等於回到重構前狀態
 
-換言之這個重構**可逆**,不會把使用者鎖死在新模式。
+**重構可逆,不會把使用者鎖死在新模式**。
 
 ---
 
 ## 附:跟既有架構的一致性
 
-- **DB**:跟 `work_records` / `user_profiles` / `logs` 一樣走 `db/features/<name>/{schema, service}.ts`(這次 service 改名 repository,因為它組裝 AppConfig 不只是純 CRUD)
+- **DB**:跟 `work_records` / `user_profiles` / `logs` 一樣走 `db/features/<name>/schema.ts`(`config/` 多加 `repository.ts` / `seed.ts` / `defaults.ts` 因為它組裝 AppConfig 比純 CRUD 複雜)
 - **Drizzle barrel**:加進 `db/features/index.ts`
+- **Migration**:走 drizzle-kit + 既有 `viteStaticCopy` 把 SQL 拷貝到 `out/main/migrations/`(沿用既有,不動 vite config)
 - **IPC**:`CONFIG_READ` / `CONFIG_WRITE` 完全不動,Renderer 0 感
-- **Migration**:走 drizzle-kit + electron-vite copy migrations plugin(沿用既有)
-- **TypeScript 型別**:`AppConfig` 不動,新增的 `SidebarItemRow` 等 row 型別內部用
 - **註解風格**:中文繁體,描述「為什麼這樣做」而不是「做了什麼」

@@ -3,7 +3,8 @@
  * 採集紀錄時間軸列表(從原 WorkCollectView 抽出)。
  * 純展示元件,只接 records prop,不訂事件。
  */
-import {CATEGORY_LABEL, CATEGORY_TAG_TYPE} from '../category-colors'
+import {useI18n} from 'vue-i18n'
+import {CATEGORY_LABEL_KEY, CATEGORY_TAG_TYPE} from '../category-colors'
 import type {WorkRecord} from '../types'
 
 withDefaults(
@@ -13,6 +14,8 @@ withDefaults(
   }>(),
   {loading: false}
 )
+
+const {t} = useI18n()
 
 /** Unix ms 格式化成 HH:mm */
 function formatTime(ms: number): string {
@@ -24,11 +27,11 @@ function formatTime(ms: number): string {
 <template>
   <el-card class="timeline-card" shadow="never" v-loading="loading">
     <template #header>
-      <span class="timeline-card__title">採集明細</span>
-      <span class="timeline-card__count">共 {{ records.length }} 筆</span>
+      <span class="timeline-card__title">{{ t('workCollect.timelineTitle') }}</span>
+      <span class="timeline-card__count">{{ t('workCollect.timelineCount', { count: records.length }) }}</span>
     </template>
 
-    <el-empty v-if="!records.length && !loading" description="今日尚無紀錄"/>
+    <el-empty v-if="!records.length && !loading" :description="t('workCollect.timelineEmpty')"/>
 
     <el-timeline v-else>
       <el-timeline-item
@@ -39,12 +42,12 @@ function formatTime(ms: number): string {
       >
         <div class="record-row">
           <el-tag :type="CATEGORY_TAG_TYPE[rec.category]" size="small">
-            {{ CATEGORY_LABEL[rec.category] }}
+            {{ t(CATEGORY_LABEL_KEY[rec.category]) }}
           </el-tag>
           <span class="record-desc">{{ rec.description }}</span>
         </div>
         <div v-if="rec.activeWindowTitle" class="record-meta">
-          前台:{{ rec.activeWindowTitle }}
+          {{ t('workCollect.timelineForeground', { title: rec.activeWindowTitle }) }}
         </div>
       </el-timeline-item>
     </el-timeline>

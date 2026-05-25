@@ -14,6 +14,7 @@
 
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Monitor, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useWorkCollectStore } from './store'
@@ -31,6 +32,7 @@ import WeekDailyStacked from './components/WeekDailyStacked.vue'
 
 const router = useRouter()
 const store = useWorkCollectStore()
+const { t } = useI18n()
 
 /** 時間視圖模式 */
 const viewMode = ref<'day' | 'week'>('day')
@@ -52,9 +54,9 @@ function handleBack() {
 async function onToggleChange(next: boolean) {
   try {
     await store.toggle(next)
-    ElMessage.success(next ? '已啟用工作採集' : '已停用工作採集')
+    ElMessage.success(next ? t('workCollect.toggleOn') : t('workCollect.toggleOff'))
   } catch {
-    ElMessage.error('切換失敗,請查看日誌')
+    ElMessage.error(t('workCollect.toggleFailed'))
   }
 }
 
@@ -77,15 +79,15 @@ onMounted(async () => {
   <div class="work-collect-view">
     <!-- ── 頂部 ──────────────────────────────────────────── -->
     <div class="header">
-      <el-button text :icon="ArrowLeft" @click="handleBack">返回</el-button>
+      <el-button text :icon="ArrowLeft" @click="handleBack">{{ t('workCollect.back') }}</el-button>
       <h2 class="title">
         <el-icon><VideoCamera /></el-icon>
-        工作自動採集
+        {{ t('workCollect.title') }}
       </h2>
       <div class="header__spacer" />
       <el-radio-group v-model="viewMode" size="small">
-        <el-radio-button value="day">日檢視</el-radio-button>
-        <el-radio-button value="week">週檢視</el-radio-button>
+        <el-radio-button value="day">{{ t('workCollect.viewDay') }}</el-radio-button>
+        <el-radio-button value="week">{{ t('workCollect.viewWeek') }}</el-radio-button>
       </el-radio-group>
     </div>
 
@@ -93,11 +95,11 @@ onMounted(async () => {
     <el-card class="settings-card" shadow="never">
       <div class="setting-row">
         <div class="setting-info">
-          <div class="label">啟用採集</div>
+          <div class="label">{{ t('workCollect.enableLabel') }}</div>
           <div class="hint">
-            開啟後,每
-            <strong>{{ store.intervalMinutes }} 分鐘</strong>
-            自動擷取一次螢幕內容並送 AI 分析,結果只存在本機 SQLite,**截圖不落地**。
+            {{ t('workCollect.enableHintBefore') }}
+            <strong>{{ store.intervalMinutes }} {{ t('workCollect.unitMinutes') }}</strong>
+            {{ t('workCollect.enableHintAfter') }}
           </div>
         </div>
         <el-switch
@@ -115,11 +117,11 @@ onMounted(async () => {
       <div class="rules">
         <div class="rule">
           <el-icon><Monitor /></el-icon>
-          採集時段:<strong>{{ workHoursLabel }}</strong>(此區間外不採集)
+          <span v-html="t('workCollect.ruleHours', { hours: workHoursLabel })"></span>
         </div>
         <div class="rule">
           <el-icon><Monitor /></el-icon>
-          螢幕鎖定時自動暫停,解鎖後恢復
+          {{ t('workCollect.ruleLock') }}
         </div>
       </div>
     </el-card>

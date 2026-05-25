@@ -7,6 +7,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useAppRankOption } from '../composables/useChartOptions'
 
@@ -18,13 +19,14 @@ const props = withDefaults(
   { topN: 5 },
 )
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useAppRankOption(recordsRef, props.topN)
 </script>
 
 <template>
   <div class="app-rank">
-    <div class="app-rank__title">常用應用 Top {{ topN }}</div>
+    <div class="app-rank__title">{{ t('workCollect.chartAppRankTop', { n: topN }) }}</div>
     <VChart
       class="app-rank__chart"
       :option="option"

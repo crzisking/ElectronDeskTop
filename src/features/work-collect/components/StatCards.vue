@@ -9,13 +9,16 @@
  * 純讀屬性 + 計算,不訂任何事件。
  */
 import {computed} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {Aim, Clock, Histogram, Refresh} from '@element-plus/icons-vue'
-import {CATEGORY_LABEL} from '../category-colors'
+import {CATEGORY_LABEL_KEY} from '../category-colors'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = defineProps<{
   records: WorkRecord[]
 }>()
+
+const {t} = useI18n()
 
 /** 覆蓋的小時數(以採集時間的 hour 去重) */
 const coveredHours = computed(() => {
@@ -35,7 +38,7 @@ const topCategory = computed<{label: string; ratio: number} | null>(() => {
     if (c > topCount) { topCat = cat; topCount = c }
   }
   return {
-    label: CATEGORY_LABEL[topCat],
+    label: t(CATEGORY_LABEL_KEY[topCat]),
     ratio: topCount / props.records.length,
   }
 })
@@ -55,7 +58,7 @@ const lastCapturedAt = computed(() => {
       <el-icon class="stat-card__icon" :size="18"><Aim/></el-icon>
       <div class="stat-card__body">
         <div class="stat-card__value">{{ records.length }}</div>
-        <div class="stat-card__label">今日採集</div>
+        <div class="stat-card__label">{{ t('workCollect.todayCaptured') }}</div>
       </div>
     </div>
 
@@ -63,7 +66,7 @@ const lastCapturedAt = computed(() => {
       <el-icon class="stat-card__icon" :size="18"><Clock/></el-icon>
       <div class="stat-card__body">
         <div class="stat-card__value">{{ coveredHours }}<span class="unit">h</span></div>
-        <div class="stat-card__label">覆蓋小時</div>
+        <div class="stat-card__label">{{ t('workCollect.coveredHours') }}</div>
       </div>
     </div>
 
@@ -77,7 +80,7 @@ const lastCapturedAt = computed(() => {
           </template>
           <template v-else>—</template>
         </div>
-        <div class="stat-card__label">主要類別</div>
+        <div class="stat-card__label">{{ t('workCollect.topCategory') }}</div>
       </div>
     </div>
 
@@ -85,7 +88,7 @@ const lastCapturedAt = computed(() => {
       <el-icon class="stat-card__icon" :size="18"><Refresh/></el-icon>
       <div class="stat-card__body">
         <div class="stat-card__value">{{ lastCapturedAt }}</div>
-        <div class="stat-card__label">上次採集</div>
+        <div class="stat-card__label">{{ t('workCollect.lastCapturedAt') }}</div>
       </div>
     </div>
   </div>

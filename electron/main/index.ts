@@ -144,7 +144,11 @@ app.whenReady().then(async () => {
   }
 
   // 後續所有步驟都依賴配置（窗口大小、浮球位置、靜默啟動等）
-  configManager = new ConfigManager()
+  // dbManager 必須在 ConfigManager 建構前已 init —— 由前面 DB 初始化區塊保證
+  if (!dbManager) {
+    throw new Error('DatabaseManager 初始化失敗,ConfigManager 無法繼續(config 已搬進 SQLite)')
+  }
+  configManager = new ConfigManager(dbManager)
   await configManager.load()
   const config = configManager.getConfig()
   logger.info(`配置加載完成，版本: ${config.version}`, 'App')

@@ -5,6 +5,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useWeekDailyStackedOption } from '../composables/useChartOptions'
 
@@ -12,13 +13,14 @@ const props = defineProps<{
   records: WorkRecord[]
 }>()
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useWeekDailyStackedOption(recordsRef)
 </script>
 
 <template>
   <div class="week-daily-stacked">
-    <div class="week-daily-stacked__title">每日類別分佈</div>
+    <div class="week-daily-stacked__title">{{ t('workCollect.chartWeekDailyStacked') }}</div>
     <VChart
       class="week-daily-stacked__chart"
       :option="option"

@@ -7,9 +7,15 @@
  *  - feature 拆檔只是視覺分組,執行期仍是一個 const,跟原本完全等價。
  *
  * 新增 channel 步驟:
- *  1. 在對應 feature 檔內加 key/value(例:work-collect.ts 加 WORK_COLLECT_X)
- *  2. 不需要動 index.ts —— spread 會自動帶進來
- *  3. preload 端記得在 `electron/preload/index.ts` 同步白名單 / bridge 方法
+ *  A. 往**既有 feature** 加 channel:
+ *     1. 在對應 feature 檔內加 key/value(例:work-collect.ts 加 WORK_COLLECT_X)
+ *     2. 不需要動 index.ts —— spread 會自動帶進來
+ *     3. preload 端在 `electron/preload/index.ts` 同步白名單 / bridge 方法
+ *
+ *  B. 加**全新 feature**(新檔案):
+ *     1. 在本目錄新增 <name>.ts,export 對應 Channels const
+ *     2. 動 index.ts:加 import + 加進 IpcChannels spread + 加進 re-export
+ *     3. preload 端同步
  */
 
 import {AuthChannels} from './auth'

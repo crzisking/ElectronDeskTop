@@ -8,6 +8,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useDailyTrendOption } from '../composables/useChartOptions'
 
@@ -19,13 +20,14 @@ const props = withDefaults(
   { days: 7 },
 )
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useDailyTrendOption(recordsRef, props.days)
 </script>
 
 <template>
   <div class="trend-line">
-    <div class="trend-line__title">每日趨勢</div>
+    <div class="trend-line__title">{{ t('workCollect.chartTrend') }}</div>
     <VChart
       class="trend-line__chart"
       :option="option"

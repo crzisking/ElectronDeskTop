@@ -9,8 +9,8 @@
 
 // 跨進程 type-only import:relative path 跨 src/ → electron/main/。
 // 只引型別,vite 不會把主進程代碼打進 renderer bundle。
-export type {WorkCategory, WorkRecord, NewWorkRecord} from '../../../electron/main/db/features/work-collect/schema'
-import type {WorkCategory} from '../../../electron/main/db/features/work-collect/schema'
+import type {WorkCategory, WorkRecord, NewWorkRecord} from '../../../electron/main/db/features/work-collect/schema'
+export type {WorkCategory, WorkRecord, NewWorkRecord}
 
 /** main → renderer:採集 tick payload */
 export interface WorkCollectTickPayload {

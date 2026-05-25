@@ -5,6 +5,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useHourlyStackedOption } from '../composables/useChartOptions'
 
@@ -14,13 +15,14 @@ const props = defineProps<{
   endHour: number
 }>()
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useHourlyStackedOption(recordsRef, props.startHour, props.endHour)
 </script>
 
 <template>
   <div class="hourly-bar">
-    <div class="hourly-bar__title">每小時活動分布</div>
+    <div class="hourly-bar__title">{{ t('workCollect.chartHourly') }}</div>
     <VChart
       class="hourly-bar__chart"
       :option="option"

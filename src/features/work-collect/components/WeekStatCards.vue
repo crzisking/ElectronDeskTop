@@ -3,13 +3,16 @@
  * 週檢視統計卡片
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Calendar, Clock, Histogram, Trophy } from '@element-plus/icons-vue'
-import { CATEGORY_LABEL } from '../category-colors'
+import { CATEGORY_LABEL_KEY } from '../category-colors'
 import type { WorkCategory, WorkRecord } from '../types'
 
 const props = defineProps<{
   records: WorkRecord[]
 }>()
+
+const { t } = useI18n()
 
 /** 覆盖的天数 */
 const coveredDays = computed(() => {
@@ -34,7 +37,7 @@ const topCategory = computed<{ label: string; count: number } | null>(() => {
       topCount = count
     }
   }
-  return { label: CATEGORY_LABEL[topCat], count: topCount }
+  return { label: t(CATEGORY_LABEL_KEY[topCat]), count: topCount }
 })
 
 /** 最高采集日 */
@@ -64,15 +67,15 @@ const topDay = computed<{ day: string; count: number } | null>(() => {
       <el-icon class="stat-card__icon" :size="18"><Calendar /></el-icon>
       <div class="stat-card__body">
         <div class="stat-card__value">{{ records.length }}</div>
-        <div class="stat-card__label">本週採集</div>
+        <div class="stat-card__label">{{ t('workCollect.weekCaptured') }}</div>
       </div>
     </div>
 
     <div class="stat-card">
       <el-icon class="stat-card__icon" :size="18"><Clock /></el-icon>
       <div class="stat-card__body">
-        <div class="stat-card__value">{{ coveredDays }}<span class="unit">天</span></div>
-        <div class="stat-card__label">覆蓋天數</div>
+        <div class="stat-card__value">{{ coveredDays }}<span class="unit">{{ t('workCollect.unitDays') }}</span></div>
+        <div class="stat-card__label">{{ t('workCollect.coveredDays') }}</div>
       </div>
     </div>
 
@@ -82,11 +85,11 @@ const topDay = computed<{ day: string; count: number } | null>(() => {
         <div class="stat-card__value">
           <template v-if="topCategory">
             {{ topCategory.label }}
-            <span class="unit">{{ topCategory.count }}筆</span>
+            <span class="unit">{{ t('workCollect.chartTooltipRecord', { count: topCategory.count }) }}</span>
           </template>
           <template v-else>—</template>
         </div>
-        <div class="stat-card__label">主要類別</div>
+        <div class="stat-card__label">{{ t('workCollect.topCategory') }}</div>
       </div>
     </div>
 
@@ -96,11 +99,11 @@ const topDay = computed<{ day: string; count: number } | null>(() => {
         <div class="stat-card__value">
           <template v-if="topDay">
             {{ topDay.day }}
-            <span class="unit">{{ topDay.count }}筆</span>
+            <span class="unit">{{ t('workCollect.chartTooltipRecord', { count: topDay.count }) }}</span>
           </template>
           <template v-else>—</template>
         </div>
-        <div class="stat-card__label">最高採集日</div>
+        <div class="stat-card__label">{{ t('workCollect.topDay') }}</div>
       </div>
     </div>
   </div>

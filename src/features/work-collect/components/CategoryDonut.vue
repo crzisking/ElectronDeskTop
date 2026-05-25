@@ -5,6 +5,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useDonutOption } from '../composables/useChartOptions'
 
@@ -12,13 +13,14 @@ const props = defineProps<{
   records: WorkRecord[]
 }>()
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useDonutOption(recordsRef)
 </script>
 
 <template>
   <div class="donut-card">
-    <div class="donut-card__title">類別佔比</div>
+    <div class="donut-card__title">{{ t('workCollect.chartCategory') }}</div>
     <VChart
       class="donut-card__chart"
       :option="option"

@@ -5,6 +5,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useWeekDailyBarOption } from '../composables/useChartOptions'
 
@@ -12,13 +13,14 @@ const props = defineProps<{
   records: WorkRecord[]
 }>()
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useWeekDailyBarOption(recordsRef)
 </script>
 
 <template>
   <div class="week-daily-bar">
-    <div class="week-daily-bar__title">每日採集總數</div>
+    <div class="week-daily-bar__title">{{ t('workCollect.chartWeekDaily') }}</div>
     <VChart
       class="week-daily-bar__chart"
       :option="option"

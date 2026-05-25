@@ -75,7 +75,7 @@ const tools = computed<InternalTool[]>(() => {
   return allTools.value.filter((tool) => {
     if (currentFilter.value !== 'all' && categorizeTool(tool) !== currentFilter.value) return false
     if (!kw) return true
-    // 同時匹配翻譯後文本和 JSON 原值
+    // 同時匹配翻譯後文本和 config 原值
     const name = toolName(tool).toLowerCase()
     const desc = toolDesc(tool).toLowerCase()
     return name.includes(kw)

@@ -296,6 +296,70 @@
     "emptyAll": "No personal tools configured. Add entries in personalFunctions.tools in app-config.json"
   },
 
+  "workCollect": {
+    "back": "Back",
+    "title": "Work Auto-Capture",
+
+    "viewDay": "Day",
+    "viewWeek": "Week",
+
+    "enableLabel": "Enable capture",
+    "enableHintBefore": "When on, every",
+    "enableHintAfter": "minutes the screen is captured and analyzed by AI. Results stay in local SQLite, **screenshots never persisted**.",
+    "ruleHours": "Capture window: {hours} (outside this range, won't capture)",
+    "ruleLock": "Auto-paused when screen is locked; resumes on unlock",
+
+    "toggleOn": "Work auto-capture enabled",
+    "toggleOff": "Work auto-capture disabled",
+    "toggleFailed": "Toggle failed, see logs",
+
+    "todayCaptured": "Today",
+    "coveredHours": "Hours covered",
+    "topCategory": "Top category",
+    "lastCapturedAt": "Last capture",
+    "weekCaptured": "This week",
+    "coveredDays": "Days covered",
+    "topDay": "Peak day",
+
+    "chartHourly": "Hourly activity",
+    "chartCategory": "Category share",
+    "chartTrend": "Daily trend",
+    "chartHeatmap": "Weekly heatmap",
+    "chartAppRankTop": "Top {n} apps",
+    "chartWeekDaily": "Daily total",
+    "chartWeekDailyStacked": "Daily by category",
+    "chartCaptureCount": "Captures",
+    "chartTooltipRecord": "{count}",
+    "chartTooltipPercent": "{value} ({percent}%)",
+    "chartHeatmapTooltip": "{day} {hour}: {count}",
+    "chartTotalRecords": "Total",
+    "weekdayMon": "Mon",
+    "weekdayTue": "Tue",
+    "weekdayWed": "Wed",
+    "weekdayThu": "Thu",
+    "weekdayFri": "Fri",
+    "weekdaySat": "Sat",
+    "weekdaySun": "Sun",
+
+    "timelineTitle": "Capture details",
+    "timelineCount": "{count} records",
+    "timelineEmpty": "No records today",
+    "timelineForeground": "Foreground: {title}",
+
+    "unitMinutes": "min",
+    "unitDays": "days",
+    "unitRecords": "",
+
+    "categoryCoding": "Coding",
+    "categoryDocumenting": "Docs",
+    "categoryBrowsing": "Browsing",
+    "categoryCommunicating": "Comms",
+    "categoryMeeting": "Meeting",
+    "categoryDesigning": "Design",
+    "categoryIdle": "Idle",
+    "categoryOther": "Other"
+  },
+
   "config": {
     "sidebar": {
       "unified-platform": "Unified Platform",

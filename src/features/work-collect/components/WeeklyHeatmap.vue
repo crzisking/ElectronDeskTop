@@ -8,6 +8,7 @@
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
 import { toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { WorkRecord } from '../types'
 import { useWeeklyHeatmapOption } from '../composables/useChartOptions'
 
@@ -17,13 +18,14 @@ const props = defineProps<{
   endHour: number
 }>()
 
+const { t } = useI18n()
 const recordsRef = toRef(props, 'records')
 const option = useWeeklyHeatmapOption(recordsRef, props.startHour, props.endHour)
 </script>
 
 <template>
   <div class="weekly-heatmap">
-    <div class="weekly-heatmap__title">每週活動熱力圖</div>
+    <div class="weekly-heatmap__title">{{ t('workCollect.chartHeatmap') }}</div>
     <VChart
       class="weekly-heatmap__chart"
       :option="option"

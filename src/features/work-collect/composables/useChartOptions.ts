@@ -2,10 +2,15 @@
  * 工作採集圖表 ECharts option 構建函式
  *
  * 將 WorkRecord 陣列轉換為各類 ECharts 圖表的 declarative option 物件。
- * 每個函式接收 records + 必要參數，回傳 ECharts 的 option 配置。
+ * 每個函式接收 records + 必要參數,回傳 ECharts option 配置(響應式 computed)。
+ *
+ * i18n 處理:
+ *   每個 use*Option 內部呼叫 useI18n() 拿 t + locale;
+ *   computed 內讀 `locale.value` 建立 reactive 依賴 —— 語言切換時 chart option 自動重算。
  */
 import { computed, type Ref } from 'vue'
-import { CATEGORY_COLOR, CATEGORY_LABEL, CATEGORY_ORDER } from '../category-colors'
+import { useI18n } from 'vue-i18n'
+import { CATEGORY_COLOR, CATEGORY_LABEL_KEY, CATEGORY_ORDER } from '../category-colors'
 import type { WorkCategory, WorkRecord } from '../types'
 
 type CategoryCounts = Record<WorkCategory, number>
@@ -21,14 +26,14 @@ function countByCategory(records: WorkRecord[]): CategoryCounts {
   return counts
 }
 
-/** 获取今天 00:00:00 的时间戳 */
+/** 獲取今天 00:00:00 的時間戳 */
 function startOfToday(): number {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
 
-/** 获取过去一周第一天 00:00:00 的时间戳 */
+/** 獲取過去一週第一天 00:00:00 的時間戳 */
 function startOfWeek(): number {
   const d = new Date()
   d.setDate(d.getDate() - 6)
@@ -36,19 +41,19 @@ function startOfWeek(): number {
   return d.getTime()
 }
 
-/** 筛选今天的记录 */
+/** 篩選今天的紀錄 */
 export function filterTodayRecords(records: WorkRecord[]): WorkRecord[] {
   const start = startOfToday()
   return records.filter(r => r.capturedAt >= start)
 }
 
-/** 筛选过去一周的记录 */
+/** 篩選過去一週的紀錄 */
 export function filterWeekRecords(records: WorkRecord[]): WorkRecord[] {
   const start = startOfWeek()
   return records.filter(r => r.capturedAt >= start)
 }
 
-/** 按天分组记录 */
+/** 按天分組紀錄 */
 function groupRecordsByDay(records: WorkRecord[]): Map<string, WorkRecord[]> {
   const groups = new Map<string, WorkRecord[]>()
   for (const r of records) {
@@ -60,7 +65,7 @@ function groupRecordsByDay(records: WorkRecord[]): Map<string, WorkRecord[]> {
   return groups
 }
 
-/** 按天统计总数 */
+/** 按天統計總數 */
 function countByDay(records: WorkRecord[]): Map<string, number> {
   const groups = groupRecordsByDay(records)
   const result = new Map<string, number>()
@@ -70,9 +75,11 @@ function countByDay(records: WorkRecord[]): Map<string, number> {
   return result
 }
 
-/** 周检视：每日总采集柱状图 option */
+/** 週檢視:每日總採集柱狀圖 option */
 export function useWeekDailyBarOption(records: Ref<WorkRecord[]>) {
+  const { t, locale } = useI18n()
   return computed(() => {
+    void locale.value  // 建立 reactive 依賴,語言切換時觸發重算
     const dayCounts = countByDay(records.value)
     const now = new Date()
     const days: string[] = []
@@ -100,7 +107,7 @@ export function useWeekDailyBarOption(records: Ref<WorkRecord[]>) {
         axisLabel: { fontSize: 10 },
       },
       series: [{
-        name: '採集筆數',
+        name: t('workCollect.chartCaptureCount'),
         type: 'bar' as const,
         data,
         itemStyle: {
@@ -113,9 +120,11 @@ export function useWeekDailyBarOption(records: Ref<WorkRecord[]>) {
   })
 }
 
-/** 周检视：每日类别分布堆叠柱状图 option */
+/** 週檢視:每日類別分布堆疊柱狀圖 option */
 export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
+  const { t, locale } = useI18n()
   return computed(() => {
+    void locale.value
     const now = new Date()
     const days: string[] = []
     for (let i = 6; i >= 0; i--) {
@@ -140,7 +149,7 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
         axisPointer: { type: 'shadow' as const },
       },
       legend: {
-        data: CATEGORY_ORDER.map(c => CATEGORY_LABEL[c]),
+        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
         top: 0,
         textStyle: { fontSize: 11 },
       },
@@ -156,7 +165,7 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
         axisLabel: { fontSize: 10 },
       },
       series: CATEGORY_ORDER.map(cat => ({
-        name: CATEGORY_LABEL[cat],
+        name: t(CATEGORY_LABEL_KEY[cat]),
         type: 'bar' as const,
         stack: 'total',
         data: matrix[cat],
@@ -174,7 +183,9 @@ export function useHourlyStackedOption(
   startHour: number,
   endHour: number,
 ) {
+  const { t, locale } = useI18n()
   return computed(() => {
+    void locale.value
     const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
     const matrix: Record<WorkCategory, number[]> = {} as any
     for (const cat of CATEGORY_ORDER) matrix[cat] = new Array(hours.length).fill(0)
@@ -194,14 +205,14 @@ export function useHourlyStackedOption(
           let html = `<strong>${hour}:00 - ${parseInt(hour) + 1}:00</strong><br/>`
           for (const p of params) {
             if (p.value > 0) {
-              html += `${p.marker} ${p.seriesName}: ${p.value} 筆<br/>`
+              html += `${p.marker} ${p.seriesName}: ${t('workCollect.chartTooltipRecord', { count: p.value })}<br/>`
             }
           }
           return html
         },
       },
       legend: {
-        data: CATEGORY_ORDER.map(c => CATEGORY_LABEL[c]),
+        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
         top: 0,
         textStyle: { fontSize: 11 },
       },
@@ -217,7 +228,7 @@ export function useHourlyStackedOption(
         axisLabel: { fontSize: 10 },
       },
       series: CATEGORY_ORDER.map(cat => ({
-        name: CATEGORY_LABEL[cat],
+        name: t(CATEGORY_LABEL_KEY[cat]),
         type: 'bar' as const,
         stack: 'total',
         data: matrix[cat],
@@ -231,12 +242,14 @@ export function useHourlyStackedOption(
 
 /** 類別佔比 Donut option */
 export function useDonutOption(records: Ref<WorkRecord[]>) {
+  const { t, locale } = useI18n()
   return computed(() => {
+    void locale.value
     const counts = countByCategory(records.value)
     const data = CATEGORY_ORDER
       .filter(cat => counts[cat] > 0)
       .map(cat => ({
-        name: CATEGORY_LABEL[cat],
+        name: t(CATEGORY_LABEL_KEY[cat]),
         value: counts[cat],
         itemStyle: { color: CATEGORY_COLOR[cat] },
       }))
@@ -244,7 +257,7 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
     return {
       tooltip: {
         trigger: 'item' as const,
-        formatter: '{b}: {c} 筆 ({d}%)',
+        formatter: (p: any) => t('workCollect.chartTooltipPercent', { value: `${p.name}: ${p.value}`, percent: p.percent }),
       },
       legend: {
         orient: 'vertical' as const,
@@ -270,7 +283,7 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
         left: '30%',
         top: 'center',
         style: {
-          text: `${records.value.length}\n總筆數`,
+          text: `${records.value.length}\n${t('workCollect.chartTotalRecords')}`,
           textAlign: 'center' as const,
           fill: '#303133',
           fontSize: 14,
@@ -283,7 +296,9 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
 
 /** 每日趨勢堆疊面積 option */
 export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7) {
+  const { t, locale } = useI18n()
   return computed(() => {
+    void locale.value
     const dateMap = new Map<string, CategoryCounts>()
     const now = new Date()
     for (let i = days - 1; i >= 0; i--) {
@@ -304,7 +319,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
     return {
       tooltip: { trigger: 'axis' as const },
       legend: {
-        data: CATEGORY_ORDER.map(c => CATEGORY_LABEL[c]),
+        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
         bottom: 0,
         textStyle: { fontSize: 10 },
       },
@@ -319,7 +334,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
         minInterval: 1,
       },
       series: CATEGORY_ORDER.map(cat => ({
-        name: CATEGORY_LABEL[cat],
+        name: t(CATEGORY_LABEL_KEY[cat]),
         type: 'line' as const,
         stack: 'total',
         areaStyle: { opacity: 0.15 },
@@ -339,8 +354,18 @@ export function useWeeklyHeatmapOption(
   startHour: number,
   endHour: number,
 ) {
+  const { t, locale } = useI18n()
   return computed(() => {
-    const dayLabels = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
+    void locale.value
+    const dayLabels = [
+      t('workCollect.weekdayMon'),
+      t('workCollect.weekdayTue'),
+      t('workCollect.weekdayWed'),
+      t('workCollect.weekdayThu'),
+      t('workCollect.weekdayFri'),
+      t('workCollect.weekdaySat'),
+      t('workCollect.weekdaySun'),
+    ]
     const hourLabels = Array.from({ length: endHour - startHour }, (_, i) => `${startHour + i}:00`)
 
     const data: [number, number, number][] = []
@@ -363,7 +388,11 @@ export function useWeeklyHeatmapOption(
     return {
       tooltip: {
         position: 'top' as const,
-        formatter: (p: any) => `${dayLabels[p.value[1]]} ${hourLabels[p.value[0]]}: ${p.value[2]} 筆`,
+        formatter: (p: any) => t('workCollect.chartHeatmapTooltip', {
+          day: dayLabels[p.value[1]],
+          hour: hourLabels[p.value[0]],
+          count: p.value[2],
+        }),
       },
       grid: { top: 8, bottom: 24, left: 48, right: 12 },
       xAxis: {
@@ -396,6 +425,7 @@ export function useWeeklyHeatmapOption(
 /** 常用應用排名 option */
 export function useAppRankOption(records: Ref<WorkRecord[]>, topN: number = 5) {
   return computed(() => {
+    // 應用名來自 DB(系統實際 process name),不走 i18n
     const appCounts = new Map<string, number>()
     for (const r of records.value) {
       if (!r.activeApp) continue

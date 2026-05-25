@@ -6,16 +6,22 @@
  */
 import type {WorkCategory} from './types'
 
-/** 中文標籤(UI 顯示用) */
-export const CATEGORY_LABEL: Record<WorkCategory, string> = {
-  coding: '編碼',
-  documenting: '文件',
-  browsing: '瀏覽',
-  communicating: '溝通',
-  meeting: '會議',
-  designing: '設計',
-  idle: '閒置',
-  other: '其他',
+/**
+ * Category → i18n key 對應。
+ * 使用端走 `t(CATEGORY_LABEL_KEY[category])` 拿到當前語言顯示文字。
+ *
+ * 為什麼不存「翻譯後字串」:i18n 切換語言時,const 內字串不會更新;
+ * 改存 key 讓使用端動態解析,跟著語言切換即時 reactive。
+ */
+export const CATEGORY_LABEL_KEY: Record<WorkCategory, string> = {
+  coding: 'workCollect.categoryCoding',
+  documenting: 'workCollect.categoryDocumenting',
+  browsing: 'workCollect.categoryBrowsing',
+  communicating: 'workCollect.categoryCommunicating',
+  meeting: 'workCollect.categoryMeeting',
+  designing: 'workCollect.categoryDesigning',
+  idle: 'workCollect.categoryIdle',
+  other: 'workCollect.categoryOther',
 }
 
 /** 圖表用 hex 色 — 跟下面 tag type 對齊 Element Plus 標準色 */

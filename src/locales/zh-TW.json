@@ -298,6 +298,70 @@
     "emptyAll": "尚未配置個人功能,請在 app-config.json 的 personalFunctions.tools 中添加"
   },
 
+  "workCollect": {
+    "back": "返回",
+    "title": "工作自動採集",
+
+    "viewDay": "日檢視",
+    "viewWeek": "週檢視",
+
+    "enableLabel": "啟用採集",
+    "enableHintBefore": "開啟後,每",
+    "enableHintAfter": "分鐘自動擷取一次螢幕內容並送 AI 分析,結果只存在本機 SQLite,**截圖不落地**。",
+    "ruleHours": "採集時段:{hours}(此區間外不採集)",
+    "ruleLock": "螢幕鎖定時自動暫停,解鎖後恢復",
+
+    "toggleOn": "已啟用工作採集",
+    "toggleOff": "已停用工作採集",
+    "toggleFailed": "切換失敗,請查看日誌",
+
+    "todayCaptured": "今日採集",
+    "coveredHours": "覆蓋小時",
+    "topCategory": "主要類別",
+    "lastCapturedAt": "上次採集",
+    "weekCaptured": "本週採集",
+    "coveredDays": "覆蓋天數",
+    "topDay": "最高採集日",
+
+    "chartHourly": "每小時活動分布",
+    "chartCategory": "類別佔比",
+    "chartTrend": "每日趨勢",
+    "chartHeatmap": "每週活動熱力圖",
+    "chartAppRankTop": "常用應用 Top {n}",
+    "chartWeekDaily": "每日採集總數",
+    "chartWeekDailyStacked": "每日類別分佈",
+    "chartCaptureCount": "採集筆數",
+    "chartTooltipRecord": "{count} 筆",
+    "chartTooltipPercent": "{value} 筆 ({percent}%)",
+    "chartHeatmapTooltip": "{day} {hour}: {count} 筆",
+    "chartTotalRecords": "總筆數",
+    "weekdayMon": "週一",
+    "weekdayTue": "週二",
+    "weekdayWed": "週三",
+    "weekdayThu": "週四",
+    "weekdayFri": "週五",
+    "weekdaySat": "週六",
+    "weekdaySun": "週日",
+
+    "timelineTitle": "採集明細",
+    "timelineCount": "共 {count} 筆",
+    "timelineEmpty": "今日尚無紀錄",
+    "timelineForeground": "前台:{title}",
+
+    "unitMinutes": "分鐘",
+    "unitDays": "天",
+    "unitRecords": "筆",
+
+    "categoryCoding": "編碼",
+    "categoryDocumenting": "文件",
+    "categoryBrowsing": "瀏覽",
+    "categoryCommunicating": "溝通",
+    "categoryMeeting": "會議",
+    "categoryDesigning": "設計",
+    "categoryIdle": "閒置",
+    "categoryOther": "其他"
+  },
+
   "config": {
     "_comment": "config.* 對應 app-config.json 的 id；繁中默認沿用 JSON 原值（這裡留空），en.json 必須提供翻譯",
     "sidebar": {},
