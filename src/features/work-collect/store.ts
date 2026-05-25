@@ -53,11 +53,15 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     }
   }
 
-  /** 查詢時間區間的紀錄(預設今日 00:00 - now) */
+  /**
+   * 查詢時間區間的紀錄。
+   * 預設範圍:過去 30 天 → now,讓 TimelineList 的日期選擇器有歷史可挑;
+   * 各 chart 元件仍會用各自的 filter(filterTodayRecords / filterWeekRecords)截短自己要的範圍。
+   */
   async function refresh(since?: number, until?: number): Promise<void> {
     loading.value = true
     try {
-      const start = since ?? startOfToday()
+      const start = since ?? startOfDaysAgo(30)
       const end = until ?? Date.now()
       records.value = await window.electronAPI.workCollect.list({since: start, until: end})
     } catch (err) {
@@ -131,8 +135,11 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
  */
 let subscribed = false
 
-function startOfToday(): number {
+/** N 天前 00:00:00 的 Unix ms */
+function startOfDaysAgo(days: number): number {
   const d = new Date()
+  d.setDate(d.getDate() - days)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
+

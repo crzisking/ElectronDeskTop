@@ -345,7 +345,10 @@
 
     "timelineTitle": "採集明細",
     "timelineCount": "共 {count} 筆",
-    "timelineEmpty": "今日尚無紀錄",
+    "timelineEmpty": "選定區間尚無紀錄",
+    "timelineDateLabel": "選擇日期",
+    "timelineRangeStart": "起始日期",
+    "timelineRangeEnd": "結束日期",
     "timelineForeground": "前台:{title}",
 
     "unitMinutes": "分鐘",

@@ -12,13 +12,13 @@
  * 採集 tick 訂閱在 App.vue 已 bootstrap,本頁進來只負責 refresh 載入紀錄。
  */
 
-import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Monitor, VideoCamera } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { useWorkCollectStore } from './store'
-import { filterTodayRecords, filterWeekRecords } from './composables/useChartOptions'
+import {computed, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
+import {ArrowLeft, Monitor, VideoCamera} from '@element-plus/icons-vue'
+import {ElMessage} from 'element-plus'
+import {useWorkCollectStore} from './store'
+import {filterTodayRecords, filterWeekRecords} from './composables/useChartOptions'
 import StatCards from './components/StatCards.vue'
 import WeekStatCards from './components/WeekStatCards.vue'
 import HourlyStackedBar from './components/HourlyStackedBar.vue'
@@ -166,7 +166,8 @@ onMounted(async () => {
       </div>
 
       <!-- 詳細列表 -->
-      <TimelineList :records="filteredRecords" :loading="store.loading" />
+      <!-- TimelineList 接全部 records,內部按日期選擇器自行 filter,跟外層的 day/week 模式解耦 -->
+      <TimelineList :loading="store.loading" :records="store.records"/>
     </template>
 
     <!-- ── 週檢視 ──────────────────────────────────────────── -->
@@ -202,7 +203,8 @@ onMounted(async () => {
       </div>
 
       <!-- 詳細列表 -->
-      <TimelineList :records="filteredRecords" :loading="store.loading" />
+      <!-- TimelineList 接全部 records,內部按日期選擇器自行 filter,跟外層的 day/week 模式解耦 -->
+      <TimelineList :loading="store.loading" :records="store.records"/>
     </template>
   </div>
 </template>

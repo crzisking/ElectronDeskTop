@@ -343,7 +343,10 @@
 
     "timelineTitle": "Capture details",
     "timelineCount": "{count} records",
-    "timelineEmpty": "No records today",
+    "timelineEmpty": "No records in selected range",
+    "timelineDateLabel": "Pick date",
+    "timelineRangeStart": "Start date",
+    "timelineRangeEnd": "End date",
     "timelineForeground": "Foreground: {title}",
 
     "unitMinutes": "min",
