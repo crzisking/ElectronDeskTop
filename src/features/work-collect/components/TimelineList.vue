@@ -52,7 +52,11 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 
-/** 過濾後(尚未分頁)的 records,匯出 / 分頁計數都用這個 */
+/**
+ * 過濾後(尚未分頁)的 records,匯出 / 分頁計數都用這個。
+ * 排序:最新的在最上面(capturedAt desc) —— 採集是流水帳,使用者打開時最關心
+ * 「剛剛在幹嘛」,讓最新的紀錄不必滾到底才能看到。
+ */
 const filteredRecords = computed(() => {
   const [from, to] = selectedRange.value
   const start = new Date(from);
@@ -61,11 +65,13 @@ const filteredRecords = computed(() => {
   end.setHours(23, 59, 59, 999)
   const catSet = selectedCategories.value.length ? new Set(selectedCategories.value) : null
 
-  return props.records.filter((r) => {
-    if (r.capturedAt < start.getTime() || r.capturedAt > end.getTime()) return false
-    return !(catSet && !catSet.has(r.category));
-
-  })
+  return props.records
+      .filter((r) => {
+        if (r.capturedAt < start.getTime() || r.capturedAt > end.getTime()) return false
+        return !(catSet && !catSet.has(r.category))
+      })
+      .slice() // 不就地排序,避免污染 props.records(其他圖表還靠這個 array 算)
+      .sort((a, b) => b.capturedAt - a.capturedAt)
 })
 
 /** 當前頁的 slice */
