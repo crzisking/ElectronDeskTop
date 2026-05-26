@@ -26,8 +26,20 @@ import type {ConfigManager} from './config-manager'
 import type {WindowManager} from './window-manager'
 import type {WorkRecordService} from './db/features/work-collect/service'
 
-/** dHash Hamming distance ≤ 此值視為「畫面實質未變」(64 bit 中允許小幅雜訊) */
-const HASH_SIMILAR_THRESHOLD = 5
+/**
+ * dHash Hamming distance ≤ 此值視為「畫面實質未變」。
+ * 64 bit 中容忍約 15% 的差異 —— 5 太緊,連工作列時鐘走秒 + 游標閃爍位置不同
+ * 累積出來的雜訊就會超過;10 在實測上能擋掉時鐘 / 游標 / 微小陰影差異,
+ * 同時不會把實際視窗切換誤判成相同。
+ */
+const HASH_SIMILAR_THRESHOLD = 10
+
+/**
+ * idle 時間判定的 grace(秒)。
+ * powerMonitor.getSystemIdleTime() 只回整數秒、setInterval 有 ms 級漂移,
+ * 若用 `idleSec >= intervalSec` 嚴格比較,實測會卡在 299 vs 300 邊界。
+ */
+const IDLE_GRACE_SECONDS = 5
 
 export class WorkCollectorScheduler {
   private timer: NodeJS.Timeout | null = null
@@ -147,19 +159,21 @@ export class WorkCollectorScheduler {
     private detectIdle(currentHash: string, activeTitle: string): boolean {
         const c = this.cfg.getConfig().workCollect
         const intervalSec = Math.max(1, c?.intervalMinutes ?? 5) * 60
+        const idleThreshold = Math.max(1, intervalSec - IDLE_GRACE_SECONDS)
         const idleSec = powerMonitor.getSystemIdleTime()
-        if (idleSec >= intervalSec) {
-            logger.debug(`系統 idleTime=${idleSec}s ≥ ${intervalSec}s,判 idle`, 'WorkCollector')
-            return true
-        }
 
-        if (this.lastHash && this.lastActiveTitle === activeTitle) {
-            const dist = hammingHex(this.lastHash, currentHash)
-            if (dist <= HASH_SIMILAR_THRESHOLD) {
-                logger.debug(`dHash 距離=${dist} ≤ ${HASH_SIMILAR_THRESHOLD} 且前台視窗未變,判 idle`, 'WorkCollector')
-                return true
-            }
-        }
+        // 同時算出 dHash 距離(可比較才算,否則 null),全部塞進一條 log,
+        // 之後再遇到「沒判 idle」的爭議直接看這行就知道哪條沒過
+        const dist = this.lastHash && this.lastActiveTitle === activeTitle
+            ? hammingHex(this.lastHash, currentHash)
+            : null
+        logger.info(
+            `tick 閒置判定 idleSec=${idleSec}/${idleThreshold} dHashDist=${dist ?? 'n/a'}/${HASH_SIMILAR_THRESHOLD} sameTitle=${this.lastActiveTitle === activeTitle}`,
+            'WorkCollector'
+        )
+
+        if (idleSec >= idleThreshold) return true
+        if (dist !== null && dist <= HASH_SIMILAR_THRESHOLD) return true
         return false
     }
 
