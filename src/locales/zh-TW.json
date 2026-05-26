@@ -349,6 +349,11 @@
     "timelineDateLabel": "選擇日期",
     "timelineRangeStart": "起始日期",
     "timelineRangeEnd": "結束日期",
+    "timelineCategoryFilter": "類別篩選",
+    "timelineCategoryAll": "全部類別",
+    "timelineExport": "匯出 TXT",
+    "timelineExportEmpty": "沒有可匯出的紀錄",
+    "timelineExportSuccess": "已匯出 {count} 筆紀錄",
     "timelineForeground": "前台:{title}",
 
     "unitMinutes": "分鐘",

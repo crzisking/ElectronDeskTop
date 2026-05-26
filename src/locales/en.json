@@ -347,6 +347,11 @@
     "timelineDateLabel": "Pick date",
     "timelineRangeStart": "Start date",
     "timelineRangeEnd": "End date",
+    "timelineCategoryFilter": "Category",
+    "timelineCategoryAll": "All categories",
+    "timelineExport": "Export TXT",
+    "timelineExportEmpty": "No records to export",
+    "timelineExportSuccess": "Exported {count} records",
     "timelineForeground": "Foreground: {title}",
 
     "unitMinutes": "min",

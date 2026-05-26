@@ -1,15 +1,20 @@
 <script setup lang="ts">
 /**
- * 採集紀錄時間軸列表(從原 WorkCollectView 抽出)。
+ * 採集紀錄時間軸列表。
  *
- * 接收**全部已載入的 records**(store.records),內部按 selectedRange 過濾顯示。
- * 預設範圍 = [今日 00:00, 今日 23:59];使用者透過 el-date-picker(daterange)切換任意區間。
- * 禁止選未來日期。
+ * 接收**全部已載入的 records**(store.records),內部依下列條件過濾 + 分頁:
+ *  - 日期區間(daterange picker,預設今日)
+ *  - 類別篩選(el-select multiple,預設全部)
+ *  - 分頁(預設 20 筆 / 頁,可調 10 / 20 / 50 / 100)
+ *
+ * 並提供「匯出 TXT」一鍵下載當前過濾結果(不受分頁影響,匯整個區間)。
  */
 import {computed, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {CATEGORY_LABEL_KEY, CATEGORY_TAG_TYPE} from '../category-colors'
-import type {WorkRecord} from '../types'
+import {ElMessage} from 'element-plus'
+import {Download} from '@element-plus/icons-vue'
+import {CATEGORY_LABEL_KEY, CATEGORY_ORDER, CATEGORY_TAG_TYPE} from '../category-colors'
+import type {WorkCategory, WorkRecord} from '../types'
 
 const props = withDefaults(
   defineProps<{
@@ -21,7 +26,7 @@ const props = withDefaults(
 
 const {t} = useI18n()
 
-/** 預設範圍:今日 00:00 ~ 今日 23:59 */
+// ── 日期範圍 ────────────────────────────────────────────────────
 function defaultRange(): [Date, Date] {
   const start = new Date()
   start.setHours(0, 0, 0, 0)
@@ -33,39 +38,122 @@ function defaultRange(): [Date, Date] {
 /** 選定日期區間;el-date-picker daterange 綁定 [start, end] 兩個 Date */
 const selectedRange = ref<[Date, Date]>(defaultRange())
 
-/** 按 selectedRange 過濾 records(start 取當日 00:00,end 取當日 23:59,容錯 picker 給的 time 部分) */
-const filteredRecords = computed(() => {
-  const [from, to] = selectedRange.value
-  const start = new Date(from)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(to)
-  end.setHours(23, 59, 59, 999)
-  return props.records.filter(
-      (r) => r.capturedAt >= start.getTime() && r.capturedAt <= end.getTime()
-  )
-})
-
-/** 禁止選未來日期(尚未發生,選了一定空) */
+/** 禁止選未來日期 */
 function disabledDate(time: Date): boolean {
   return time.getTime() > Date.now()
 }
 
-/** Unix ms 格式化:同一天只顯示 HH:mm,跨天加 MM/DD 前綴 */
-function formatTime(ms: number): string {
+// ── 類別篩選(多選) ────────────────────────────────────────────
+/** 選中的 categories;空陣列表示「全部」(對齊 placeholder UI 慣例) */
+const selectedCategories = ref<WorkCategory[]>([])
+
+// ── 分頁 ────────────────────────────────────────────────────────
+const currentPage = ref(1)
+const pageSize = ref(20)
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+
+/** 過濾後(尚未分頁)的 records,匯出 / 分頁計數都用這個 */
+const filteredRecords = computed(() => {
+  const [from, to] = selectedRange.value
+  const start = new Date(from);
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(to);
+  end.setHours(23, 59, 59, 999)
+  const catSet = selectedCategories.value.length ? new Set(selectedCategories.value) : null
+
+  return props.records.filter((r) => {
+    if (r.capturedAt < start.getTime() || r.capturedAt > end.getTime()) return false
+    return !(catSet && !catSet.has(r.category));
+
+  })
+})
+
+/** 當前頁的 slice */
+const pagedRecords = computed(() => {
+  const startIdx = (currentPage.value - 1) * pageSize.value
+  return filteredRecords.value.slice(startIdx, startIdx + pageSize.value)
+})
+
+/** 篩選條件變動時自動回第一頁(避免空頁) */
+function resetToFirstPage() {
+  currentPage.value = 1
+}
+
+// ── 工具:時間 / 日期格式化 ──────────────────────────────────────
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate()
+}
+
+/** 時間軸上每筆的時間戳:同天區間只顯示 HH:mm,跨天加 MM/DD */
+function formatTimestamp(ms: number): string {
   const d = new Date(ms)
   const hh = String(d.getHours()).padStart(2, '0')
   const mm = String(d.getMinutes()).padStart(2, '0')
-  // 區間若跨天,前綴加 MM/DD 讓使用者分得清楚是哪天
   if (!isSameDay(selectedRange.value[0], selectedRange.value[1])) {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`
   }
   return `${hh}:${mm}`
 }
 
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear()
-      && a.getMonth() === b.getMonth()
-      && a.getDate() === b.getDate()
+/** 匯出檔名用:YYYY-MM-DD */
+function formatDateForFilename(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+/** 匯出檔內每行用:YYYY-MM-DD HH:mm:ss(可讀) */
+function formatTimestampForExport(ms: number): string {
+  const d = new Date(ms)
+  const y = d.getFullYear()
+  const M = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${y}-${M}-${dd} ${hh}:${mm}:${ss}`
+}
+
+// ── 匯出 TXT ────────────────────────────────────────────────────
+/**
+ * 匯出當前過濾結果為 TXT 檔。
+ * 走 browser Blob + a.download,讓 Electron renderer 直接觸發下載到預設下載資料夾。
+ * 不必額外開 IPC(若未來要「選保存位置」再做)。
+ */
+function exportTxt() {
+  const records = filteredRecords.value
+  if (records.length === 0) {
+    ElMessage.warning(t('workCollect.timelineExportEmpty'))
+    return
+  }
+
+  // 表頭 + 每筆一行,Tab 分隔(在 Excel 內好直接貼)
+  const header = ['時間', '類別', '描述', '前台視窗'].join('\t')
+  const lines = records.map((r) => {
+    const time = formatTimestampForExport(r.capturedAt)
+    const cat = t(CATEGORY_LABEL_KEY[r.category])
+    const desc = (r.description ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
+    const win = (r.activeWindowTitle ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
+    return [time, cat, desc, win].join('\t')
+  })
+  // UTF-8 BOM,讓 Excel / Notepad 雙擊不會亂碼
+  const content = '﻿' + header + '\n' + lines.join('\n')
+
+  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'})
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const [from, to] = selectedRange.value
+  a.href = url
+  a.download = `work-collect_${formatDateForFilename(from)}_to_${formatDateForFilename(to)}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+
+  ElMessage.success(t('workCollect.timelineExportSuccess', {count: records.length}))
 }
 </script>
 
@@ -74,21 +162,56 @@ function isSameDay(a: Date, b: Date): boolean {
     <template #header>
       <div class="timeline-card__header">
         <span class="timeline-card__title">{{ t('workCollect.timelineTitle') }}</span>
+
+        <!-- 日期範圍 -->
         <el-date-picker
             v-model="selectedRange"
-            :clearable="false"
-            :disabled-date="disabledDate"
             :end-placeholder="t('workCollect.timelineRangeEnd')"
             :start-placeholder="t('workCollect.timelineRangeStart')"
-            class="timeline-card__date"
-            range-separator="—"
+            :clearable="false"
+            :disabled-date="disabledDate"
             size="small"
+            class="timeline-card__date"
             type="daterange"
+            range-separator="—"
             unlink-panels
+            @change="resetToFirstPage"
         />
+
+        <!-- 類別篩選(多選) -->
+        <el-select
+            v-model="selectedCategories"
+            :placeholder="t('workCollect.timelineCategoryAll')"
+            class="timeline-card__category"
+            clearable
+            collapse-tags
+            collapse-tags-tooltip
+            multiple
+            size="small"
+            @change="resetToFirstPage"
+        >
+          <el-option
+              v-for="cat in CATEGORY_ORDER"
+              :key="cat"
+              :label="t(CATEGORY_LABEL_KEY[cat])"
+              :value="cat"
+          />
+        </el-select>
+
         <span class="timeline-card__count">
           {{ t('workCollect.timelineCount', {count: filteredRecords.length}) }}
         </span>
+
+        <!-- 匯出按鈕 -->
+        <el-button
+            :icon="Download"
+            plain
+            size="small"
+            type="primary"
+            @click="exportTxt"
+        >
+          {{ t('workCollect.timelineExport') }}
+        </el-button>
       </div>
     </template>
 
@@ -97,24 +220,39 @@ function isSameDay(a: Date, b: Date): boolean {
         :description="t('workCollect.timelineEmpty')"
     />
 
-    <el-timeline v-else>
-      <el-timeline-item
-          v-for="rec in filteredRecords"
-        :key="rec.id"
-        :timestamp="formatTime(rec.capturedAt)"
-        placement="top"
-      >
-        <div class="record-row">
-          <el-tag :type="CATEGORY_TAG_TYPE[rec.category]" size="small">
-            {{ t(CATEGORY_LABEL_KEY[rec.category]) }}
-          </el-tag>
-          <span class="record-desc">{{ rec.description }}</span>
-        </div>
-        <div v-if="rec.activeWindowTitle" class="record-meta">
-          {{ t('workCollect.timelineForeground', { title: rec.activeWindowTitle }) }}
-        </div>
-      </el-timeline-item>
-    </el-timeline>
+    <template v-else>
+      <el-timeline class="timeline-card__list">
+        <el-timeline-item
+            v-for="rec in pagedRecords"
+            :key="rec.id"
+            :timestamp="formatTimestamp(rec.capturedAt)"
+            placement="top"
+        >
+          <div class="record-row">
+            <el-tag :type="CATEGORY_TAG_TYPE[rec.category]" size="small">
+              {{ t(CATEGORY_LABEL_KEY[rec.category]) }}
+            </el-tag>
+            <span class="record-desc">{{ rec.description }}</span>
+          </div>
+          <div v-if="rec.activeWindowTitle" class="record-meta">
+            {{ t('workCollect.timelineForeground', {title: rec.activeWindowTitle}) }}
+          </div>
+        </el-timeline-item>
+      </el-timeline>
+
+      <!-- 分頁 -->
+      <div class="timeline-card__pagination">
+        <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="PAGE_SIZE_OPTIONS"
+            :total="filteredRecords.length"
+            background
+            layout="total, sizes, prev, pager, next"
+            small
+        />
+      </div>
+    </template>
   </el-card>
 </template>
 
@@ -127,6 +265,7 @@ function isSameDay(a: Date, b: Date): boolean {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .timeline-card__title {
@@ -135,14 +274,27 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 .timeline-card__date {
-  /* DatePicker 自帶寬度,給點 margin 跟標題 / 計數區隔 */
-  margin-left: 4px;
+  /* daterange 自帶寬度;這裡只控制間距 */
+}
+
+.timeline-card__category {
+  width: 180px;
 }
 
 .timeline-card__count {
   margin-left: auto;
   font-size: 13px;
   color: var(--el-text-color-secondary);
+}
+
+.timeline-card__list {
+  margin-top: 4px;
+}
+
+.timeline-card__pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .record-row {
