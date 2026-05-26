@@ -46,6 +46,13 @@ const filteredRecords = computed(() => {
   }
 })
 
+/**
+ * 每週活動熱力圖固定吃本週紀錄,不隨 day/week 切換。
+ * 圖名本來就是「每週」,在日檢視下也該顯示完整一週的活動分佈,
+ * 否則日檢視只剩今天一列、其他六列全空,圖意義全失。
+ */
+const weeklyHeatmapRecords = computed(() => filterWeekRecords(store.records))
+
 function handleBack() {
   if (window.history.length > 1) router.back()
   else router.push({ name: 'personal-functions' })
@@ -155,7 +162,7 @@ onMounted(async () => {
       <div class="charts-row charts-row--bottom">
         <div class="charts-row__hourly">
           <WeeklyHeatmap
-            :records="filteredRecords"
+              :records="weeklyHeatmapRecords"
             :start-hour="store.workHours.start"
             :end-hour="store.workHours.end"
           />
@@ -192,7 +199,7 @@ onMounted(async () => {
       <div class="charts-row charts-row--bottom">
         <div class="charts-row__hourly">
           <WeeklyHeatmap
-            :records="filteredRecords"
+              :records="weeklyHeatmapRecords"
             :start-hour="store.workHours.start"
             :end-hour="store.workHours.end"
           />

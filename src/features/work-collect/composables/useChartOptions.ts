@@ -33,10 +33,15 @@ function startOfToday(): number {
   return d.getTime()
 }
 
-/** 獲取過去一週第一天 00:00:00 的時間戳 */
+/**
+ * 本週週一 00:00:00 的時間戳。
+ * 用 ISO 週(週一為週首)而非「過去 7 天滾動窗口」,讓「本週檢視」對齊使用者直覺
+ * (例如週二開 app 不會把上週五的紀錄當成本週五顯示在熱力圖上)。
+ */
 function startOfWeek(): number {
   const d = new Date()
-  d.setDate(d.getDate() - 6)
+    const offsetFromMon = (d.getDay() + 6) % 7 // Mon=0 ... Sun=6
+    d.setDate(d.getDate() - offsetFromMon)
   d.setHours(0, 0, 0, 0)
   return d.getTime()
 }
@@ -81,11 +86,12 @@ export function useWeekDailyBarOption(records: Ref<WorkRecord[]>) {
   return computed(() => {
     void locale.value  // 建立 reactive 依賴,語言切換時觸發重算
     const dayCounts = countByDay(records.value)
-    const now = new Date()
+      // 本週 Mon~Sun 七天標籤,跟 startOfWeek() 一致
+      const monday = new Date(startOfWeek())
     const days: string[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
+      for (let i = 0; i < 7; i++) {
+          const d = new Date(monday)
+          d.setDate(d.getDate() + i)
       days.push(`${d.getMonth() + 1}/${d.getDate()}`)
     }
     const data = days.map(day => dayCounts.get(day) || 0)
@@ -125,11 +131,12 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
   const { t, locale } = useI18n()
   return computed(() => {
     void locale.value
-    const now = new Date()
+      // 本週 Mon~Sun 七天標籤,跟 startOfWeek() 一致
+      const monday = new Date(startOfWeek())
     const days: string[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
+      for (let i = 0; i < 7; i++) {
+          const d = new Date(monday)
+          d.setDate(d.getDate() + i)
       days.push(`${d.getMonth() + 1}/${d.getDate()}`)
     }
 

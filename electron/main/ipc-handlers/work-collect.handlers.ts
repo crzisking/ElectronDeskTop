@@ -71,7 +71,7 @@ export function registerWorkCollectHandlers(
     }
   )
 
-  // ── 渲染端回送 AI 結果 → 寫 DB + 通知刷新 ────────────────────────
+    // ── 渲染端回送 AI 結果 → 寫 DB + 通知刷新
   ipcMain.on(
     IpcChannels.WORK_COLLECT_RESULT,
     (_event, payload: WorkResultPayload) => {
