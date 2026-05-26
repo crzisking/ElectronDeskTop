@@ -51,6 +51,8 @@ export interface ApiClient {
 
     put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
 
+    patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+
     delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>
 }
 
@@ -90,6 +92,8 @@ export function createHttpClient(baseURL: string, timeout = 15000): ApiClient {
             instance.post(url, data, config) as unknown as Promise<T>,
         put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
             instance.put(url, data, config) as unknown as Promise<T>,
+        patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+            instance.patch(url, data, config) as unknown as Promise<T>,
         delete: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
             instance.delete(url, config) as unknown as Promise<T>,
     }
