@@ -353,6 +353,7 @@
     "timelineExportEmpty": "No records to export",
     "timelineExportSuccess": "Exported {count} records",
     "timelineForeground": "Foreground: {title}",
+    "timelineReasonLabel": "Reason",
 
     "unitMinutes": "min",
     "unitDays": "days",

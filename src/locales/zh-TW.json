@@ -355,6 +355,7 @@
     "timelineExportEmpty": "沒有可匯出的紀錄",
     "timelineExportSuccess": "已匯出 {count} 筆紀錄",
     "timelineForeground": "前台:{title}",
+    "timelineReasonLabel": "分類依據",
 
     "unitMinutes": "分鐘",
     "unitDays": "天",

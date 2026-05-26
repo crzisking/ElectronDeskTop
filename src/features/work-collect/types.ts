@@ -9,7 +9,8 @@
 
 // 跨進程 type-only import:relative path 跨 src/ → electron/main/。
 // 只引型別,vite 不會把主進程代碼打進 renderer bundle。
-import type {WorkCategory, WorkRecord, NewWorkRecord} from '../../../electron/main/db/features/work-collect/schema'
+import type {NewWorkRecord, WorkCategory, WorkRecord} from '../../../electron/main/db/features'
+
 export type {WorkCategory, WorkRecord, NewWorkRecord}
 
 /** main → renderer:採集 tick payload */
@@ -19,6 +20,8 @@ export interface WorkCollectTickPayload {
   appName: string
   allWindows: string[]
   capturedAt: number
+  /** 主進程算好的截圖 dHash(16 hex),renderer 拿到不處理,直接帶回 main 寫 DB */
+  screenshotHash: string
 }
 
 /** renderer → main:AI 結果回送 */
@@ -29,11 +32,16 @@ export interface WorkResultPayload {
   category: WorkCategory
   description: string
   confidence: number
+  /** dHash,from tick payload 透傳 */
+  screenshotHash: string | null
+  /** AI 分類理由,可空 */
+  reason: string | null
 }
 
 /** 後端 unified response 的 .data */
 export interface WorkAnalyzeResponse {
   category: WorkCategory
   description: string
+  reason: string
   confidence: number
 }

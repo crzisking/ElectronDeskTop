@@ -184,8 +184,8 @@ app.whenReady().then(async () => {
   updateMgr.setQuitCallback(gracefulShutdown)
 
   // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用。
-  // scheduler 只負責 timer + capture + 推 IPC;HTTP 與 DB 寫入都在 handler / renderer 那側。
-  workCollector = new WorkCollectorScheduler(configManager, windowManager)
+  // scheduler 負責 timer + capture + 推 IPC;命中閒置時直接走 recordService 寫 DB 跳過 AI。
+  workCollector = new WorkCollectorScheduler(configManager, windowManager, workRecordService)
 
   registerAllHandlers({
     windowManager,

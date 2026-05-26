@@ -237,6 +237,10 @@ function exportTxt() {
           <div v-if="rec.activeWindowTitle" class="record-meta">
             {{ t('workCollect.timelineForeground', {title: rec.activeWindowTitle}) }}
           </div>
+          <div v-if="rec.reason" class="record-reason">
+            <span class="record-reason__label">{{ t('workCollect.timelineReasonLabel') }}:</span>
+            <span class="record-reason__text">{{ rec.reason }}</span>
+          </div>
         </el-timeline-item>
       </el-timeline>
 
@@ -313,5 +317,21 @@ function exportTxt() {
 .record-meta {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.record-reason {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.record-reason__label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.record-reason__text {
+  color: var(--el-text-color-regular);
 }
 </style>

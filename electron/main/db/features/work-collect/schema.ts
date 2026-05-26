@@ -36,6 +36,12 @@ export const workRecords = sqliteTable(
 
     /** 模型信心 0-1 */
     confidence: real('confidence'),
+
+      /** 截圖 dHash(16 hex,8x8 灰階差分),供閒置比對 + 事後 debug */
+      screenshotHash: text('screenshotHash'),
+
+      /** AI 為什麼把這張畫面歸到此分類的理由(可空,前期紀錄沒有此欄位) */
+      reason: text('reason'),
   },
   (table) => ({
     /** 流水線按時間倒序列;按日期區間查詢時走這條 */

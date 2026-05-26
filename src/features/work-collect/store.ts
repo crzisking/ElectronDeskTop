@@ -100,6 +100,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
         category: result.category,
         description: result.description,
         confidence: result.confidence,
+        screenshotHash: payload.screenshotHash ?? null,
+        reason: result.reason ?? null,
       }
       window.electronAPI.workCollect.sendResult(resultPayload)
 

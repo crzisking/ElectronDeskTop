@@ -17,7 +17,7 @@ import type {ConfigManager} from '../config-manager'
 import type {WindowManager} from '../window-manager'
 import type {WorkCollectorScheduler} from '../work-collector'
 import type {WorkRecordService} from '../db/features/work-collect/service'
-import type {WorkCategory} from '../db/features/work-collect/schema'
+import type {WorkCategory} from '../db/features'
 
 /** WORK_COLLECT_RESULT 的 payload 形狀,跟 renderer 端 IPC 呼叫對齊 */
 interface WorkResultPayload {
@@ -27,6 +27,10 @@ interface WorkResultPayload {
   category: WorkCategory
   description: string
   confidence: number
+    /** 截圖 dHash(16 hex),由主進程 scheduler 算好帶到 renderer 再回送 */
+    screenshotHash: string | null
+    /** AI 對分類理由的說明,可空(模型偶爾不輸出) */
+    reason: string | null
 }
 
 export function registerWorkCollectHandlers(
@@ -83,6 +87,8 @@ export function registerWorkCollectHandlers(
         category: payload.category,
         description: payload.description,
         confidence: payload.confidence,
+          screenshotHash: payload.screenshotHash,
+          reason: payload.reason,
       })
 
       // 通知渲染端刷新流水線(可能不只是觸發的那扇窗,future-proof)
