@@ -16,6 +16,7 @@
  */
 
 import OpenAI from 'openai'
+import {toRaw} from 'vue'
 import {uuid} from '@/utils/uuid'
 import {useAgentStore} from '../store'
 import {getToolDefinitions} from '../tools'
@@ -104,8 +105,18 @@ export function useAgentChat() {
                 {signal: controller?.signal},
             )
 
-            // 本輪 assistant 訊息:先 push 占位,串流解析過程中 mutate content
-            const assistantMsg: AgentMessage = {
+            // 本輪 assistant 訊息:先 push 占位,串流解析過程中 mutate content。
+            //
+            // ⚠️ Vue 3 reactivity 重要陷阱:
+            //   - `store.addMessage(draftMsg)` 把 raw 物件塞進 reactive array
+            //   - 但 `draftMsg` 變數本身仍是 raw 引用,**對它做 `.content = ...` mutation 不會觸發 reactive trigger**
+            //   - 渲染端的 computed / watch 依賴於 proxy set trap 才能感知變化,raw 寫入完全不傳播
+            //   - 表現:streaming 文字 / toolCalls / streaming flag 全部停留在初始值,UI 看到空訊息
+            //
+            // 解法:push 後從 `store.messages[length-1]` 取出 reactive proxy,
+            //       後續所有 mutation 走 proxy(包括傳給 consumeStream 的引用),
+            //       確保 set trap 被觸發,UI 正確更新。
+            const draftMsg: AgentMessage = {
                 id: uuid(),
                 conversationId: store.conversationId,
                 role: 'assistant',
@@ -113,17 +124,24 @@ export function useAgentChat() {
                 timestamp: Date.now(),
                 streaming: true,
             }
-            store.addMessage(assistantMsg)
+            store.addMessage(draftMsg)
+            const assistantMsg = store.messages[store.messages.length - 1]
 
             // ── stream 解析 ─────────────────────────────────────────
             const {toolCalls} = await consumeStream(stream, assistantMsg, controller)
 
-            // 收尾:標記非 streaming + 落地工具呼叫資訊
+            // 收尾:標記非 streaming + 落地工具呼叫資訊(走 proxy → 觸發 reactivity)
             assistantMsg.streaming = false
             if (toolCalls.length > 0) {
                 assistantMsg.toolCalls = toolCalls
             }
-            void window.agentAPI.saveMessage(assistantMsg)
+            // ⚠️ 跨 IPC 邊界必須用 toRaw 拆 proxy:
+            //   - `ipcRenderer.invoke(channel, payload)` 用 structuredClone 序列化 payload
+            //   - reactive proxy 不在 structuredClone 可序列化清單,會同步 throw "An object could not be cloned"
+            //   - 同步 throw 在 `void` 表達式內仍會冒泡到外層 try/catch,把整個 runLoop 中斷
+            // toRaw 返回 proxy 包裹的原始物件;同一條 assistantMsg 物件的 mutations 都寫到該 raw target,
+            // 所以 toRaw 拿到的就是當前最新值,可安全 clone。
+            void window.agentAPI.saveMessage(toRaw(assistantMsg))
 
             // 沒有 tool_calls → 對話自然結束,跳出循環
             if (!toolCalls.length) return
