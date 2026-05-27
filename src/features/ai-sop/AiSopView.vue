@@ -88,12 +88,12 @@ function beforeUpload(rawFile: File): boolean {
   const typeOk = ALLOWED_TYPES.includes(rawFile.type) || ALLOWED_EXTENSIONS.includes(ext)
   if (!typeOk) {
     // 原文：不支援的文件類型，僅允許 PDF、Word、Excel、PPT、圖片、文字檔
-    ElMessage.error(t('aisop.unsupportedType'))
+    ElMessage.error(t('aiSop.unsupportedType'))
     return false
   }
   if (rawFile.size > MAX_FILE_SIZE) {
     // 原文：{name} 超過 20MB，請壓縮後重試
-    ElMessage.error(t('aisop.fileTooLarge', {name: rawFile.name}))
+    ElMessage.error(t('aiSop.fileTooLarge', {name: rawFile.name}))
     return false
   }
   return true
@@ -103,13 +103,13 @@ function beforeUpload(rawFile: File): boolean {
 async function handleUpload() {
   if (!fanWeiTitle.value.trim()) {
     // 原文：請填寫上傳標題
-    ElMessage.warning(t('aisop.titleRequired'))
+    ElMessage.warning(t('aiSop.titleRequired'))
     return
   }
 
   if (!fileList.value.length) {
     // 原文：請選擇文件
-    ElMessage.warning(t('aisop.fileRequired'))
+    ElMessage.warning(t('aiSop.fileRequired'))
     return
   }
 
@@ -124,11 +124,11 @@ async function handleUpload() {
     const res = await aiSopApi.upload(formData) as AiSopUploadResult
     const fileId = res?.data ?? res?.fileId ?? ''
     // 原文：上傳成功！文件id：{id}
-    ElMessage.success(t('aisop.uploadOk', {id: String(fileId)}))
+    ElMessage.success(t('aiSop.uploadOk', {id: String(fileId)}))
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     // 原文：上傳失敗：{msg}
-    ElMessage.error(t('aisop.uploadFailed', {msg}))
+    ElMessage.error(t('aiSop.uploadFailed', {msg}))
   } finally {
     fileList.value = []
     fanWeiTitle.value = ''
@@ -174,12 +174,12 @@ async function handleUpload() {
       <div class="left-panel">
         <el-card shadow="hover">
           <template #header>
-            <span>{{ t('aisop.uploadHeader') }}</span>
+            <span>{{ t('aiSop.uploadHeader') }}</span>
           </template>
 
           <el-input
               v-model="fanWeiTitle"
-              :placeholder="t('aisop.titlePlaceholder')"
+              :placeholder="t('aiSop.titlePlaceholder')"
           />
 
           <el-upload
@@ -194,13 +194,13 @@ async function handleUpload() {
             </el-icon>
 
             <div class="el-upload__text">
-              {{ t('aisop.dragText1') }}
-              <em>{{ t('aisop.dragClick') }}</em>
+              {{ t('aiSop.dragText1') }}
+              <em>{{ t('aiSop.dragClick') }}</em>
             </div>
 
             <template #tip>
               <div class="el-upload__tip">
-                {{ t('aisop.tip') }}
+                {{ t('aiSop.tip') }}
               </div>
             </template>
           </el-upload>
@@ -209,7 +209,7 @@ async function handleUpload() {
               type="primary"
               @click="handleUpload"
           >
-            {{ t('aisop.uploadBtn') }}
+            {{ t('aiSop.uploadBtn') }}
           </el-button>
 
         </el-card>
@@ -229,7 +229,7 @@ async function handleUpload() {
           <!-- 原文：尚未設定 Dify 網址 -->
           <el-empty
               v-else
-              :description="t('aisop.urlNotConfigured')"
+              :description="t('aiSop.urlNotConfigured')"
               :image-size="120"
           />
 

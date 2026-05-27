@@ -112,7 +112,8 @@ export default defineConfig({
           // 日誌查看器子視窗 HTML 入口 → out/renderer/log-viewer.html
           logViewer: resolve('src/log-viewer.html'),
           // Agent 獨立窗口 HTML 入口 → out/renderer/agent.html
-          agent: resolve('src/agent.html')
+          // 入口移到 src/entries/agent/(對齊 §1.4 重構,集中所有獨立窗口入口)
+          agent: resolve('src/entries/agent/index.html')
         }
       }
     },

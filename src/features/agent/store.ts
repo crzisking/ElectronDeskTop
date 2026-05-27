@@ -10,14 +10,9 @@
 
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
+import {uuid} from '@/utils/uuid'
 import type {AgentConfig, AgentMessage} from './types'
 import {DEFAULT_SYSTEM_PROMPT} from './prompts'
-
-function uuid(): string {
-    // 內網應用,UUID 不需要 cryptographically strong;若 crypto.randomUUID 可用就用,否則 fallback
-    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-    return 'id-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
 
 const DEFAULT_CONFIG: Required<AgentConfig> = {
     apiKey: '',
@@ -88,5 +83,4 @@ export const useAgentStore = defineStore('agent', () => {
     }
 })
 
-export {uuid}
 export {DEFAULT_CONFIG}

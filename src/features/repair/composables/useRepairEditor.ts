@@ -14,7 +14,7 @@
  *  避免重複綁定造成貼一張圖觸發多次上傳。
  */
 import {onBeforeUnmount, ref} from 'vue'
-import type {QuillEditor} from '@vueup/vue-quill'
+import type {Quill, QuillEditor} from '@vueup/vue-quill'
 import type {FormInstance} from 'element-plus'
 
 interface UseRepairEditorOptions {
@@ -40,9 +40,13 @@ export function useRepairEditor(opts: UseRepairEditorOptions) {
     /**
      * Quill 原生實例。
      * 在 handleEditorReady 由 @vueup/vue-quill 傳入並保存。
-     * 用 any 是因為 Quill 的 TS 類型定義不完整。
+     *
+     * 用 Quill type 而非 any:vue-quill 1.x re-export 了 quill 的 Quill 介面;
+     * 雖然 .root / .on / .getSelection / .insertEmbed 等部分 method 在型別裡標得不完整,
+     * 但容器型別 narrow 掉,IDE 至少能補全 .root / .on 這些常用 API。
+     * 內部需要 method 不在型別內時(insertEmbed),呼叫處用 any 局部 cast。
      */
-    let quillInstance: any = null
+    let quillInstance: Quill | null = null
 
     /**
      * paste 監聽函數引用：保存的目的是在組件重新 mount 時先 remove 再 add，
@@ -59,7 +63,7 @@ export function useRepairEditor(opts: UseRepairEditorOptions) {
      *  2. text-change 同步表單值與附件列表
      *  3. paste 攔截剪貼板圖片，走自定義上傳流程
      */
-    function handleEditorReady(editor: any): void {
+    function handleEditorReady(editor: Quill): void {
         quillInstance = editor
 
         // 每次內容變化時同步表單值並掃描附件
@@ -109,7 +113,7 @@ export function useRepairEditor(opts: UseRepairEditorOptions) {
      * 取 Quill 實例。提供給 useRepairUpload / useRepairPolish 使用，
      * 避免他們直接訪問 quillInstance 變量造成閉包混亂。
      */
-    function getEditor(): any | null {
+    function getEditor(): Quill | null {
         return quillInstance
     }
 

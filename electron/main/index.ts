@@ -19,6 +19,7 @@ import {LogService} from './db/features/logs/service'
 import {WorkRecordService} from './db/features/work-collect/service'
 import {UserProfileService} from './db/features/user-profile/service'
 import {AgentService} from './db/features/agent/service'
+import {AgentToolService} from './services/agent-tool.service'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler} from './work-collector'
 
@@ -34,6 +35,8 @@ let workRecordService: WorkRecordService | null = null
 let userProfileService: UserProfileService | null = null
 let accountChangeCleaner: AccountChangeCleaner | null = null
 let agentService: AgentService | null = null
+// AgentToolService 不依賴 DB,單純包系統 API 的 wrapper,無 null state
+const agentToolService = new AgentToolService()
 let workCollector: WorkCollectorScheduler
 
 /**
@@ -203,6 +206,7 @@ app.whenReady().then(async () => {
     userProfileService,
     accountChangeCleaner,
     agentService,
+    agentToolService,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)

@@ -22,7 +22,7 @@
 import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useAgentStore} from './store'
-import {useAgentChat} from './useAgentChat'
+import {useAgentChat} from './composables/useAgentChat'
 import type {AgentMessage, ConversationSummary} from './types'
 
 const store = useAgentStore()
@@ -527,7 +527,18 @@ const currentTitle = computed(() => {
 </template>
 
 <style>
+/*
+  Agent 內部 token —— 改為「指向主窗 --app-* token」的本地別名(對齊 §1.11 重構)。
+  動機:命名與主窗統一(共用一份設計 token 系統),Agent UI 風格獨立透過覆寫色值實現,
+  而不是再 fork 一套變數名。
+
+  分三類:
+   1. 完全共用(尺寸 / 陰影 / 圓角 / 字型):直接 alias 到 --app-* 變數
+   2. 色值有 palette 差異(accent 用 ChatGPT 綠 而非主窗藍):本檔 hard-code
+   3. Agent 專屬的灰階層次(hover / active / faint 等):本檔自定,主窗沒有對等概念
+*/
 :root {
+  /* ── 色值:Agent 走 ChatGPT 風淺色 palette ────────────────── */
   --bg: #ffffff;
   --bg-sidebar: #f7f7f8;
   --bg-elevated: #ffffff;
@@ -541,18 +552,20 @@ const currentTitle = computed(() => {
   --text-secondary: #4a4a4a;
   --text-muted: #8e8e93;
   --text-faint: #b0b0b6;
+  /* accent 走 ChatGPT 綠,不沿用主窗 --app-accent(品牌藍),這是刻意的視覺隔離 */
   --accent: #10a37f;
   --accent-hover: #0e8e6e;
-  --danger: #e54a4a;
-  --warning: #d97706;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei',
-  'PingFang TC', 'Helvetica Neue', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+  --danger: var(--app-danger, #e54a4a);
+  --warning: var(--app-warning, #d97706);
+
+  /* ── 可共用 token:從主窗繼承,fallback 給未載入時兜底 ─── */
+  --shadow-sm: var(--app-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+  --shadow-md: var(--app-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.08));
+  --radius-sm: var(--app-radius-xs, 6px);
+  --radius: var(--app-radius-md, 10px);
+  --radius-lg: var(--app-radius-lg, 14px);
+  --font: var(--app-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif);
+  --font-mono: var(--app-font-mono, ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace);
 }
 
 html, body, #agent-app {

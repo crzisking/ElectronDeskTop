@@ -244,8 +244,7 @@
       "networkMsg": "Network error, cannot reach AI service"
     }
   },
-
-  "aisop": {
+  "aiSop": {
     "uploadHeader": "Upload to Fanwei",
     "titlePlaceholder": "Document title",
     "titleRequired": "Please enter a title",

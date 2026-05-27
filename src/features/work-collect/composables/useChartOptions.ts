@@ -10,8 +10,32 @@
  */
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
+import type {CallbackDataParams} from 'echarts/types/dist/shared'
 import {CATEGORY_COLOR, CATEGORY_LABEL_KEY, CATEGORY_ORDER} from '../category-colors'
 import type {WorkCategory, WorkRecord} from '../types'
+
+/**
+ * ECharts tooltip formatter 的 params 結構。
+ *
+ * 共用 ECharts 內建型別 `CallbackDataParams`(來自 `echarts/types/dist/shared`),
+ * 用聯合型別覆蓋「單值 / 多值陣列」兩種傳入形式。
+ *
+ * 注意:`axisValue` 在 ECharts 的型別裡標為 string,但實際情況下 trigger:'axis' + xAxis 為
+ * 數值或字串時都可能拿到 string,直接用即可。其它欄位(name / value / percent / marker)都有。
+ */
+type TooltipParam = CallbackDataParams & {
+  /** trigger:'axis' 才有,代表當前 axis 的值(常為小時 / 日期等字串) */
+  axisValue?: string
+  /**
+   * value 形態因圖表而異:
+   *  - bar/line:單一 number
+   *  - heatmap:[xIndex, yIndex, value] 三元陣列
+   * 用 number | number[] 覆蓋,使用方按場景 index 取值。
+   */
+  value: number | number[]
+  /** trigger:'item' + pie/donut 才有,百分比已格式化 */
+  percent?: number
+}
 
 type CategoryCounts = Record<WorkCategory, number>
 
@@ -207,12 +231,15 @@ export function useHourlyStackedOption(
       tooltip: {
         trigger: 'axis' as const,
         axisPointer: { type: 'shadow' as const },
-        formatter: (params: any[]) => {
-          const hour = params[0].axisValue
+        formatter: (params: TooltipParam[]) => {
+          // axisValue 在 ECharts 型別裡是 optional,實際 trigger:'axis' 必有,用 ?? '' 兜底
+          const hour = params[0].axisValue ?? ''
           let html = `<strong>${hour}:00 - ${parseInt(hour) + 1}:00</strong><br/>`
           for (const p of params) {
-            if (p.value > 0) {
-              html += `${p.marker} ${p.seriesName}: ${t('workCollect.chartTooltipRecord', { count: p.value })}<br/>`
+            // bar 場景 p.value 是 number;這裡顯式 narrow
+            const v = typeof p.value === 'number' ? p.value : 0
+            if (v > 0) {
+              html += `${p.marker} ${p.seriesName}: ${t('workCollect.chartTooltipRecord', {count: v})}<br/>`
             }
           }
           return html
@@ -264,7 +291,10 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
     return {
       tooltip: {
         trigger: 'item' as const,
-        formatter: (p: any) => t('workCollect.chartTooltipPercent', { value: `${p.name}: ${p.value}`, percent: p.percent }),
+        formatter: (p: TooltipParam) => t('workCollect.chartTooltipPercent', {
+          value: `${p.name}: ${p.value}`,
+          percent: p.percent
+        }),
       },
       legend: {
         orient: 'vertical' as const,
@@ -395,11 +425,16 @@ export function useWeeklyHeatmapOption(
     return {
       tooltip: {
         position: 'top' as const,
-        formatter: (p: any) => t('workCollect.chartHeatmapTooltip', {
-          day: dayLabels[p.value[1]],
-          hour: hourLabels[p.value[0]],
-          count: p.value[2],
-        }),
+        formatter: (p: TooltipParam) => {
+          // heatmap value 是 [xIndex, yIndex, count] 三元;ECharts 型別中 array item 是 OptionDataValue(可為 Date / null),
+          // 但本圖只放 number,顯式 Number() coerce 解 TS 警告 + 兜底
+          const v = Array.isArray(p.value) ? p.value : [0, 0, 0]
+          return t('workCollect.chartHeatmapTooltip', {
+            day: dayLabels[Number(v[1]) || 0],
+            hour: hourLabels[Number(v[0]) || 0],
+            count: Number(v[2]) || 0,
+          })
+        },
       },
       grid: { top: 8, bottom: 24, left: 48, right: 12 },
       xAxis: {
@@ -458,7 +493,7 @@ export function useAppRankOption(records: Ref<WorkRecord[]>, topN: number = 5) {
         trigger: 'axis' as const,
         axisPointer: { type: 'shadow' as const },
         // 自定 formatter:p.name 是 yAxis 完整字串,不會被 truncate 影響
-        formatter: (params: any[]) => {
+        formatter: (params: TooltipParam[]) => {
           if (!params || !params.length) return ''
           const p = params[0]
           return `<strong>${p.name}</strong><br/>${p.marker} ${p.value}`

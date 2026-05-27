@@ -11,7 +11,6 @@
  */
 
 import type {AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig} from 'axios'
-import {ElMessage, ElMessageBox} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/utils/logger'
 import router from '@/router'
@@ -89,10 +88,36 @@ function isAdTokenEndpoint(url: string | undefined): boolean {
 }
 
 /**
- * 為指定 Axios 實例附加完整的請求/響應攔截器
- * @param instance 要附加攔截器的 Axios 實例
+ * UI 行為注入接口 — 攔截器透過此介面跟使用者互動,不直接依賴 Element Plus。
+ *
+ * 動機(對應 §1.8 解耦):
+ *  - 攔截器原本直接 import ElMessage / ElMessageBox,導致:
+ *      1. 無法單元測試(必須 mock Element Plus)
+ *      2. 任何想用此攔截器的渲染端(浮球 / Agent / log-viewer)都被迫拉進 Element Plus
+ *  - 改成注入式後,呼叫方(`http-client.createHttpClient`)決定用什麼 UI 實作
+ *
+ * 主窗注入 Element Plus 實作(見 http-client.ts);若日後 Agent / 其它窗口直連後端,
+ * 可以注入 toast 風格或純 console 實作。
  */
-export function setupAuthInterceptor(instance: AxiosInstance): void {
+export interface InterceptorUiHooks {
+    /** 顯示一條錯誤訊息(對應原本的 `ElMessage.error`) */
+    showError(message: string): void
+
+    /**
+     * 顯示警告 / 確認彈窗(對應原本的 `ElMessageBox.alert`)。
+     * 回傳 Promise:resolve 代表使用者確認,reject 代表取消 / 關閉。
+     * 為了相容 ElMessageBox 的行為(關閉視為「我知道了」),呼叫方可以 await + catch 後再進行下一步。
+     */
+    showAlert(message: string, title: string, confirmText: string): Promise<void>
+}
+
+/**
+ * 為指定 Axios 實例附加完整的請求/響應攔截器。
+ *
+ * @param instance 要附加攔截器的 Axios 實例
+ * @param ui      UI 行為注入(showError / showAlert);呼叫方決定實作
+ */
+export function setupAuthInterceptor(instance: AxiosInstance, ui: InterceptorUiHooks): void {
 
   // ── 請求攔截器：注入 Token ──────────────────────────────────────────
   instance.interceptors.request.use(
@@ -122,7 +147,7 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
       // HTTP 200 但業務碼異常（後端返回了錯誤業務碼）
       if (response.status === 200) {
         if (code && code !== 200) {
-          ElMessage.error(`${code} - ${message}`)
+            ui.showError(`${code} - ${message}`)
             // 業務碼錯誤時 reject，調用方不會拿到錯誤數據
             return Promise.reject(new Error(`${code} - ${message}`))
         }
@@ -135,7 +160,7 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
         return response
       }
 
-      ElMessage.error(message ?? getError('Sys_Error'))
+        ui.showError(message ?? getError('Sys_Error'))
       return Promise.reject(new Error(message ?? 'Error'))
     },
 
@@ -144,7 +169,7 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
 
       // 網絡斷線（無響應）
       if (error.code === 'ERR_NETWORK') {
-        ElMessage.error(getError('ERR_NETWORK'))
+          ui.showError(getError('ERR_NETWORK'))
         return Promise.reject(error)
       }
 
@@ -193,10 +218,8 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
           // ── 原有流程:彈窗 + 登出 + 跳 /login ───────────────────────
           // 並發 401 全部復用同一個 Promise,避免多次彈窗 / 多次跳轉
           if (!_sessionExpiredPromise) {
-            _sessionExpiredPromise = ElMessageBox
-                .alert(getError('Session_expired'), 'Warning', {
-                  confirmButtonText: getError('OK')
-                })
+              _sessionExpiredPromise = ui
+                  .showAlert(getError('Session_expired'), 'Warning', getError('OK'))
                 .then(async () => {
                   await authStore.logout()
                   await router.push({name: 'login'})
@@ -220,27 +243,20 @@ export function setupAuthInterceptor(instance: AxiosInstance): void {
         }
 
         case 403: {
-          // 同 404：不 await，彈窗異步顯示，reject 立即傳播
-          ElMessageBox.alert(getError('Unauthorized_operation'), 'Warning', {
-              confirmButtonText: getError('OK'),
-              callback: () => {
-              },
-          })
+            // 同 404：不 await，彈窗異步顯示，reject 立即傳播。
+            // showAlert 回傳 Promise 我們不關心結果,catch 兜底避免 unhandled rejection。
+            ui.showAlert(getError('Unauthorized_operation'), 'Warning', getError('OK')).catch(() => undefined)
           break
         }
 
         case 404: {
           // 不 await：彈窗異步顯示，reject 立即傳播（loading spinner 不需等用戶點確認才停）
-          ElMessageBox.alert(getError('ERR_BAD_REQUEST'), 'Warning', {
-              confirmButtonText: getError('OK'),
-              callback: () => {
-              },
-          })
+            ui.showAlert(getError('ERR_BAD_REQUEST'), 'Warning', getError('OK')).catch(() => undefined)
           break
         }
 
         default: {
-          ElMessage.error(error.message ?? getError('Sys_Error'))
+            ui.showError(error.message ?? getError('Sys_Error'))
           break
         }
       }

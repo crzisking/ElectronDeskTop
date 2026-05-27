@@ -28,6 +28,7 @@ import type {LogService} from '../db/features/logs/service'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {UserProfileService} from '../db/features/user-profile/service'
 import type {AgentService} from '../db/features/agent/service'
+import type {AgentToolService} from '../services/agent-tool.service'
 import type {WorkCollectorScheduler} from '../work-collector'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
@@ -50,6 +51,7 @@ export interface IpcHandlerContext {
   userProfileService: UserProfileService | null
   accountChangeCleaner: AccountChangeCleaner | null
   agentService: AgentService | null
+  agentToolService: AgentToolService
 }
 
 /**
@@ -68,6 +70,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     userProfileService,
     accountChangeCleaner,
     agentService,
+    agentToolService,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -79,7 +82,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager)
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
-  registerAgentHandlers(windowManager, agentService)
+  registerAgentHandlers(windowManager, agentService, agentToolService)
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

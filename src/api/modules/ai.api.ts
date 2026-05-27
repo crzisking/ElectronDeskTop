@@ -4,7 +4,6 @@
  * 對接公司 AI 後端，提供三個工具的接口：
  *  1. textProcess  - 文本處理（潤色/翻譯/格式化）
  *  2. summarize    - 摘要生成
- *  3. qa（流式）   - 智能問答（SSE，見 useAiStream composable）
  *
  * baseURL 從 configStore.functionsConfig.apiBaseUrl 讀取，
  * 支持在 app-config.json 中切換到不同環境的 AI 服務。
@@ -68,9 +67,5 @@ export function useAiApi() {
     async summarize(request: SummarizeRequest): Promise<AiResponse> {
         return await getClient().post<AiResponse>('/summarize', request)
     }
-
-    // 注意：智能問答（QA）使用 SSE 流式響應，
-    // 不能用 Axios（Axios 不支持 ReadableStream），
-    // 請使用 src/composables/useAiStream.ts 中的 streamQa() 方法
   }
 }

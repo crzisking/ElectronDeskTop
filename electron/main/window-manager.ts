@@ -455,9 +455,10 @@ export class WindowManager {
     this.agentWindow.removeMenu()
 
     if (isDev && process.env['ELECTRON_RENDERER_URL']) {
-      this.agentWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/agent.html`)
+      // Agent 入口已遷移到 src/entries/agent/(§1.4),build 輸出位置跟著變
+      this.agentWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/entries/agent/index.html`)
     } else {
-      this.agentWindow.loadFile(join(__dirname, '../renderer/agent.html'))
+      this.agentWindow.loadFile(join(__dirname, '../renderer/entries/agent/index.html'))
     }
 
     this.agentWindow.once('ready-to-show', () => {

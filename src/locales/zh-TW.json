@@ -246,8 +246,7 @@
       "networkMsg": "網路異常，無法連接 AI 服務"
     }
   },
-
-  "aisop": {
+  "aiSop": {
     "uploadHeader": "上傳文件至泛微發佈",
     "titlePlaceholder": "請輸入文檔標題",
     "titleRequired": "請填寫上傳標題",

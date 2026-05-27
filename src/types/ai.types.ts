@@ -3,7 +3,6 @@
  *
  * 使用方：
  *  - src/api/modules/ai.api.ts
- *  - src/composables/useAiStream.ts
  */
 
 /**
@@ -53,7 +52,7 @@ export interface QaRequest {
 
 /**
  * AI 功能通用非流式響應
- * 文本處理和摘要使用此格式；問答（QA）使用 SSE 流式，見 useAiStream.ts
+ * 文本處理和摘要使用此格式。
  */
 export interface AiResponse {
   /** AI 返回的結果文本 */

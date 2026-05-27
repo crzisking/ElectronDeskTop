@@ -21,7 +21,24 @@
 
 import type {AxiosInstance, AxiosRequestConfig} from 'axios'
 import axios from 'axios'
-import {setupAuthInterceptor} from './interceptors/auth.interceptor'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {type InterceptorUiHooks, setupAuthInterceptor} from './interceptors/auth.interceptor'
+
+/**
+ * 主窗的 UI 注入實作 — 走 Element Plus。
+ *
+ * 攔截器本身不依賴 Element Plus(§1.8 解耦),所以注入點在這裡。
+ * 其它窗口若要復用此 http-client 工廠,可以傳入自己的 hooks(目前主窗外的窗口都不直連後端,
+ * 暫時沒有第二個實作)。
+ */
+const elementPlusUiHooks: InterceptorUiHooks = {
+    showError(message) {
+        ElMessage.error(message)
+    },
+    showAlert(message, title, confirmText) {
+        return ElMessageBox.alert(message, title, {confirmButtonText: confirmText}).then(() => undefined)
+    },
+}
 
 /**
  * 從 Vite 環境變量讀取 API 配置
@@ -81,8 +98,9 @@ export function createHttpClient(baseURL: string, timeout = 15000): ApiClient {
     }
   })
 
-  // 附加完整攔截器（Token 注入 + 業務碼/HTTP錯誤/401過期 統一處理）
-  setupAuthInterceptor(instance)
+    // 附加完整攔截器(Token 注入 + 業務碼 / HTTP 錯誤 / 401 過期 統一處理)
+    // UI 行為走 Element Plus(§1.8 解耦後,攔截器自身不再依賴 Element Plus)
+    setupAuthInterceptor(instance, elementPlusUiHooks)
 
     // 返回類型安全的包裝，攔截器已返回 data，所以直接 as Promise<T>
     return {

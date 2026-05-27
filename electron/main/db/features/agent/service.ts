@@ -9,29 +9,13 @@
  */
 
 import {asc, eq, sql} from 'drizzle-orm'
+// sql 在 listConversations 內仍會用到 — drop ensureTables 後 import 保留
 import type {DatabaseManager} from '../../database-manager'
 import {agentConfigs, type AgentMessageRow, agentMessages} from './schema'
+import type {AgentConfig, AgentMessage, OpenAIToolCall} from '../../../../shared/types/agent.types'
 
-/** 渲染端持有的 Agent 配置型別 */
-export interface AgentConfig {
-    apiKey?: string
-    baseUrl?: string
-    model?: string
-    systemPrompt?: string
-    temperature?: number
-    maxTurns?: number
-}
-
-/** 渲染端持有的 Agent 消息型別(跟 OpenAI ChatCompletion 對齊) */
-export interface AgentMessage {
-    id: string
-    conversationId: string
-    role: 'user' | 'assistant' | 'tool' | 'system'
-    content: string | null
-    toolCalls?: unknown
-    toolCallId?: string
-    timestamp: number
-}
+// re-export 讓既有 import path 不變(handler 端 import from '../db/features/agent/service' 不用動)
+export type {AgentConfig, AgentMessage}
 
 const CONFIG_KEYS: Array<keyof AgentConfig> = [
     'apiKey',
@@ -44,7 +28,6 @@ const CONFIG_KEYS: Array<keyof AgentConfig> = [
 
 export class AgentService {
     constructor(private readonly dbManager: DatabaseManager) {
-        this.ensureTables()
     }
 
     /** 讀取完整配置(缺欄位返回 undefined) */
@@ -186,65 +169,6 @@ export class AgentService {
         }
     }
 
-    /**
-     * Runtime 建表(不走 drizzle migration)。
-     *
-     * 為什麼不走 migration:Agent 是後加的 feature,跑 `npm run db:generate` 會把
-     * existing 6 張 config 表也納入新 snapshot,容易與既有 migration 衝突。
-     * 直接用 CREATE TABLE IF NOT EXISTS 在啟動時保證表存在,既不影響舊 migration
-     * 也不要求使用者升級時跑 drizzle-kit。
-     */
-    private ensureTables(): void {
-        if (!this.dbManager.isReady()) return
-        try {
-            const db = this.dbManager.getDb()
-            // drizzle-orm 的 BetterSQLite3Database 暴露原生 driver:用 SQL 直接執行
-            db.run(sql`CREATE TABLE IF NOT EXISTS agent_configs
-                       (
-                           key
-                           TEXT
-                           PRIMARY
-                           KEY,
-                           value
-                           TEXT
-                           NOT
-                           NULL,
-                           updatedAt
-                           INTEGER
-                           NOT
-                           NULL
-                       )`)
-            db.run(sql`CREATE TABLE IF NOT EXISTS agent_messages
-                       (
-                           id
-                           TEXT
-                           PRIMARY
-                           KEY,
-                           conversationId
-                           TEXT
-                           NOT
-                           NULL,
-                           role
-                           TEXT
-                           NOT
-                           NULL,
-                           content
-                           TEXT,
-                           toolCalls
-                           TEXT,
-                           toolCallId
-                           TEXT,
-                           timestamp
-                           INTEGER
-                           NOT
-                           NULL
-                       )`)
-            db.run(sql`CREATE INDEX IF NOT EXISTS idx_agent_messages_conv
-                ON agent_messages (conversationId, timestamp)`)
-        } catch (err) {
-            console.error('[AgentService] ensureTables 失敗', err)
-        }
-    }
 }
 
 function deriveTitle(raw: string | null): string {
@@ -261,7 +185,8 @@ function rowToMessage(r: AgentMessageRow): AgentMessage {
         conversationId: r.conversationId,
         role: r.role as AgentMessage['role'],
         content: r.content,
-        toolCalls: r.toolCalls ? safeParse(r.toolCalls) : undefined,
+        // DB 存的是 stringified JSON,parse 回來 cast 成 OpenAIToolCall[](信任寫入端正確序列化)
+        toolCalls: r.toolCalls ? (safeParse(r.toolCalls) as OpenAIToolCall[] | undefined) : undefined,
         toolCallId: r.toolCallId ?? undefined,
         timestamp: r.timestamp,
     }
