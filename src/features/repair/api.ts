@@ -86,21 +86,28 @@ export const repairApi = {
   },
 
   /**
-   * 上傳圖片（後端中轉至 OSS）
+   * 上傳圖片(後端中轉至 OSS)
    * POST /api/repair/upload
    * Content-Type: multipart/form-data
    *
-   * el-upload 的 http-request 自定義函數中調用此方法。
-   * 上傳成功後將返回的 { fileUrl, fileName } 追加到表單的 attachments 列表。
-   * 攔截器已返回 data（業務數據），泛型直接對應 RepairUploadResponse。
+   * 後端實際返回 `{ code, message, data: "http://..." }`,interceptor 剝層後 `data` 是**字串**(OSS URL),
+   * **不是** `{ fileUrl }` 物件。這裡統一兜底兩種形態:
+   *   - 字串 → 直接當 fileUrl
+   *   - 物件 → 取 .fileUrl(向後兼容,萬一後端改回物件)
+   * 對外仍保持 `{ fileUrl }` 介面,呼叫方(useRepairUpload)零修改。
    *
    * @param file 要上傳的圖片文件
-   * @returns OSS 可訪問的 URL 和原始文件名
+   * @returns { fileUrl }
    */
   async uploadFile(file: File): Promise<RepairUploadResponse> {
     const form = new FormData()
     form.append('file', file)
-    return await getClient().post<RepairUploadResponse>('/api/repair/upload', form)
+      const result = await getClient().post<unknown>('/api/repair/upload', form)
+      if (typeof result === 'string') return {fileUrl: result}
+      if (result && typeof result === 'object' && 'fileUrl' in result) {
+          return result as RepairUploadResponse
+      }
+      throw new Error('上傳介面回傳格式異常,無法解析 fileUrl')
   },
 
   /**

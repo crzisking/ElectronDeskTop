@@ -152,12 +152,23 @@ function onTabChange(name: string | number) {
               </span>
             </template>
             <div class="editor-wrapper">
+              <!--
+                為什麼 toolbar=[] + 顯式 formats:
+                  - `toolbar: []`:Quill 不渲染按鈕(我們也用全域 CSS 隱藏),
+                    **但同時會把 allowedFormats 限縮為空集合** → insertEmbed('image') 被悄悄丟棄,
+                    粘貼出來只剩裸文字 "image"
+                  - `toolbar: false`:vue-quill 1.2 對布林 false 不認識,fallback 成默認 toolbar(B/I/U/list...)
+                  - 真正的解法是用 `formats` prop 顯式 whitelist 允許的 format,
+                    `image` 必須在裡面,粘貼上來才會作為 <img> 真正寫進 HTML
+                顯示順序:formats=允許清單,toolbar=空陣列藏 UI,CSS 兜底再隱藏一次。
+              -->
               <QuillEditor
                 ref="quillEditorRef"
                 v-model:content="submitForm.description"
                 content-type="html"
                 theme="snow"
                 :toolbar="[]"
+                :formats="['image', 'bold', 'italic', 'underline', 'link', 'list', 'header', 'color', 'background']"
                 class="repair-editor"
                 @ready="handleEditorReady"
                 @blur="handleEditorBlur"
