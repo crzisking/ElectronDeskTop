@@ -30,6 +30,7 @@
     "electron-updater": "^6.8.3",
     "element-plus": "^2.4.0",
     "jwt-decode": "^4.0.0",
+    "openai": "^6.39.0",
     "pinia": "^2.1.0",
     "vue": "^3.3.0",
     "vue-echarts": "^8.0.1",

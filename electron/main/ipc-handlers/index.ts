@@ -19,6 +19,7 @@ import {registerLogViewerHandlers} from './log-viewer.handlers'
 import {registerWorkCollectHandlers} from './work-collect.handlers'
 import {registerFloatingBallHandlers} from './floating-ball.handlers'
 import {registerUserProfileHandlers} from './user-profile.handlers'
+import {registerAgentHandlers} from './agent.handlers'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -26,6 +27,7 @@ import type {UpdateManager} from '../update-manager'
 import type {LogService} from '../db/features/logs/service'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {UserProfileService} from '../db/features/user-profile/service'
+import type {AgentService} from '../db/features/agent/service'
 import type {WorkCollectorScheduler} from '../work-collector'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
@@ -47,6 +49,7 @@ export interface IpcHandlerContext {
   workRecordService: WorkRecordService | null
   userProfileService: UserProfileService | null
   accountChangeCleaner: AccountChangeCleaner | null
+  agentService: AgentService | null
 }
 
 /**
@@ -64,6 +67,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     workRecordService,
     userProfileService,
     accountChangeCleaner,
+    agentService,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -75,6 +79,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager)
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
+  registerAgentHandlers(windowManager, agentService)
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

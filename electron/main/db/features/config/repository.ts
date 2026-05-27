@@ -16,20 +16,18 @@
  *  - boolean / null 在 SQLite 0/1 跟 TS boolean / undefined 之間有顯式 helper 轉換
  */
 
-import {eq} from 'drizzle-orm'
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
-import type {AppConfig} from '../../../../../src/types/config'
-import type {QuickMenuAction, QuickMenuItem} from '../../../../../src/types/config'
+import type {AppConfig, QuickMenuAction, QuickMenuItem} from '../../../../../src/types/config'
 import {DEFAULT_CONFIG} from './defaults'
 import {
   appSettingsKv,
   internalTools,
   personalTools,
+  type QuickMenuItemRow,
   quickMenuItems,
   sidebarItems,
   systemLinks,
   unifiedPlatformSystems,
-  type QuickMenuItemRow,
 } from './schema'
 
 type Db = BetterSQLite3Database<any>
@@ -522,6 +520,8 @@ function rowToAction(r: QuickMenuItemRow): QuickMenuAction {
       }
     case 'quit-app':
       return {type: 'quit-app'}
+    case 'open-agent':
+      return {type: 'open-agent'}
     default:
       // 未知 actionType 兜底成「顯示主視窗」,避免 UI 直接炸
       return {type: 'show-main-window'}

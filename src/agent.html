@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8"/>
+    <!--
+      Agent 窗口 CSP:
+       - default 'self' + unsafe-inline 用於 Element Plus 樣式
+       - connect-src 開放 HTTPS — Agent 需要打 LLM API (DeepSeek / 自訂 baseUrl)
+       - img-src 開放 data: 給工具回傳的 base64 截圖
+    -->
+    <meta
+            content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https: http:;"
+            http-equiv="Content-Security-Policy"
+    />
+    <title>AI Agent</title>
+</head>
+<body>
+<div id="agent-app"></div>
+<script src="./agent/main.ts" type="module"></script>
+</body>
+</html>

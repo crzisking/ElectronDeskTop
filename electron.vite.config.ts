@@ -80,7 +80,9 @@ export default defineConfig({
           // 浮球窗口預加載腳本 → out/preload/floatingBall.js
           floatingBall: resolve('electron/preload/floating-ball.preload.ts'),
           // 日誌查看器子視窗預加載腳本 → out/preload/log-viewer.preload.js
-          'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts')
+          'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts'),
+          // Agent 獨立窗口預加載腳本 → out/preload/agent.preload.js
+          'agent.preload': resolve('electron/preload/agent.preload.ts')
         }
       }
     }
@@ -108,7 +110,9 @@ export default defineConfig({
           // 浮球窗口 HTML 入口 → out/renderer/floating-ball.html
           floatingBall: resolve('src/floating-ball.html'),
           // 日誌查看器子視窗 HTML 入口 → out/renderer/log-viewer.html
-          logViewer: resolve('src/log-viewer.html')
+          logViewer: resolve('src/log-viewer.html'),
+          // Agent 獨立窗口 HTML 入口 → out/renderer/agent.html
+          agent: resolve('src/agent.html')
         }
       }
     },

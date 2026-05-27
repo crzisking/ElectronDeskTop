@@ -18,6 +18,7 @@ import {DatabaseManager} from './db/database-manager'
 import {LogService} from './db/features/logs/service'
 import {WorkRecordService} from './db/features/work-collect/service'
 import {UserProfileService} from './db/features/user-profile/service'
+import {AgentService} from './db/features/agent/service'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler} from './work-collector'
 
@@ -32,6 +33,7 @@ let logService: LogService | null = null
 let workRecordService: WorkRecordService | null = null
 let userProfileService: UserProfileService | null = null
 let accountChangeCleaner: AccountChangeCleaner | null = null
+let agentService: AgentService | null = null
 let workCollector: WorkCollectorScheduler
 
 /**
@@ -123,6 +125,8 @@ app.whenReady().then(async () => {
     workRecordService = new WorkRecordService(dbManager)
     userProfileService = new UserProfileService(dbManager)
     accountChangeCleaner = new AccountChangeCleaner(dbManager)
+    // Agent feature 自管 schema(ensureTables in constructor),不影響 drizzle migration
+    agentService = new AgentService(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
@@ -130,6 +134,7 @@ app.whenReady().then(async () => {
     workRecordService = null
     userProfileService = null
     accountChangeCleaner = null
+    agentService = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -197,6 +202,7 @@ app.whenReady().then(async () => {
     workRecordService,
     userProfileService,
     accountChangeCleaner,
+    agentService,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)

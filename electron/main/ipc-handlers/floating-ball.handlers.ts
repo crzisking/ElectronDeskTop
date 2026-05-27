@@ -124,6 +124,11 @@ export function registerFloatingBallHandlers(
               // (action.url 來自 app-config.json,理論可被外部修改注入)
               safeOpenExternal(action.url)
               break
+
+            case 'open-agent':
+              // 開 AI Agent 獨立窗口(跟 log-viewer 同模式)
+              windowManager.createAgentWindow()
+              break
           }
         },
       }

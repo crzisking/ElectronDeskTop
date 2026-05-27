@@ -30,6 +30,9 @@ export class WindowManager {
   /** 日誌查看器子視窗(密碼解鎖後才開,關閉即銷毀,下次開重建) */
   private logViewerWindow: BrowserWindow | null = null
 
+  /** AI Agent 獨立窗口(關閉即銷毀,下次開重建) */
+  private agentWindow: BrowserWindow | null = null
+
   /**
    * 是否進入「應用退出中」狀態。
    * true 後主窗口的 close 事件不再 preventDefault，讓窗口正常關閉。
@@ -409,8 +412,85 @@ export class WindowManager {
     return child
   }
 
+  /**
+   * 建立 AI Agent 獨立窗口。
+   *
+   * 跟 log-viewer 同模式:
+   *  - 不持久化,關閉即銷毀,下次重新建
+   *  - 用獨立 preload (`agent.preload.js`),只暴露 agent feature 必要 IPC
+   *  - 完全獨立於主窗,互不干擾
+   *
+   * 由浮球快捷菜單(quickMenu action: 'open-agent')或主窗按鈕觸發。
+   */
+  createAgentWindow(): BrowserWindow {
+    if (this.agentWindow && !this.agentWindow.isDestroyed()) {
+      this.agentWindow.show()
+      this.agentWindow.focus()
+      return this.agentWindow
+    }
+
+    this.agentWindow = new BrowserWindow({
+      width: 1180,
+      height: 800,
+      minWidth: 920,
+      minHeight: 600,
+      icon: appIconPath,
+      title: 'AI Agent',
+      // 沿用系統標題欄,但藏掉 File/Edit/View/Window/Help 菜單(內部工具不需要)
+      frame: true,
+      autoHideMenuBar: true,
+      show: false,
+      backgroundColor: '#f7f7f8',
+      webPreferences: {
+        preload: join(__dirname, '../preload/agent.preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        devTools: isDev,
+      },
+    })
+
+    // 徹底移除菜單列(autoHideMenuBar 只藏不移除,Alt 還會喚出)
+    this.agentWindow.setMenuBarVisibility(false)
+    this.agentWindow.removeMenu()
+
+    if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+      this.agentWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/agent.html`)
+    } else {
+      this.agentWindow.loadFile(join(__dirname, '../renderer/agent.html'))
+    }
+
+    this.agentWindow.once('ready-to-show', () => {
+      this.agentWindow?.show()
+      if (isDev) {
+        this.agentWindow?.webContents.openDevTools({mode: 'detach'})
+      }
+      logger.info('Agent 窗口已開啟', 'WindowManager')
+    })
+
+    this.agentWindow.on('closed', () => {
+      this.agentWindow = null
+      logger.info('Agent 窗口已關閉', 'WindowManager')
+    })
+
+    // 外部鏈接走系統瀏覽器
+    this.agentWindow.webContents.setWindowOpenHandler(({url}) => {
+      safeOpenExternal(url)
+      return {action: 'deny'}
+    })
+
+    return this.agentWindow
+  }
+
+  /** 取 Agent 窗口(給 IPC handler 內部判斷可選) */
+  getAgentWindow(): BrowserWindow | null {
+    return this.agentWindow
+  }
+
   /** 銷毀所有窗口（quitAndInstall / 托盤退出時呼叫） */
   destroyAll(): void {
+    this.agentWindow?.destroy()
+    this.agentWindow = null
     this.logViewerWindow?.destroy()
     this.logViewerWindow = null
     this.floatingBallWindow?.destroy()

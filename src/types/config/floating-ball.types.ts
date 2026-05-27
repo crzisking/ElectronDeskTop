@@ -69,3 +69,4 @@ export type QuickMenuAction =
   | {type: 'navigate'; routeName: string}
   | {type: 'open-url'; url: string; target: 'browser' | 'iframe'}
   | {type: 'quit-app'}
+    | { type: 'open-agent' }
