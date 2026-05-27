@@ -23,6 +23,7 @@ import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useAgentStore} from './store'
 import {useAgentChat} from './composables/useAgentChat'
+import ChatMessage from './components/ChatMessage.vue'
 import type {AgentMessage, ConversationSummary} from './types'
 
 const store = useAgentStore()
@@ -146,18 +147,7 @@ async function onSaveSettings(): Promise<void> {
 // ── UI 計算屬性 ──────────────────────────────────────────────────
 const visibleMessages = computed(() => store.visibleMessages as AgentMessage[])
 
-/** 取得跟在某 assistant 訊息後面的 tool 結果(同輪)*/
-function toolsFollowing(asst: AgentMessage): AgentMessage[] {
-  const idx = store.messages.findIndex((m) => m.id === asst.id)
-  if (idx < 0) return []
-  const out: AgentMessage[] = []
-  for (let i = idx + 1; i < store.messages.length; i++) {
-    const m = store.messages[i]
-    if (m.role === 'tool') out.push(m)
-    else break
-  }
-  return out
-}
+/* toolsFollowing() 已移除:邏輯搬到 ChatMessage.vue 內,改用 toolCallId → ToolResult Map 索引 */
 
 /** 對話列表時間顯示:今天顯示 HH:mm,昨天顯示「昨天」,更早顯示 M/D */
 function formatTime(ts: number): string {
@@ -315,84 +305,19 @@ const currentTitle = computed(() => {
           </div>
         </div>
 
-        <!-- 訊息列表 -->
+        <!--
+          訊息列表(對應 doc 17 §1.1 / §9 重構):
+          - 渲染逻辑全部委派给 <ChatMessage>:avatar / author / blocks(markdown + tool 卡片)
+          - v-memo 確保舊訊息不再 reactive(v-memo 鎖在 id + content + streaming + toolCalls 長度)
+            streaming 中的那條每幀 invalidate,其它條全 skip,降低 reconciliation 成本
+        -->
         <div v-else class="msgs">
-          <article
+          <ChatMessage
               v-for="m in visibleMessages"
               :key="m.id"
-              :class="`msg--${m.role}`"
-              class="msg"
-          >
-            <div class="msg__avatar">
-              <template v-if="m.role === 'user'">您</template>
-              <svg
-                  v-else
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="14"
-              >
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" fill="currentColor" r="3"/>
-              </svg>
-            </div>
-
-            <div class="msg__body">
-              <div class="msg__author">{{ m.role === 'user' ? '您' : 'AI Agent' }}</div>
-              <div class="msg__content">
-                <template v-if="m.content">{{ m.content }}</template>
-                <span v-if="m.streaming" class="cursor">▍</span>
-              </div>
-
-              <!-- 工具調用 + 結果 -->
-              <template v-if="m.role === 'assistant' && m.toolCalls?.length">
-                <div
-                    v-for="(tc, i) in m.toolCalls"
-                    :key="tc.id"
-                    class="tool"
-                >
-                  <div class="tool__head">
-                    <svg fill="none" height="13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                         stroke-width="2"
-                         viewBox="0 0 24 24" width="13">
-                      <path
-                          d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                    </svg>
-                    <code>{{ tc.function.name }}</code>
-                    <span
-                        v-if="toolsFollowing(m)[i]?.toolDisplay"
-                        :class="toolsFollowing(m)[i].toolDisplay?.ok ? 'ok' : 'fail'"
-                        class="tool__badge"
-                    >
-                      {{ toolsFollowing(m)[i].toolDisplay?.ok ? '完成' : '失敗' }}
-                    </span>
-                  </div>
-                  <details class="tool__body">
-                    <summary>查看參數與結果</summary>
-                    <div class="tool__section">參數</div>
-                    <pre>{{ tc.function.arguments }}</pre>
-                    <template v-if="toolsFollowing(m)[i]">
-                      <div class="tool__section">結果</div>
-                      <img
-                          v-if="
-                          tc.function.name === 'screenshot' &&
-                          toolsFollowing(m)[i].toolDisplay?.preview?.startsWith('data:image')
-                        "
-                          :src="toolsFollowing(m)[i].toolDisplay?.preview"
-                          alt="螢幕截圖結果"
-                          class="tool__shot"
-                      />
-                      <pre v-else>{{ toolsFollowing(m)[i].toolDisplay?.preview }}</pre>
-                    </template>
-                  </details>
-                </div>
-              </template>
-            </div>
-          </article>
+              v-memo="[m.id, m.content, m.streaming, m.toolCalls?.length ?? 0]"
+              :message="m"
+          />
 
           <div v-if="store.status === 'error'" class="error-line">
             ⚠ {{ store.errorMessage }}
@@ -850,169 +775,10 @@ html, body, #agent-app {
   gap: 28px;
 }
 
-.msg {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.msg__avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.msg--user .msg__avatar {
-  background: #5b8def;
-  color: #fff;
-}
-
-.msg--assistant .msg__avatar {
-  background: var(--accent);
-  color: #fff;
-}
-
-.msg__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.msg__author {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.msg__content {
-  font-size: 14.5px;
-  line-height: 1.65;
-  color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.cursor {
-  display: inline-block;
-  width: 6px;
-  height: 16px;
-  background: var(--accent);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: blink 1s steps(2) infinite;
-}
-
-@keyframes blink {
-  to {
-    opacity: 0;
-  }
-}
-
-/* ── 工具卡片 ─────────────────────────────────────────── */
-.tool {
-  margin-top: 10px;
-  background: var(--bg-tool);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.tool__head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f4f4f5;
-  font-size: 12.5px;
-}
-
-.tool__head svg {
-  color: var(--text-muted);
-}
-
-.tool__head code {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text);
-  background: transparent;
-}
-
-.tool__badge {
-  margin-left: auto;
-  padding: 1px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.tool__badge.ok {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.tool__badge.fail {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.tool__body summary {
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-}
-
-.tool__body summary::before {
-  content: '▸ ';
-  display: inline-block;
-  transition: transform 0.15s;
-}
-
-.tool__body[open] summary::before {
-  content: '▾ ';
-}
-
-.tool__body summary:hover {
-  color: var(--text-secondary);
-}
-
-.tool__section {
-  padding: 6px 12px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  background: #f9f9fa;
-  border-top: 1px solid var(--border);
-}
-
-.tool__body pre {
-  margin: 0;
-  padding: 10px 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 280px;
-  overflow: auto;
-  background: var(--bg-elevated);
-}
-
-.tool__shot {
-  display: block;
-  max-width: 100%;
-  background: #000;
-}
+/*
+  .msg / .msg__* / .cursor / .tool / .tool__* 樣式已搬到 ChatMessage.vue 與 ToolCallCard.vue 內,
+  本檔不再保留(對應 doc 17 §1 重構 — AgentWindow.vue 瘦身)。
+*/
 
 .error-line {
   align-self: center;

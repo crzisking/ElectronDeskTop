@@ -42,6 +42,23 @@ export async function consumeStream(
     const toolCallsAcc = new Map<number, { id: string; name: string; argsBuf: string }>()
     let finishReason: string | null = null
 
+    // ── rAF 節流(對應 doc 17 §4.1) ──────────────────────────────────
+    // 流速 60-80 token/s 場景下,每個 token 都 mutate 會觸發 Vue 全鏈路 reactive 更新;
+    // 下游接上 markdown / hljs 後每次 ~5-15ms,500 token 訊息累積到 60ms+ 卡頓。
+    // 改用 requestAnimationFrame 把實際寫入收斂到顯示器刷新節奏(~60Hz),
+    // 下游 markdown 解析從 500 次降到 ~60 次,UX 仍然平滑。
+    let pendingFlush: number | null = null
+    const flushNow = () => {
+        assistantMsg.content = contentBuf
+    }
+    const scheduleFlush = () => {
+        if (pendingFlush !== null) return
+        pendingFlush = requestAnimationFrame(() => {
+            pendingFlush = null
+            flushNow()
+        })
+    }
+
     // 流空閒看門狗:每收到 chunk 就 reset,timeout 觸發 abort
     let idleTimer: ReturnType<typeof setTimeout> | null = null
     const resetIdleTimer = () => {
@@ -59,8 +76,7 @@ export async function consumeStream(
             const delta = choice.delta
             if (delta?.content) {
                 contentBuf += delta.content
-                // 直接 mutate 訊息物件,Vue 響應式追蹤 — 避免 O(n²) reactivity 重建
-                assistantMsg.content = contentBuf
+                scheduleFlush()
             }
             if (delta?.tool_calls) {
                 for (const tc of delta.tool_calls) {
@@ -79,6 +95,12 @@ export async function consumeStream(
         }
     } finally {
         if (idleTimer) clearTimeout(idleTimer)
+        // 流結束強制 flush:避免末尾 token 落在 pending rAF 內被取消
+        if (pendingFlush !== null) {
+            cancelAnimationFrame(pendingFlush)
+            pendingFlush = null
+        }
+        flushNow()
     }
 
     const toolCalls: OpenAIToolCall[] = Array.from(toolCallsAcc.values()).map((acc) => ({

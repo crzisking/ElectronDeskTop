@@ -15,7 +15,39 @@ export type {
   ConversationSummary,
 } from '@shared/types/agent.types'
 
-import type {AgentConfig, AgentMessage, ConversationSummary, ToolExecResult,} from '@shared/types/agent.types'
+import type {
+  AgentConfig,
+  AgentMessage,
+  ConversationSummary,
+  OpenAIToolCall,
+  ToolExecResult,
+} from '@shared/types/agent.types'
+
+// ── 渲染端專屬:Message Block 模型(對應 doc 17 §2.2) ──────────────────
+// 從 AgentMessage(平鋪 string + toolCalls 陣列)轉成的 view model,
+// 讓 MessageRenderer 用 discriminated union 路由到對應 component。
+//
+// 為何只放在渲染端而不放進 @shared/types/:
+//   - 純 view model,不參與 IPC 傳輸 / DB 落地
+//   - 主進程不關心訊息怎麼分塊渲染
+//   - 將來新增 block type(thinking / citation / mermaid ...)只動本檔,
+//     不擴大 @shared/types/ 的契約面
+
+/** 工具執行結果(渲染卡片用)— 對齊 AgentMessage.toolDisplay */
+export interface ToolResult {
+  ok: boolean
+  /** 短預覽,< 400 字;screenshot 為 base64 dataURL */
+  preview: string
+}
+
+export type MessageBlock =
+    | { type: 'text'; content: string }
+    | { type: 'tool_call'; toolCall: OpenAIToolCall; result?: ToolResult }
+    // ↓ 預留 block type,目前 MessageRenderer 不路由;未來啟用時新增 component + v-else-if 即可
+    | { type: 'thinking'; content: string }
+    | { type: 'citation'; refs: Array<{ title: string; url: string; snippet: string }> }
+    | { type: 'mermaid'; code: string }
+    | { type: 'file'; url: string; mime: string }
 
 declare global {
   interface Window {
