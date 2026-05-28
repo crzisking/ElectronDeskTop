@@ -51,6 +51,20 @@ export class WorkCollectorScheduler {
     private lastHash: string | null = null
     private lastActiveTitle: string | null = null
 
+    /** safety net:本機累積 unsynced 超過此值就提前 sync,防 desktop 長期不重啟批次過大 */
+    private static readonly SAFETY_NET_UNSYNCED_THRESHOLD = 50
+    // ─── 集中化(docs/20)─────────────────────────────────────────────
+    /**
+     * 上次拉 server config 的北京日期(yyyy-MM-dd);每天首次 tick 進工時前比對,不一致就推 renderer 拉 config。
+     * in-memory,重啟即 reset → 重啟時必拉一次。
+     */
+    private lastConfigSyncDay: string | null = null
+    /**
+     * 上次 tick 是否在工時內;用於偵測「跨越工時結束邊界」(true→false)→ 觸發 sync。
+     * 若 lastInsideWorkHours=true 且本次 isInWorkHours=false → 工時剛結束,推 sync request。
+     */
+    private lastInsideWorkHours = false
+
   constructor(
     private readonly cfg: ConfigManager,
     private readonly winMgr: WindowManager,
@@ -77,8 +91,21 @@ export class WorkCollectorScheduler {
     if (this.timer) return // 已啟動,不重複
 
     const intervalMs = Math.max(1, c.intervalMinutes ?? 5) * 60_000
-    this.timer = setInterval(() => void this.tick(), intervalMs)
-    logger.info(`工作採集已啟動,間隔 ${intervalMs / 60_000} 分鐘`, 'WorkCollector')
+
+      // 啟動時延遲一個隨機 jitter(< 50% intervalMs)再開始,避免 500 台 desktop 整點對齊砸 server。
+      const jitterMs = Math.floor(Math.random() * intervalMs * 0.5)
+      setTimeout(() => {
+          // 啟動觸發:拉一次 config + 補傳本地 unsynced(處理「16:55 關機」場景)
+          this.requestConfigPull()
+          this.requestSync('startup')
+          void this.tick()
+          this.timer = setInterval(() => void this.tick(), intervalMs)
+      }, jitterMs)
+
+      logger.info(
+          `工作採集已啟動,間隔 ${intervalMs / 60_000} 分鐘,jitter ${Math.round(jitterMs / 1000)}s`,
+          'WorkCollector'
+      )
   }
 
   /** 停止採集(關閉開關時 / app 退出時呼叫) */
@@ -93,6 +120,15 @@ export class WorkCollectorScheduler {
   /** 單次採集流程,每 N 分鐘執行一次 */
   private async tick(): Promise<void> {
     try {
+        // 0. 集中化:每天首次 tick 拉 config + 偵測跨越工時邊界觸發 sync
+        this.maybeRequestConfigPull()
+        const insideNow = this.isInWorkHours()
+        if (this.lastInsideWorkHours && !insideNow) {
+            // 工時剛結束(上一輪在內,這一輪在外)→ 觸發 sync
+            this.requestSync('work-end')
+        }
+        this.lastInsideWorkHours = insideNow
+
       // 1. 螢幕鎖 → 跳過
       if (this.isScreenLocked) {
         logger.debug('螢幕鎖中,tick skip', 'WorkCollector')
@@ -100,10 +136,13 @@ export class WorkCollectorScheduler {
       }
 
       // 2. 工時區間 → 跳過
-      if (!this.isInWorkHours()) {
+        if (!insideNow) {
         logger.debug('非工時,tick skip', 'WorkCollector')
         return
       }
+
+        // 2.5 safety net:工時內若累積 unsynced 過多,提前推 sync(防長期不重啟單批爆量)
+        this.maybeSafetyNetSync()
 
       // 3. 主視窗沒就緒就 skip(渲染端拿不到推送,白採集)
       const win = this.winMgr.getMainWindow()
@@ -173,8 +212,8 @@ export class WorkCollectorScheduler {
         )
 
         if (idleSec >= idleThreshold) return true
-        if (dist !== null && dist <= HASH_SIMILAR_THRESHOLD) return true
-        return false
+        return dist !== null && dist <= HASH_SIMILAR_THRESHOLD;
+
     }
 
     /** 直接寫一筆 idle 紀錄,並推 PUSH_WORK_RECORD_NEW 讓 UI 刷新 */
@@ -202,14 +241,63 @@ export class WorkCollectorScheduler {
         logger.debug('已寫入 idle 紀錄(skip AI)', 'WorkCollector')
     }
 
-  /** 判斷現在是否在工時區間內([startHour, endHour),含 start 不含 end) */
+    /**
+     * 判斷現在是否在工時區間內([startHour, endHour),含 start 不含 end)。
+     * 鎖死北京時間(UTC+8,無 DST),避免 VPN 出差時 OS 時區漂移造成「凌晨採集」混亂。
+     */
   private isInWorkHours(): boolean {
     const c = this.cfg.getConfig().workCollect
     const start = c?.workStartHour ?? 8
     const end = c?.workEndHour ?? 17
-    const hour = new Date().getHours()
+        const hour = getBeijingHour()
     return hour >= start && hour < end
   }
+
+    // ─── 集中化(docs/20):config / sync 推送輔助 ────────────────────────
+
+    /**
+     * 推 PUSH_WORK_COLLECT_CONFIG_REQUEST 要 renderer 拉 /my-config。
+     * 標記今天已拉,避免一天重複拉。
+     */
+    private requestConfigPull(): void {
+        const win = this.winMgr.getMainWindow()
+        if (!win || win.isDestroyed()) {
+            logger.debug('主視窗未就緒,config pull 暫緩', 'WorkCollector')
+            return
+        }
+        const today = getBeijingDate()
+        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST)
+        this.lastConfigSyncDay = today
+        logger.info(`已推 config pull(beijingDay=${today})`, 'WorkCollector')
+    }
+
+    /** 每天首次 tick 進工時前若還沒拉過 config,推一次 */
+    private maybeRequestConfigPull(): void {
+        const today = getBeijingDate()
+        if (this.lastConfigSyncDay === today) return
+        this.requestConfigPull()
+    }
+
+    /** 推 PUSH_WORK_COLLECT_SYNC_REQUEST 要 renderer 上傳 unsynced */
+    private requestSync(reason: 'startup' | 'work-end' | 'safety-net'): void {
+        const win = this.winMgr.getMainWindow()
+        if (!win || win.isDestroyed()) {
+            logger.debug(`主視窗未就緒,sync(${reason}) 暫緩`, 'WorkCollector')
+            return
+        }
+        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, {reason})
+        logger.info(`已推 sync request reason=${reason}`, 'WorkCollector')
+    }
+
+    /** 工時內若 unsynced 累積過多,提前 sync;次數不會過頻(僅每 tick 檢查一次,且閾值較高) */
+    private maybeSafetyNetSync(): void {
+        if (!this.recordService) return
+        const pending = this.recordService.countUnsynced()
+        if (pending >= WorkCollectorScheduler.SAFETY_NET_UNSYNCED_THRESHOLD) {
+            logger.info(`unsynced=${pending} >= 閾值,觸發 safety-net sync`, 'WorkCollector')
+            this.requestSync('safety-net')
+        }
+    }
 
     /** 擷取 primary 螢幕 NativeImage(thumbnail 用 workAreaSize 全尺寸) */
     private async captureScreenshot(): Promise<NativeImage> {
@@ -272,6 +360,23 @@ export class WorkCollectorScheduler {
   dispose(): void {
     this.stop()
   }
+}
+
+/**
+ * 北京時間小時(0-23);UTC+8 無 DST,直接 +8h 後取 UTC 小時。
+ * 不用 date-fns-tz / Intl.DateTimeFormat,避免額外依賴。
+ */
+function getBeijingHour(): number {
+    return (new Date().getUTCHours() + 8) % 24
+}
+
+/** 北京日期 yyyy-MM-dd;config 同步以「北京日」為單位判斷今天是否拉過 */
+function getBeijingDate(): string {
+    const beijing = new Date(Date.now() + 8 * 3600_000)
+    const y = beijing.getUTCFullYear()
+    const m = String(beijing.getUTCMonth() + 1).padStart(2, '0')
+    const d = String(beijing.getUTCDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
 }
 
 /** 兩個 16-hex dHash 字串的 Hamming distance(逐 byte popcount) */

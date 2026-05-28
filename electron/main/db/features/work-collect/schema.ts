@@ -42,10 +42,24 @@ export const workRecords = sqliteTable(
 
       /** AI 為什麼把這張畫面歸到此分類的理由(可空,前期紀錄沒有此欄位) */
       reason: text('reason'),
+
+      /**
+       * 是否已同步到 server(集中化設計,docs/20):
+       *   0 = 未同步;1 = 已同步
+       * 預設 0,sync-daily 成功後寫 1。離線時繼續 insert 0,網路恢復補傳。
+       * 既有歷史紀錄遷移後預設 0,首次啟動會被 safety net 一次性 batch upload。
+       */
+      synced: integer('synced').notNull().default(0),
+
+      /** server 端 SyncedAt(Unix ms);未同步為 null */
+      syncedAt: integer('syncedAt'),
   },
   (table) => ({
     /** 流水線按時間倒序列;按日期區間查詢時走這條 */
     idxCapturedAt: index('idx_work_capturedAt').on(table.capturedAt),
+
+      /** sync-daily 撈未同步紀錄走這條;synced=0 的列稀疏,效率好 */
+      idxSynced: index('idx_work_records_synced').on(table.synced, table.capturedAt),
   })
 )
 

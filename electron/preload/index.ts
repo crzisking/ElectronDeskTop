@@ -45,6 +45,9 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
   // 工作採集:tick 推送 + 寫入完成通知
   IpcChannels.PUSH_WORK_COLLECT_TICK,
   IpcChannels.PUSH_WORK_RECORD_NEW,
+  // 工作採集集中化(docs/20):main 觸發 renderer 拉 config / 上傳 sync
+  IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST,
+  IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST,
 ]
 
 /**

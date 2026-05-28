@@ -13,7 +13,8 @@
  */
 
 import {createHttpClient} from '@/api/http-client'
-import type {WorkAnalyzeResponse} from './types'
+import {scheduleRequest} from './request-scheduler'
+import type {WorkAnalyzeResponse, WorkConfigResponse, WorkSyncDailyResponse, WorkSyncRecordItem,} from './types'
 
 // 走 VITE_WORK_COLLECT_API_URL,跟 repair 解耦(雖然當前指向同一個 tmbom 後端,
 // 但語義上 work-collect 應該有自己的環境變數,日後拆服務不必動代碼)。
@@ -57,6 +58,38 @@ export const workCollectApi = {
     form.append('allWindows', JSON.stringify(allWindows))
     form.append('capturedAt', String(capturedAt))
 
-    return await getClient().post<WorkAnalyzeResponse>('/api/WorkCollect/analyze', form)
+    // analyze:走 15s 散佈窗口,壓平整點對齊的瞬時峰值,又不至於拖太久回 UI
+    return await scheduleRequest(
+        () => getClient().post<WorkAnalyzeResponse>('/api/WorkCollect/analyze', form),
+        {profile: 'analyze', label: 'analyze'},
+    )
+  },
+
+  /**
+   * 拉當前使用者的 server 端配置(管理員可改的那份)。
+   * 啟動時 + 每天首次 tick 進工時前各拉一次。
+   * 比對 version,新版本就覆蓋本地 config + scheduler 重啟。
+   */
+  async getMyConfig(): Promise<WorkConfigResponse> {
+    // config 拉取多半 08:00 / 啟動時集中發生,走 25s 散佈窗口削峰
+    return await scheduleRequest(
+        () => getClient().get<WorkConfigResponse>('/api/WorkCollect/my-config'),
+        {profile: 'config', label: 'getMyConfig'},
+    )
+  },
+
+  /**
+   * 批次上傳未同步的採集紀錄。後端冪等(UNIQUE on UserId+LocalId)。
+   * 單請求最多 200 條,呼叫方自行分批。
+   */
+  async syncDaily(records: WorkSyncRecordItem[]): Promise<WorkSyncDailyResponse> {
+    // sync-daily 集中在 17:00 工時結束爆發,走 25s 散佈窗口削峰
+    return await scheduleRequest(
+        () => getClient().post<WorkSyncDailyResponse>(
+            '/api/WorkCollect/sync-daily',
+            {records},
+        ),
+        {profile: 'sync-daily', label: 'syncDaily'},
+    )
   },
 }

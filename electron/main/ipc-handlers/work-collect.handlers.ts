@@ -97,4 +97,75 @@ export function registerWorkCollectHandlers(
       logger.debug(`紀錄已寫入 category=${payload.category}`, 'IPC:work')
     }
   )
+
+    // ── 集中化(docs/20):server sync 三條 IPC ──────────────────────────
+
+    /** 撈未同步紀錄(synced=0) */
+    ipcMain.handle(
+        IpcChannels.WORK_COLLECT_LIST_UNSYNCED,
+        (_event, limit: number = 200) => {
+            if (!recordService) return []
+            return recordService.listUnsynced(limit)
+        }
+    )
+
+    /** sync-daily 成功後標記已同步 */
+    ipcMain.handle(
+        IpcChannels.WORK_COLLECT_MARK_SYNCED,
+        (_event, payload: { localIds: number[]; syncedAt: number }) => {
+            if (!recordService) return
+            recordService.markSynced(payload.localIds ?? [], payload.syncedAt ?? Date.now())
+        }
+    )
+
+    /**
+     * server 配置回來 → 寫進 ConfigManager。
+     * 比對舊版本決定是否 restart scheduler;若 enabled 變化也跟著啟停。
+     *
+     * 注意:管理員可改 enabled,所以本機 toggle 跟 server 同步存在「最終以 server 為準」的競態 ——
+     * 設計上接受,因為使用者每天 8 點(以及啟動)會被覆蓋一次,中間時段自己的 toggle 仍有效。
+     */
+    ipcMain.handle(
+        IpcChannels.WORK_COLLECT_APPLY_REMOTE_CONFIG,
+        async (_event, remote: {
+            enabled: boolean
+            intervalMinutes: number
+            workStartHour: number
+            workEndHour: number
+            version: number
+        }): Promise<{ changed: boolean }> => {
+            const current = configManager.getConfig().workCollect
+            // 比對 4 個欄位,任一不同就視為變更(version 不直接比,因為本地不存)
+            const changed = !current
+                || current.enabled !== remote.enabled
+                || current.intervalMinutes !== remote.intervalMinutes
+                || current.workStartHour !== remote.workStartHour
+                || current.workEndHour !== remote.workEndHour
+
+            if (!changed) {
+                logger.debug('server 配置與本地一致,不需更新', 'IPC:work')
+                return {changed: false}
+            }
+
+            await configManager.writeConfig({
+                workCollect: {
+                    enabled: remote.enabled,
+                    intervalMinutes: remote.intervalMinutes,
+                    workStartHour: remote.workStartHour,
+                    workEndHour: remote.workEndHour,
+                },
+            })
+
+            // 配置變了 → 重啟 scheduler 套用新 interval / 啟停依 enabled
+            scheduler.stop()
+            if (remote.enabled) {
+                scheduler.start()
+            }
+            logger.info(
+                `server 配置已套用 enabled=${remote.enabled} interval=${remote.intervalMinutes} v=${remote.version}`,
+                'IPC:work'
+            )
+            return {changed: true}
+        }
+    )
 }

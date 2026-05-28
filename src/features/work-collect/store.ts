@@ -17,7 +17,7 @@ import {useConfigStore} from '@/stores/config.store'
 import {logger} from '@/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
 import {workCollectApi} from './api'
-import type {WorkCollectTickPayload, WorkRecord, WorkResultPayload} from './types'
+import type {WorkCollectTickPayload, WorkRecord, WorkResultPayload, WorkSyncRecordItem,} from './types'
 
 export const useWorkCollectStore = defineStore('workCollect', () => {
   const configStore = useConfigStore()
@@ -116,6 +116,105 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     refresh().catch(() => undefined)
   }
 
+    // ── 集中化(docs/20):config 拉取 + sync 上傳 ──────────────────────
+
+    /**
+     * server 配置同步:
+     *   1. HTTP GET /my-config
+     *   2. IPC applyRemoteConfig → main 寫入 ConfigManager + 視變更重啟 scheduler
+     *
+     * 失敗只 log;網路不通就等下次觸發(啟動 / 第二天 8 點)。
+     */
+    async function onConfigRequest() {
+        try {
+            const remote = await workCollectApi.getMyConfig()
+            const result = await window.electronAPI.workCollect.applyRemoteConfig({
+                enabled: remote.enabled,
+                intervalMinutes: remote.intervalMinutes,
+                workStartHour: remote.workStartHour,
+                workEndHour: remote.workEndHour,
+                version: remote.version,
+            })
+            // 配置變了 → 重新 load 一次,讓 configStore.appConfig 對齊本地剛寫的 DB
+            if (result.changed) {
+                await useConfigStore().loadConfig()
+                logger.info(`已套用 server 配置 v${remote.version}`, 'WorkCollectStore')
+            }
+        } catch (err) {
+            logger.warn('拉取 server 配置失敗,等下次觸發', 'WorkCollectStore', err)
+        }
+    }
+
+    /**
+     * 批次同步本地未上傳紀錄到 server。
+     *
+     * 流程:
+     *   1. IPC 撈 unsynced(每批最多 200)
+     *   2. 轉成 sync-daily 上傳格式(localId = 本地 record.id)
+     *   3. POST,拿回 successLocalIds
+     *   4. IPC mark 已同步
+     *   5. 若還有未傳就遞迴繼續(超過 5 批中斷,留下次觸發,避免無限 loop)
+     *
+     * 失敗只 log,留給下次觸發(work-end / safety-net / 重啟)再試。
+     */
+    async function syncDailyRecords(): Promise<void> {
+        for (let round = 0; round < 5; round++) {
+            let chunk: WorkRecord[] = []
+            try {
+                chunk = (await window.electronAPI.workCollect.listUnsynced(200)) as WorkRecord[]
+            } catch (err) {
+                logger.warn('撈 unsynced 失敗', 'WorkCollectStore', err)
+                return
+            }
+            if (!chunk || chunk.length === 0) {
+                logger.debug('本地無未同步紀錄,sync 結束', 'WorkCollectStore')
+                return
+            }
+
+            const records: WorkSyncRecordItem[] = chunk.map((r) => ({
+                localId: r.id,
+                capturedAt: r.capturedAt,
+                activeApp: r.activeApp,
+                activeWindowTitle: r.activeWindowTitle,
+                category: r.category,
+                description: r.description,
+                confidence: r.confidence,
+                screenshotHash: r.screenshotHash,
+                reason: r.reason,
+            }))
+
+            try {
+                const resp = await workCollectApi.syncDaily(records)
+                const ok = resp.successLocalIds ?? []
+                // duplicates 雖然 server 沒落庫,但已經在 server 端有了,本地也標 synced=1 避免反覆送
+                const successOrDup = new Set(ok)
+                // 對於整批內所有 localId,只要 server 沒明確標 failed 都認為「server 已有」→ 標 synced
+                const allLocalIds = records.map((r) => r.localId).filter((id) => successOrDup.has(id) || resp.duplicates > 0)
+                const toMark = ok.length > 0 ? ok : allLocalIds
+                if (toMark.length > 0) {
+                    await window.electronAPI.workCollect.markSynced(toMark, resp.syncedAt ?? Date.now())
+                }
+                logger.info(
+                    `sync-daily 完成 inserted=${resp.inserted} duplicates=${resp.duplicates} marked=${toMark.length}`,
+                    'WorkCollectStore'
+                )
+                if (chunk.length < 200) return // 已撈乾淨
+            } catch (err) {
+                logger.warn('sync-daily HTTP 失敗,等下次觸發', 'WorkCollectStore', err)
+                return
+            }
+        }
+        logger.info('sync-daily 達 5 批上限,剩餘留下次觸發', 'WorkCollectStore')
+    }
+
+    function onSyncRequest(...args: unknown[]) {
+        const payload = args[0] as { reason?: string } | undefined
+        logger.info(`收到 sync request reason=${payload?.reason ?? 'unknown'}`, 'WorkCollectStore')
+        syncDailyRecords().catch((err) => {
+            logger.warn('syncDailyRecords 異常', 'WorkCollectStore', err)
+        })
+    }
+
   /**
    * 訂閱主進程推送。冪等 —— 多次呼叫不會重複註冊(用模組級 flag 守住)。
    * App.vue mount 後呼叫一次即可。
@@ -124,10 +223,16 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     if (subscribed) return
     window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_TICK, onTick)
     window.electronAPI.on(IpcChannels.PUSH_WORK_RECORD_NEW, onRecordNew)
+      // 集中化:訂閱 main 推來的 config / sync request
+      window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST, onConfigRequest)
+      window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, onSyncRequest)
     subscribed = true
   }
 
-  return {enabled, intervalMinutes, workHours, records, loading, toggle, refresh, bootstrap}
+    return {
+        enabled, intervalMinutes, workHours, records, loading,
+        toggle, refresh, bootstrap, syncDailyRecords,
+    }
 })
 
 // ── 模組級狀態 ──────────────────────────────────────────────────

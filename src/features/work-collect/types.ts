@@ -45,3 +45,40 @@ export interface WorkAnalyzeResponse {
   reason: string
   confidence: number
 }
+
+/**
+ * 集中化(docs/20):後端 /api/WorkCollect/my-config 的 .data
+ * desktop 啟動 + 每天首次 tick 進工時前拉一次,版本變了就覆蓋本地 config。
+ */
+export interface WorkConfigResponse {
+  userId: string
+  enabled: boolean
+  intervalMinutes: number
+  workStartHour: number
+  workEndHour: number
+  version: number
+  /** Unix ms(UTC) */
+  updatedAt: number
+  updatedBy?: string
+}
+
+/** sync-daily 單筆紀錄 payload */
+export interface WorkSyncRecordItem {
+  /** desktop 本地 SQLite work_records.id;server 端用於 (UserId, LocalId) 冪等 */
+  localId: number
+  capturedAt: number
+  activeApp: string | null
+  activeWindowTitle: string | null
+  category: WorkCategory
+  description: string
+  confidence: number | null
+  screenshotHash: string | null
+  reason: string | null
+}
+
+export interface WorkSyncDailyResponse {
+  inserted: number
+  duplicates: number
+  syncedAt: number
+  successLocalIds: number[]
+}
