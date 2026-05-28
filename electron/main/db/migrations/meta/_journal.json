@@ -43,6 +43,13 @@
       "when": 1779857300533,
       "tag": "0005_loose_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779940893494,
+      "tag": "0006_good_lifeguard",
+      "breakpoints": true
     }
   ]
 }

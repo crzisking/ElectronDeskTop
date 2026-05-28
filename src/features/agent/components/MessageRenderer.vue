@@ -16,6 +16,7 @@
 import type {MessageBlock} from '../types'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 import ToolCallCard from './ToolCallCard.vue'
+import ThinkingBlock from './ThinkingBlock.vue'
 
 defineProps<{
   block: MessageBlock
@@ -35,8 +36,13 @@ defineProps<{
       :result="block.result"
       :tool-call="block.toolCall"
   />
+  <ThinkingBlock
+      v-else-if="block.type === 'thinking'"
+      :content="block.content"
+      :streaming="streaming"
+  />
   <!--
-    預留 block type:thinking / citation / mermaid / file。
+    預留 block type:citation / mermaid / file。
     啟用時加對應 component + v-else-if。
   -->
 </template>

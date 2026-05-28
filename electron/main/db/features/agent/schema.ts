@@ -27,6 +27,12 @@ export const agentMessages = sqliteTable(
         role: text('role').notNull(),
         /** 消息文本(可空,純工具調用時 content 為空) */
         content: text('content'),
+        /**
+         * 思考鏈內容(僅 assistant 訊息;thinkingEnabled 才填)。
+         * DeepSeek V4 等 model 從 stream `delta.reasoning_content` 累積。
+         * 多輪拼接規則見 useAgentChat.buildApiMessages。
+         */
+        reasoningContent: text('reasoningContent'),
         /** LLM 工具調用請求(JSON stringified) */
         toolCalls: text('toolCalls'),
         /** tool role 消息對應的 tool_call_id */

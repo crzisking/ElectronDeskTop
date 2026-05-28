@@ -353,10 +353,34 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
 
     const dates = [...dateMap.keys()]
 
+    // ── 堆疊面積排序(修復:值大的類別應視覺呈現在上層) ────────────────
+    // ECharts 堆疊面積:series[0] 畫在最底層,series[N-1] 畫在最上層。
+    // 之前固定走 CATEGORY_ORDER('coding' 在首位)導致 coding 永遠在底,
+    // 即使 coding 是當日最大值也被疊在所有類別之下,跟「最大應在上」直覺相悖。
+    //
+    // 修法:依「總和(所有日期累加)」排序 ——
+    //   - series 順序:ASC(小的在前 / 底層,大的在後 / 頂層)→ 視覺上大值類別位於最上層
+    //   - legend / tooltip:DESC(大的排第一)→ 使用者第一眼看到主導類別
+    //   - tooltip.order='valueDesc' 雙保險,讓每個時間點的彈窗也按值降序
+    const categoryTotals = new Map<WorkCategory, number>()
+    for (const cat of CATEGORY_ORDER) {
+      let sum = 0
+      for (const d of dates) sum += dateMap.get(d)![cat] || 0
+      categoryTotals.set(cat, sum)
+    }
+    const stackOrder = [...CATEGORY_ORDER].sort(
+        (a, b) => (categoryTotals.get(a) ?? 0) - (categoryTotals.get(b) ?? 0),
+    )
+    const legendOrder = [...stackOrder].reverse()
+
     return {
-      tooltip: { trigger: 'axis' as const },
+      tooltip: {
+        trigger: 'axis' as const,
+        // 同一時間點的多 series 按值降序排列(配合 stackOrder 反向,讓彈窗仍以大值類別在頂)
+        order: 'valueDesc' as const,
+      },
       legend: {
-        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
+        data: legendOrder.map(c => t(CATEGORY_LABEL_KEY[c])),
         bottom: 0,
         textStyle: { fontSize: 10 },
       },
@@ -370,7 +394,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
         type: 'value' as const,
         minInterval: 1,
       },
-      series: CATEGORY_ORDER.map(cat => ({
+      series: stackOrder.map(cat => ({
         name: t(CATEGORY_LABEL_KEY[cat]),
         type: 'line' as const,
         stack: 'total',

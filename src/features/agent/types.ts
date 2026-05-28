@@ -13,6 +13,7 @@ export type {
   OpenAIToolCall,
   ToolExecResult,
   ConversationSummary,
+  ProviderConfig,
 } from '@shared/types/agent.types'
 
 import type {

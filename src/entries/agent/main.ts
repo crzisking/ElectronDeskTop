@@ -15,6 +15,8 @@ import 'element-plus/dist/index.css'
 // Agent 內部色值 palette(accent / bg / 等)在 AgentWindow.vue 的 .agent-app scope 內覆寫,
 // 保持 Agent 視覺風格獨立,但 token 命名與主窗統一。
 import '@/styles/global.css'
+// vue-virtual-scroller(對話訊息列表虛擬化,doc 18 §3A)— DynamicScroller 的內建 CSS
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import AgentWindow from '@/features/agent/AgentWindow.vue'
 
 const app = createApp(AgentWindow)
