@@ -152,8 +152,19 @@ app.whenReady().then(async () => {
   }
 
   // 後續所有步驟都依賴配置（窗口大小、浮球位置、靜默啟動等）
-  // dbManager 必須在 ConfigManager 建構前已 init —— 由前面 DB 初始化區塊保證
+  // dbManager 是 **fatal dependency** — 因為 config 已搬進 SQLite,DB 連不上 = App 沒法啟動。
+  // 既然 fatal,給使用者一個明確的對話框再退出,不要讓 Electron 出 "Uncaught Error" 黑底白字。
   if (!dbManager) {
+    const {dialog} = await import('electron')
+    dialog.showErrorBox(
+        '啟動失敗',
+        '本機資料庫初始化失敗,App 無法啟動。\n\n' +
+        '可能原因:\n' +
+        '  • app.db 檔案損壞或被其他程式佔用\n' +
+        '  • 磁碟空間不足 / 寫入權限被擋\n' +
+        '  • drizzle migration 失敗\n\n' +
+        '請聯絡 IT,或刪除使用者目錄下的 app.db 後重啟(會丟失本機設定)。',
+    )
     throw new Error('DatabaseManager 初始化失敗,ConfigManager 無法繼續(config 已搬進 SQLite)')
   }
   configManager = new ConfigManager(dbManager)

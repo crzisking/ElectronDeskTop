@@ -76,9 +76,17 @@ export interface WorkSyncRecordItem {
   reason: string | null
 }
 
+/**
+ * sync-daily 後端回應(對齊 docs/20 §4.1.1 修訂後)。
+ *
+ * 三組 id 互斥,desktop 只標 success + duplicate 為 synced;
+ * failed 留待下次觸發補傳。inserted/duplicates 數字只供 log。
+ */
 export interface WorkSyncDailyResponse {
   inserted: number
   duplicates: number
   syncedAt: number
   successLocalIds: number[]
+  duplicateLocalIds: number[]
+  failedLocalIds: number[]
 }

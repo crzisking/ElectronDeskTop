@@ -185,19 +185,24 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
 
             try {
                 const resp = await workCollectApi.syncDaily(records)
-                const ok = resp.successLocalIds ?? []
-                // duplicates 雖然 server 沒落庫,但已經在 server 端有了,本地也標 synced=1 避免反覆送
-                const successOrDup = new Set(ok)
-                // 對於整批內所有 localId,只要 server 沒明確標 failed 都認為「server 已有」→ 標 synced
-                const allLocalIds = records.map((r) => r.localId).filter((id) => successOrDup.has(id) || resp.duplicates > 0)
-                const toMark = ok.length > 0 ? ok : allLocalIds
+                // 只標 success(本次真插入)+ duplicate(server 已有),
+                // failed 留下次觸發補傳。舊版用 duplicates count > 0 推斷整批已收 →
+                // 在「全部失敗 + 0 duplicate」邊界會誤標,已修正。
+                const toMark = [
+                    ...(resp.successLocalIds ?? []),
+                    ...(resp.duplicateLocalIds ?? []),
+                ]
                 if (toMark.length > 0) {
                     await window.electronAPI.workCollect.markSynced(toMark, resp.syncedAt ?? Date.now())
                 }
+                const failedCount = (resp.failedLocalIds ?? []).length
                 logger.info(
-                    `sync-daily 完成 inserted=${resp.inserted} duplicates=${resp.duplicates} marked=${toMark.length}`,
+                    `sync-daily 完成 success=${resp.successLocalIds?.length ?? 0} duplicate=${resp.duplicateLocalIds?.length ?? 0} failed=${failedCount} marked=${toMark.length}`,
                     'WorkCollectStore'
                 )
+                if (failedCount > 0) {
+                    logger.warn(`sync-daily 有 ${failedCount} 筆失敗,等下次觸發重傳`, 'WorkCollectStore')
+                }
                 if (chunk.length < 200) return // 已撈乾淨
             } catch (err) {
                 logger.warn('sync-daily HTTP 失敗,等下次觸發', 'WorkCollectStore', err)
@@ -227,6 +232,13 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
       window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST, onConfigRequest)
       window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, onSyncRequest)
     subscribed = true
+
+      // 修正 #6:訂閱完成 ack 給 main,讓 main 補推任何 pending request,
+      // 處理「main 已推但 renderer 未訂閱」的開機競態。
+      // 失敗不阻塞 — 若 main 沒實作此 channel,只是退化成「等下次 tick 觸發」。
+      window.electronAPI.workCollect
+          .notifyReady()
+          .catch((err) => logger.warn('notifyReady 失敗,等下次觸發', 'WorkCollectStore', err))
   }
 
     return {

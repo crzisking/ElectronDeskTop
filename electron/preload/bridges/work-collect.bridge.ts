@@ -4,6 +4,9 @@
  * 主進程 scheduler 跑 timer + capture,然後 PUSH_WORK_COLLECT_TICK 推給渲染端;
  * 渲染端拿截圖呼叫後端 AI(走 createHttpClient 複用 auth),結果用 sendResult 回送;
  * 主進程 handler 寫 DB + 推 PUSH_WORK_RECORD_NEW 通知 UI 刷新。
+ *
+ * 完整型別在 src/types/electron.d.ts 對齊;本 bridge 用 MinimalWorkRecord
+ * 結構覆蓋,避免 renderer bundle 牽連主進程 schema 模組。
  */
 import type {IpcRenderer} from 'electron'
 
@@ -14,6 +17,21 @@ export interface WorkCollectChannelMap {
     WORK_COLLECT_LIST_UNSYNCED: string
     WORK_COLLECT_MARK_SYNCED: string
     WORK_COLLECT_APPLY_REMOTE_CONFIG: string
+    WORK_COLLECT_RENDERER_READY: string
+}
+
+interface MinimalWorkRecord {
+    id: number
+    capturedAt: number
+    activeApp: string | null
+    activeWindowTitle: string | null
+    category: string
+    description: string
+    confidence: number | null
+    screenshotHash: string | null
+    reason: string | null
+    synced: number
+    syncedAt: number | null
 }
 
 export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannelMap) {
@@ -21,12 +39,12 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
     toggle: (enabled: boolean) =>
       ipc.invoke(ch.WORK_COLLECT_TOGGLE, enabled) as Promise<boolean>,
     list: (params: {since: number; until: number}) =>
-      ipc.invoke(ch.WORK_COLLECT_LIST, params),
+        ipc.invoke(ch.WORK_COLLECT_LIST, params) as Promise<MinimalWorkRecord[]>,
     sendResult: (payload: unknown) => ipc.send(ch.WORK_COLLECT_RESULT, payload),
 
       /** 集中化:撈未同步紀錄(synced=0),limit 上限對齊 server 200 條/批 */
       listUnsynced: (limit: number = 200) =>
-          ipc.invoke(ch.WORK_COLLECT_LIST_UNSYNCED, limit) as Promise<unknown[]>,
+          ipc.invoke(ch.WORK_COLLECT_LIST_UNSYNCED, limit) as Promise<MinimalWorkRecord[]>,
 
       /** 集中化:server sync-daily 成功後標記已同步 */
       markSynced: (localIds: number[], syncedAt: number) =>
@@ -45,5 +63,12 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
           version: number
       }) =>
           ipc.invoke(ch.WORK_COLLECT_APPLY_REMOTE_CONFIG, config) as Promise<{ changed: boolean }>,
+
+      /**
+       * Renderer bootstrap 完成 ack。main 收到後補推任何 pending 的 config/sync request,
+       * 處理「main 已推但 renderer 未訂閱」的競態。
+       */
+      notifyReady: () =>
+          ipc.invoke(ch.WORK_COLLECT_RENDERER_READY) as Promise<void>,
   }
 }

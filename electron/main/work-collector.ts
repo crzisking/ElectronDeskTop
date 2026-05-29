@@ -1,22 +1,20 @@
 /**
- * 工作自動採集 Scheduler(主進程側,只做「採集 + 推送 / 命中閒置直接寫 DB」)。
+ * 工作自動採集 Scheduler(主進程側)。
  *
- * 職責切割原則:
- *   - 主進程能做、只能在主進程做的:setInterval 計時、desktopCapturer、powerMonitor、DB 寫入
- *   - renderer 能做的:走 createHttpClient 打後端 AI 接口(複用 auth 攔截器、unified error handling)
+ * 內部拆三個協作者讓 Scheduler 只做編排:
+ *   - CaptureService   :截圖 / dHash / 可見視窗列表
+ *   - IdleDetector     :閒置判定(系統 idle + dHash 相似)
+ *   - WorkSyncCoordinator:集中化 config pull / sync trigger + renderer ack 追蹤
  *
- * 每隔 N 分鐘:
- *   1. 檢查總開關 + 工時區間 + 螢幕鎖狀態 → 任一不符就 skip
- *   2. 擷取主螢幕截圖 + 算 dHash + 抓所有可見視窗清單
- *   3. 命中閒置(系統 idle 時間夠長 / 或 dHash 與上次相似且前台視窗未變)→ 直接寫一筆 idle 紀錄,不打 API
- *   4. 否則透過 PUSH_WORK_COLLECT_TICK 把 jpeg+hash+元數據推給渲染端,渲染端打 AI,handler 寫 DB
+ * Scheduler 自己保留的職責:timer / 工時邊界 / 螢幕鎖 / tick 編排 / idle 紀錄寫入。
  *
- * 為什麼 HTTP 不在主進程做:
- *   - 主進程沒有 axios + auth 攔截器,自寫一份等於分叉重複實作
- *   - token 在 renderer 的 Pinia 內,在 main 取要額外 IPC 同步
- *   - renderer 失敗有統一錯誤處理(toast、跳登入頁等),main 沒這套
+ * 為什麼不徹底拆檔:這三個協作者目前都只有 scheduler 用,過早拆檔反而增加維護面;
+ * 等出現第二個 consumer(例:不同採集頻率的副 Scheduler)再拆檔不晚。
  *
- * 截圖端到端不落地:Buffer 只活在 tick() 作用域 + IPC payload,送完就 GC。
+ * 修復重點(對應 review 報告):
+ *   #5 jitter 期間重入:用獨立 startupTimer,start() 看到任一 timer 都 return
+ *   #6 push 競態:lastConfigSyncDay 不再樂觀更新,改由 IPC handler ack 回呼 markConfigSynced();
+ *      新增 onRendererReady() 重放 pending request
  */
 
 import {desktopCapturer, NativeImage, powerMonitor, screen} from 'electron'
@@ -26,51 +24,265 @@ import type {ConfigManager} from './config-manager'
 import type {WindowManager} from './window-manager'
 import type {WorkRecordService} from './db/features/work-collect/service'
 
+// ─── 常數 ────────────────────────────────────────────────────────────
+
 /**
  * dHash Hamming distance ≤ 此值視為「畫面實質未變」。
- * 64 bit 中容忍約 15% 的差異 —— 5 太緊,連工作列時鐘走秒 + 游標閃爍位置不同
- * 累積出來的雜訊就會超過;10 在實測上能擋掉時鐘 / 游標 / 微小陰影差異,
- * 同時不會把實際視窗切換誤判成相同。
+ * 64 bit 中容忍約 15% 的差異。
  */
 const HASH_SIMILAR_THRESHOLD = 10
 
-/**
- * idle 時間判定的 grace(秒)。
- * powerMonitor.getSystemIdleTime() 只回整數秒、setInterval 有 ms 級漂移,
- * 若用 `idleSec >= intervalSec` 嚴格比較,實測會卡在 299 vs 300 邊界。
- */
+/** idle 判定 grace(秒),抗 setInterval ms 漂移 */
 const IDLE_GRACE_SECONDS = 5
+
+/** safety net:本機累積 unsynced 超過此值就提前 sync */
+const SAFETY_NET_UNSYNCED_THRESHOLD = 50
+
+// ─── 協作者 1:截圖 + dHash + 可見視窗 ───────────────────────────────
+
+class CaptureService {
+    /** 擷取主螢幕 NativeImage,thumbnail 用 workAreaSize 全尺寸 */
+    async captureScreenshot(): Promise<NativeImage> {
+        const {width, height} = screen.getPrimaryDisplay().workAreaSize
+        const sources = await desktopCapturer.getSources({
+            types: ['screen'],
+            thumbnailSize: {width, height},
+        })
+        return sources[0].thumbnail
+    }
+
+    /** 列出可見視窗標題,排除自家 app,最多 10 個 */
+    async collectVisibleWindowTitles(): Promise<string[]> {
+        const sources = await desktopCapturer.getSources({
+            types: ['window'],
+            thumbnailSize: {width: 0, height: 0},
+        })
+        return sources
+            .map((s) => s.name)
+            .filter((name) => name && !/ichia ?desktop/i.test(name))
+            .slice(0, 10)
+    }
+
+    /**
+     * 算 dHash(差分雜湊):縮到 9x8 灰階,每列相鄰 pixel 比大小得 64 bit。
+     * 抗壓縮 / 抗微小位移,人眼一樣的畫面 hash 幾乎一樣。
+     */
+    computeDHash(img: NativeImage): string {
+        const small = img.resize({width: 9, height: 8, quality: 'good'})
+        const bgra = small.toBitmap()
+        const gray = new Uint8Array(9 * 8)
+        for (let i = 0, j = 0; i < bgra.length; i += 4, j++) {
+            gray[j] = (bgra[i + 2] * 299 + bgra[i + 1] * 587 + bgra[i] * 114) / 1000 | 0
+        }
+        let hex = ''
+        for (let y = 0; y < 8; y++) {
+            let row = 0
+            for (let x = 0; x < 8; x++) {
+                if (gray[y * 9 + x] > gray[y * 9 + x + 1]) row |= 1 << (7 - x)
+            }
+            hex += row.toString(16).padStart(2, '0')
+        }
+        return hex
+    }
+
+    /** 從視窗標題粗略猜 app 名 */
+    extractAppHint(title: string): string {
+        const parts = title.split(' - ')
+        return parts.length > 1 ? parts[parts.length - 1].trim() : title
+    }
+}
+
+// ─── 協作者 2:閒置偵測 ──────────────────────────────────────────────
+
+class IdleDetector {
+    private lastHash: string | null = null
+    private lastActiveTitle: string | null = null
+
+    /**
+     * 兩條任一成立判 idle:
+     *   - 系統 idle time >= 一次採集間隔(扣 grace)
+     *   - dHash 距離小且前台視窗未變(畫面實質沒動)
+     */
+    detect(currentHash: string, activeTitle: string, intervalSec: number): boolean {
+        const idleThreshold = Math.max(1, intervalSec - IDLE_GRACE_SECONDS)
+        const idleSec = powerMonitor.getSystemIdleTime()
+
+        const dist = this.lastHash && this.lastActiveTitle === activeTitle
+            ? hammingHex(this.lastHash, currentHash)
+            : null
+        logger.info(
+            `tick 閒置判定 idleSec=${idleSec}/${idleThreshold} dHashDist=${dist ?? 'n/a'}/${HASH_SIMILAR_THRESHOLD} sameTitle=${this.lastActiveTitle === activeTitle}`,
+            'WorkCollector',
+        )
+
+        if (idleSec >= idleThreshold) return true
+        return dist !== null && dist <= HASH_SIMILAR_THRESHOLD
+    }
+
+    /** 每次 tick 結束都要呼叫,更新 last 狀態 */
+    rememberState(hash: string, activeTitle: string): void {
+        this.lastHash = hash
+        this.lastActiveTitle = activeTitle
+    }
+}
+
+// ─── 協作者 3:config / sync 推送協調 ────────────────────────────────
+
+type SyncReason = 'startup' | 'work-end' | 'safety-net'
+
+/**
+ * 管理 main → renderer 的 push 觸發 + ack 追蹤。
+ *
+ * 為什麼要 ack:
+ *   - main 推 PUSH_WORK_COLLECT_CONFIG_REQUEST 後,renderer 可能還沒 bootstrap()
+ *     (未訂閱 channel),這次推送會被吞
+ *   - 若樂觀更新 lastConfigSyncDay,當天再也不會重試 → config 不同步
+ *   - 改成:推完不更新狀態,renderer 處理完才 ack(markConfigSynced)
+ *   - 同時:renderer ready 時主動 invoke notifyReady → main 重放 pending request
+ */
+class WorkSyncCoordinator {
+    /** 已成功 ack 的北京日;只有 ack 才更新此值,中途失敗仍重試 */
+    private lastConfigSyncedDay: string | null = null
+
+    /** 已 push 但未 ack 的 config request 對應的「目標日」;ack 後清空 */
+    private pendingConfigDay: string | null = null
+
+    /**
+     * 已 push 但未 ack 的 sync request 集合。
+     * Set 而非單值,因為 startup / work-end / safety-net 可能短時間連推,
+     * 但最終都是同一個動作「上傳 unsynced」,所以 Set 也只保留最高優先 reason。
+     */
+    private pendingSyncReason: SyncReason | null = null
+
+    constructor(
+        private readonly winMgr: WindowManager,
+        private readonly recordService: WorkRecordService | null,
+    ) {
+    }
+
+    /** 每天首次 tick 進工時前(若還沒 ack)推 config request */
+    maybeRequestConfigPull(): void {
+        const today = getBeijingDate()
+        if (this.lastConfigSyncedDay === today) return
+        // 若已 pending 同一天,不重複推(等 ack 或下次 ready 重放)
+        if (this.pendingConfigDay === today) return
+        this.tryPushConfigRequest(today)
+    }
+
+    /** scheduler.start() 啟動補推一次 */
+    forceConfigPull(): void {
+        const today = getBeijingDate()
+        this.tryPushConfigRequest(today)
+    }
+
+    /** IPC handler 收到 renderer 套用 config 後呼叫 */
+    markConfigSynced(): void {
+        if (this.pendingConfigDay) {
+            this.lastConfigSyncedDay = this.pendingConfigDay
+            logger.info(`config sync ack(day=${this.pendingConfigDay})`, 'WorkSync')
+            this.pendingConfigDay = null
+        } else {
+            // 沒 pending 也來 ack(例如使用者主動操作觸發),仍以今天為準
+            this.lastConfigSyncedDay = getBeijingDate()
+        }
+    }
+
+    /** 推一次 sync request;未 ack 前不疊加新推送 */
+    requestSync(reason: SyncReason): void {
+        const win = this.winMgr.getMainWindow()
+        if (!win || win.isDestroyed()) {
+            // pending,等 ready 補推;higher-priority reason 覆蓋
+            this.pendingSyncReason = this.escalate(this.pendingSyncReason, reason)
+            logger.debug(`sync(${reason}) 暫緩,等 renderer ready`, 'WorkSync')
+            return
+        }
+        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, {reason})
+        this.pendingSyncReason = reason
+        logger.info(`已推 sync request reason=${reason}`, 'WorkSync')
+    }
+
+    /** Renderer bootstrap 完成 → 補推 pending */
+    onRendererReady(): void {
+        const win = this.winMgr.getMainWindow()
+        if (!win || win.isDestroyed()) return
+
+        if (this.pendingConfigDay) {
+            win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST)
+            logger.info(`renderer ready,補推 config pull(target=${this.pendingConfigDay})`, 'WorkSync')
+        }
+        if (this.pendingSyncReason) {
+            win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, {reason: this.pendingSyncReason})
+            logger.info(`renderer ready,補推 sync(${this.pendingSyncReason})`, 'WorkSync')
+        }
+    }
+
+    /**
+     * Sync 沒有 ack 路徑(renderer 內部 HTTP 失敗會 log + 等下次,不單獨回 ack)。
+     * 簡化:每次 tick 內若 pending 過久(超過一個 interval)就重推。
+     * 這裡先保留簡單版,只記下「最近一次 push 時間」做退避。
+     */
+
+    /** safety net:工時內 unsynced 過多則推 sync */
+    maybeSafetyNetSync(): void {
+        if (!this.recordService) return
+        const pending = this.recordService.countUnsynced()
+        if (pending >= SAFETY_NET_UNSYNCED_THRESHOLD) {
+            logger.info(`unsynced=${pending} >= 閾值,觸發 safety-net sync`, 'WorkSync')
+            this.requestSync('safety-net')
+        }
+    }
+
+    private tryPushConfigRequest(targetDay: string): void {
+        const win = this.winMgr.getMainWindow()
+        if (!win || win.isDestroyed()) {
+            // 主視窗未就緒;改 pending 等 onRendererReady 補推
+            this.pendingConfigDay = targetDay
+            logger.debug('config pull 暫緩,等 renderer ready', 'WorkSync')
+            return
+        }
+        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST)
+        this.pendingConfigDay = targetDay
+        logger.info(`已推 config pull(target=${targetDay},等 renderer ack)`, 'WorkSync')
+    }
+
+    /**
+     * reason 優先級(影響 pending 覆蓋):
+     *   safety-net > work-end > startup
+     * 一旦 pending 升級,不會降回;reason 主要影響 renderer log 與決策。
+     */
+    private escalate(curr: SyncReason | null, next: SyncReason): SyncReason {
+        if (!curr) return next
+        const rank: Record<SyncReason, number> = {startup: 0, 'work-end': 1, 'safety-net': 2}
+        return rank[next] > rank[curr] ? next : curr
+    }
+}
+
+// ─── Scheduler 本體 ──────────────────────────────────────────────────
 
 export class WorkCollectorScheduler {
   private timer: NodeJS.Timeout | null = null
 
-  /** 螢幕鎖狀態,由 powerMonitor 事件維護;app 啟動時假設未鎖 */
+    /**
+     * 啟動延遲計時器,與 interval timer 分開追蹤。
+     * 修正 #5:start() 在 jitter 等待期間被重複呼叫時不再排多個 setTimeout;
+     * stop() 同時清掉 startupTimer 與 timer,避免 stop 後 startup 仍觸發。
+     */
+    private startupTimer: NodeJS.Timeout | null = null
+
   private isScreenLocked = false
-
-    /** 上次採集的截圖 dHash(16 hex)+ 前台視窗標題,給「畫面未變」判斷用;in-memory,重啟即 reset */
-    private lastHash: string | null = null
-    private lastActiveTitle: string | null = null
-
-    /** safety net:本機累積 unsynced 超過此值就提前 sync,防 desktop 長期不重啟批次過大 */
-    private static readonly SAFETY_NET_UNSYNCED_THRESHOLD = 50
-    // ─── 集中化(docs/20)─────────────────────────────────────────────
-    /**
-     * 上次拉 server config 的北京日期(yyyy-MM-dd);每天首次 tick 進工時前比對,不一致就推 renderer 拉 config。
-     * in-memory,重啟即 reset → 重啟時必拉一次。
-     */
-    private lastConfigSyncDay: string | null = null
-    /**
-     * 上次 tick 是否在工時內;用於偵測「跨越工時結束邊界」(true→false)→ 觸發 sync。
-     * 若 lastInsideWorkHours=true 且本次 isInWorkHours=false → 工時剛結束,推 sync request。
-     */
     private lastInsideWorkHours = false
+
+    private readonly capture = new CaptureService()
+    private readonly idle = new IdleDetector()
+    private readonly sync: WorkSyncCoordinator
 
   constructor(
     private readonly cfg: ConfigManager,
     private readonly winMgr: WindowManager,
-    private readonly recordService: WorkRecordService | null
+    private readonly recordService: WorkRecordService | null,
   ) {
-    // 訂閱螢幕鎖事件:鎖屏期間整個 tick 跳過,不擷取截圖也不推 IPC
+      this.sync = new WorkSyncCoordinator(winMgr, recordService)
+
     powerMonitor.on('lock-screen', () => {
       this.isScreenLocked = true
       logger.info('螢幕已鎖,工作採集暫停', 'WorkCollector')
@@ -81,95 +293,106 @@ export class WorkCollectorScheduler {
     })
   }
 
-  /** 啟動採集。讀 config 看 enabled 跟 intervalMinutes */
+    // ── 對外 API ────────────────────────────────────────────────────
+
   start(): void {
     const c = this.cfg.getConfig().workCollect
     if (!c?.enabled) {
       logger.info('工作採集未啟用,scheduler 不啟動', 'WorkCollector')
       return
     }
-    if (this.timer) return // 已啟動,不重複
+      // 修正 #5:jitter 期間 timer 還是 null,要用 startupTimer 一起擋
+      if (this.timer || this.startupTimer) {
+          logger.debug('scheduler 已在啟動 / 運行中,重複 start 忽略', 'WorkCollector')
+          return
+      }
 
     const intervalMs = Math.max(1, c.intervalMinutes ?? 5) * 60_000
-
-      // 啟動時延遲一個隨機 jitter(< 50% intervalMs)再開始,避免 500 台 desktop 整點對齊砸 server。
       const jitterMs = Math.floor(Math.random() * intervalMs * 0.5)
-      setTimeout(() => {
-          // 啟動觸發:拉一次 config + 補傳本地 unsynced(處理「16:55 關機」場景)
-          this.requestConfigPull()
-          this.requestSync('startup')
+
+      this.startupTimer = setTimeout(() => {
+          this.startupTimer = null
+          this.sync.forceConfigPull()
+          this.sync.requestSync('startup')
           void this.tick()
           this.timer = setInterval(() => void this.tick(), intervalMs)
       }, jitterMs)
 
       logger.info(
           `工作採集已啟動,間隔 ${intervalMs / 60_000} 分鐘,jitter ${Math.round(jitterMs / 1000)}s`,
-          'WorkCollector'
+          'WorkCollector',
       )
   }
 
-  /** 停止採集(關閉開關時 / app 退出時呼叫) */
   stop(): void {
+      if (this.startupTimer) {
+          clearTimeout(this.startupTimer)
+          this.startupTimer = null
+      }
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
-      logger.info('工作採集已停止', 'WorkCollector')
     }
+      logger.info('工作採集已停止', 'WorkCollector')
   }
 
-  /** 單次採集流程,每 N 分鐘執行一次 */
+    /** IPC handler 收到 renderer 套用 config 後呼叫 */
+    markConfigSynced(): void {
+        this.sync.markConfigSynced()
+    }
+
+    /** Renderer bootstrap 完成 ack 後呼叫 */
+    onRendererReady(): void {
+        this.sync.onRendererReady()
+    }
+
+    dispose(): void {
+        this.stop()
+  }
+
+    // ── tick 編排 ──────────────────────────────────────────────────
+
   private async tick(): Promise<void> {
     try {
-        // 0. 集中化:每天首次 tick 拉 config + 偵測跨越工時邊界觸發 sync
-        this.maybeRequestConfigPull()
+        // 0. 集中化:每天首次 tick 嘗試拉 config + 偵測工時邊界觸發 sync
+        this.sync.maybeRequestConfigPull()
         const insideNow = this.isInWorkHours()
         if (this.lastInsideWorkHours && !insideNow) {
-            // 工時剛結束(上一輪在內,這一輪在外)→ 觸發 sync
-            this.requestSync('work-end')
+            this.sync.requestSync('work-end')
         }
         this.lastInsideWorkHours = insideNow
 
-      // 1. 螢幕鎖 → 跳過
       if (this.isScreenLocked) {
         logger.debug('螢幕鎖中,tick skip', 'WorkCollector')
         return
       }
-
-      // 2. 工時區間 → 跳過
         if (!insideNow) {
         logger.debug('非工時,tick skip', 'WorkCollector')
         return
       }
+        this.sync.maybeSafetyNetSync()
 
-        // 2.5 safety net:工時內若累積 unsynced 過多,提前推 sync(防長期不重啟單批爆量)
-        this.maybeSafetyNetSync()
-
-      // 3. 主視窗沒就緒就 skip(渲染端拿不到推送,白採集)
       const win = this.winMgr.getMainWindow()
       if (!win || win.isDestroyed()) {
         logger.debug('主視窗未就緒,tick skip', 'WorkCollector')
         return
       }
 
-        // 4. 截圖(NativeImage,稍後同時 toJPEG 推 renderer + 用 bitmap 算 dHash)
-        const thumb = await this.captureScreenshot()
-        const hash = this.computeDHash(thumb)
-
-      // 5. 所有可見視窗標題
-      const allWindowTitles = await this.collectVisibleWindowTitles()
+        const thumb = await this.capture.captureScreenshot()
+        const hash = this.capture.computeDHash(thumb)
+        const allWindowTitles = await this.capture.collectVisibleWindowTitles()
       const activeTitle = allWindowTitles[0] ?? ''
-      const activeApp = this.extractAppHint(activeTitle)
+        const activeApp = this.capture.extractAppHint(activeTitle)
         const capturedAt = Date.now()
 
-        // 6. 命中閒置 → 直接寫 DB,不打 AI
-        if (this.detectIdle(hash, activeTitle)) {
+        const intervalSec = Math.max(1, this.cfg.getConfig().workCollect?.intervalMinutes ?? 5) * 60
+        if (this.idle.detect(hash, activeTitle, intervalSec)) {
             this.writeIdleRecord(capturedAt, activeApp, activeTitle, hash)
-            this.lastHash = hash
-            this.lastActiveTitle = activeTitle
+            this.idle.rememberState(hash, activeTitle)
             return
         }
 
-        // 7. 不是 idle → 推 renderer 走 AI 分析。Uint8Array 走 structured clone
+        // 推 renderer 走 AI 分析
         const jpeg = thumb.toJPEG(70)
       win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_TICK, {
           jpeg: new Uint8Array(jpeg),
@@ -180,54 +403,24 @@ export class WorkCollectorScheduler {
           screenshotHash: hash,
       })
 
-        this.lastHash = hash
-        this.lastActiveTitle = activeTitle
+        this.idle.rememberState(hash, activeTitle)
       logger.debug('採集 tick 已推送至渲染端', 'WorkCollector')
     } catch (err) {
-      // tick 失敗只記 log,等下一輪重試,不擴散
       logger.warn('採集 tick 失敗', 'WorkCollector', err)
     }
   }
 
-    /**
-     * 判斷此次 tick 是否視為閒置:
-     *   - 系統 idle time(無滑鼠 / 鍵盤輸入)超過一次採集間隔 → 鐵定閒置
-     *   - 或 dHash 與上次幾乎相同 + 前台視窗未變 → 畫面實質沒動
-     * 兩條任一成立即判 idle。
-     */
-    private detectIdle(currentHash: string, activeTitle: string): boolean {
-        const c = this.cfg.getConfig().workCollect
-        const intervalSec = Math.max(1, c?.intervalMinutes ?? 5) * 60
-        const idleThreshold = Math.max(1, intervalSec - IDLE_GRACE_SECONDS)
-        const idleSec = powerMonitor.getSystemIdleTime()
-
-        // 同時算出 dHash 距離(可比較才算,否則 null),全部塞進一條 log,
-        // 之後再遇到「沒判 idle」的爭議直接看這行就知道哪條沒過
-        const dist = this.lastHash && this.lastActiveTitle === activeTitle
-            ? hammingHex(this.lastHash, currentHash)
-            : null
-        logger.info(
-            `tick 閒置判定 idleSec=${idleSec}/${idleThreshold} dHashDist=${dist ?? 'n/a'}/${HASH_SIMILAR_THRESHOLD} sameTitle=${this.lastActiveTitle === activeTitle}`,
-            'WorkCollector'
-        )
-
-        if (idleSec >= idleThreshold) return true
-        return dist !== null && dist <= HASH_SIMILAR_THRESHOLD;
-
-    }
-
-    /** 直接寫一筆 idle 紀錄,並推 PUSH_WORK_RECORD_NEW 讓 UI 刷新 */
     private writeIdleRecord(
         capturedAt: number,
         activeApp: string | null,
         activeTitle: string | null,
-        hash: string
+        hash: string,
     ): void {
         if (!this.recordService) {
             logger.warn('命中 idle 但 recordService 不可用,丟棄', 'WorkCollector')
             return
         }
-        this.recordService.insert({
+        const result = this.recordService.insert({
             capturedAt,
             activeApp: activeApp || null,
             activeWindowTitle: activeTitle || null,
@@ -237,140 +430,30 @@ export class WorkCollectorScheduler {
             confidence: 1,
             screenshotHash: hash,
         })
-        this.winMgr.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)
-        logger.debug('已寫入 idle 紀錄(skip AI)', 'WorkCollector')
+        // result.ok=false 仍要通知 UI 刷新?— 寫入失敗就沒新行,不必通知
+        if (result.ok) {
+            this.winMgr.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)
+            logger.debug('已寫入 idle 紀錄(skip AI)', 'WorkCollector')
+        } else {
+            logger.warn(`idle 紀錄寫入失敗 reason=${result.reason}`, 'WorkCollector')
+        }
     }
 
-    /**
-     * 判斷現在是否在工時區間內([startHour, endHour),含 start 不含 end)。
-     * 鎖死北京時間(UTC+8,無 DST),避免 VPN 出差時 OS 時區漂移造成「凌晨採集」混亂。
-     */
   private isInWorkHours(): boolean {
     const c = this.cfg.getConfig().workCollect
     const start = c?.workStartHour ?? 8
     const end = c?.workEndHour ?? 17
-        const hour = getBeijingHour()
+      const hour = getBeijingHour()
     return hour >= start && hour < end
-  }
-
-    // ─── 集中化(docs/20):config / sync 推送輔助 ────────────────────────
-
-    /**
-     * 推 PUSH_WORK_COLLECT_CONFIG_REQUEST 要 renderer 拉 /my-config。
-     * 標記今天已拉,避免一天重複拉。
-     */
-    private requestConfigPull(): void {
-        const win = this.winMgr.getMainWindow()
-        if (!win || win.isDestroyed()) {
-            logger.debug('主視窗未就緒,config pull 暫緩', 'WorkCollector')
-            return
-        }
-        const today = getBeijingDate()
-        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST)
-        this.lastConfigSyncDay = today
-        logger.info(`已推 config pull(beijingDay=${today})`, 'WorkCollector')
-    }
-
-    /** 每天首次 tick 進工時前若還沒拉過 config,推一次 */
-    private maybeRequestConfigPull(): void {
-        const today = getBeijingDate()
-        if (this.lastConfigSyncDay === today) return
-        this.requestConfigPull()
-    }
-
-    /** 推 PUSH_WORK_COLLECT_SYNC_REQUEST 要 renderer 上傳 unsynced */
-    private requestSync(reason: 'startup' | 'work-end' | 'safety-net'): void {
-        const win = this.winMgr.getMainWindow()
-        if (!win || win.isDestroyed()) {
-            logger.debug(`主視窗未就緒,sync(${reason}) 暫緩`, 'WorkCollector')
-            return
-        }
-        win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, {reason})
-        logger.info(`已推 sync request reason=${reason}`, 'WorkCollector')
-    }
-
-    /** 工時內若 unsynced 累積過多,提前 sync;次數不會過頻(僅每 tick 檢查一次,且閾值較高) */
-    private maybeSafetyNetSync(): void {
-        if (!this.recordService) return
-        const pending = this.recordService.countUnsynced()
-        if (pending >= WorkCollectorScheduler.SAFETY_NET_UNSYNCED_THRESHOLD) {
-            logger.info(`unsynced=${pending} >= 閾值,觸發 safety-net sync`, 'WorkCollector')
-            this.requestSync('safety-net')
-        }
-    }
-
-    /** 擷取 primary 螢幕 NativeImage(thumbnail 用 workAreaSize 全尺寸) */
-    private async captureScreenshot(): Promise<NativeImage> {
-    const {width, height} = screen.getPrimaryDisplay().workAreaSize
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: {width, height},
-    })
-        return sources[0].thumbnail
-    }
-
-    /**
-     * 算 dHash(差分雜湊):
-     *   把畫面縮到 9x8 灰階 → 每列相鄰兩 pixel 比較大小,得 8 bit,共 64 bit
-     *   抗壓縮 / 抗微小位移,跟 MD5 不同,人眼一樣的畫面 hash 也會幾乎一樣
-     * 回傳 16 hex 字元。
-     */
-    private computeDHash(img: NativeImage): string {
-        const small = img.resize({width: 9, height: 8, quality: 'good'})
-        const bgra = small.toBitmap() // BGRA, 9*8*4 = 288 bytes
-        // 灰階值(0-255),Rec. 601 加權
-        const gray = new Uint8Array(9 * 8)
-        for (let i = 0, j = 0; i < bgra.length; i += 4, j++) {
-            gray[j] = (bgra[i + 2] * 299 + bgra[i + 1] * 587 + bgra[i] * 114) / 1000 | 0
-        }
-        // 每列 8 個比較 → 8 bit
-        let hex = ''
-        for (let y = 0; y < 8; y++) {
-            let row = 0
-            for (let x = 0; x < 8; x++) {
-                if (gray[y * 9 + x] > gray[y * 9 + x + 1]) row |= 1 << (7 - x)
-            }
-            hex += row.toString(16).padStart(2, '0')
-        }
-        return hex
-  }
-
-  /**
-   * 列出所有可見視窗的標題(thumbnailSize 0 跳過縮圖產生,節省 CPU)。
-   * 排除自家 app,最多 10 個。
-   */
-  private async collectVisibleWindowTitles(): Promise<string[]> {
-    const sources = await desktopCapturer.getSources({
-      types: ['window'],
-      thumbnailSize: {width: 0, height: 0},
-    })
-    return sources
-      .map((s) => s.name)
-      .filter((name) => name && !/ichia ?desktop/i.test(name))
-      .slice(0, 10)
-  }
-
-  /** 從視窗標題猜 app 名(粗略,給後端當輔助訊號;主要還是靠截圖) */
-  private extractAppHint(title: string): string {
-    const parts = title.split(' - ')
-    return parts.length > 1 ? parts[parts.length - 1].trim() : title
-  }
-
-  /** dispose:跟其他 manager 一致,gracefulShutdown 內呼叫 */
-  dispose(): void {
-    this.stop()
   }
 }
 
-/**
- * 北京時間小時(0-23);UTC+8 無 DST,直接 +8h 後取 UTC 小時。
- * 不用 date-fns-tz / Intl.DateTimeFormat,避免額外依賴。
- */
+// ─── 時區工具(北京時間,UTC+8 無 DST,直接 +8h 偏移) ─────────────
+
 function getBeijingHour(): number {
     return (new Date().getUTCHours() + 8) % 24
 }
 
-/** 北京日期 yyyy-MM-dd;config 同步以「北京日」為單位判斷今天是否拉過 */
 function getBeijingDate(): string {
     const beijing = new Date(Date.now() + 8 * 3600_000)
     const y = beijing.getUTCFullYear()

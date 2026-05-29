@@ -148,6 +148,38 @@ declare global {
          * payload 形狀:WorkResultPayload(見 src/features/work-collect/types.ts)
          */
         sendResult: (payload: WorkResultPayload) => void
+
+        // ─── 集中化(docs/20)新增 ──────────────────────────────────
+
+        /**
+         * 列出本地 synced=0 的紀錄,sync-daily 撈 unsynced 用。
+         * limit 預設 200,跟 server 單請求上限對齊。
+         */
+        listUnsynced: (limit?: number) => Promise<WorkRecord[]>
+
+        /**
+         * 把指定 localIds 標記為已同步;syncedAt 用 server 返回的 ms。
+         * 失敗會 log,不丟例外(下次 sync 會再撈到)。
+         */
+        markSynced: (localIds: number[], syncedAt: number) => Promise<void>
+
+        /**
+         * server 拉回來的配置寫入本地 + 視變更重啟 scheduler。
+         * @returns changed=true 表示配置實際有變(已套用 + restart),false=本地已是最新
+         */
+        applyRemoteConfig: (config: {
+          enabled: boolean
+          intervalMinutes: number
+          workStartHour: number
+          workEndHour: number
+          version: number
+        }) => Promise<{ changed: boolean }>
+
+        /**
+         * Renderer bootstrap 完成的 ack。
+         * Main 收到後會補推任何曾經失敗的 config/sync request(處理「main 早於 renderer ready」的競態)。
+         */
+        notifyReady: () => Promise<void>
       }
 
       // ─── 使用者身份同步 ──────────────────────────────────────

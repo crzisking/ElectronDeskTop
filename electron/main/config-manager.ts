@@ -18,9 +18,16 @@
  *   - Dev 改 defaults.ts 內的 collection 結構(sidebar / tools 等)→ 使用者升級後同步看到一致內容
  *   - 使用者個人偏好(語言 / 浮球位置 / 採集開關等)升級後保留
  *
- * 失敗策略:
- *   - load 任一步驟失敗 → 用 DEFAULT_CONFIG 兜底 + logger.error,讓 app 仍可啟動
- *   - writeConfig 失敗 → throw 給 IPC handler,讓 renderer 知道
+ * 失敗策略(配合 main/index.ts 設計):
+ *
+ *   DB 是 **fatal dependency** —— DatabaseManager.init() 失敗時 main/index.ts 會
+ *   showErrorBox 後 throw,App 直接退出。本類不會被建構。
+ *
+ *   一旦進入此類,DB 已可用;load() 內若 seedOrMigrate / assembleAppConfig 因髒資料失敗,
+ *   退化用 DEFAULT_CONFIG 兜底讓 App 仍能啟動(這層 fallback 處理「DB 連得上但表壞了」場景,
+ *   不處理「DB 連不上」場景)。
+ *
+ *   writeConfig 失敗 → throw 給 IPC handler,讓 renderer 知道。
  *
  * 配套設計:[docs/13-Config-DB-重構設計.md](../../docs/13-Config-DB-重構設計.md)
  */
@@ -51,10 +58,15 @@ export class ConfigManager {
    *  3. assembleAppConfig 把 DB 內 7 張表組成 AppConfig
    */
   async load(): Promise<void> {
+    // DB 理論上在 main/index.ts 已被當 fatal dependency 擋掉 null 情況。
+    // 這裡仍做防禦性檢查 —— 直接走 DEFAULT_CONFIG 兜底,不靠 throw/catch 繞圈,
+    // 避免 WebStorm "locally caught exception 'throw'" 警告。
+    if (!this.dbManager.isReady()) {
+      logger.error('配置載入失敗:DatabaseManager 未就緒,使用 DEFAULT_CONFIG 兜底', 'ConfigManager')
+      this.config = DEFAULT_CONFIG
+      return
+    }
     try {
-      if (!this.dbManager.isReady()) {
-        throw new Error('DatabaseManager 未就緒')
-      }
       const db = this.dbManager.getDb()
 
       // 1. seed(空表才會跑)
@@ -98,10 +110,14 @@ export class ConfigManager {
       delete (partial as Record<string, unknown>).version
     }
 
+    // 健康檢查移到 try 外:不健康直接拋給 caller,不走 throw → 自己 catch → 再 throw 的反模式
+    if (!this.dbManager.isReady()) {
+      const err = new Error('DatabaseManager 未就緒')
+      logger.error('配置寫入失敗', 'ConfigManager', err)
+      throw err
+    }
+
     try {
-      if (!this.dbManager.isReady()) {
-        throw new Error('DatabaseManager 未就緒')
-      }
       const db = this.dbManager.getDb()
 
       // 1. 走 transaction 分派寫入

@@ -68,4 +68,12 @@ export const WorkCollectChannels = {
    * payload:WorkConfigResponse;返回:{ changed: boolean }
    */
   WORK_COLLECT_APPLY_REMOTE_CONFIG: 'work:apply-remote-config',
+
+    /**
+     * WORK_COLLECT_RENDERER_READY:renderer → main(invoke)
+     * store.bootstrap() 完成訂閱後立刻 invoke。
+     * 主進程收到後補推任何 pending 的 config / sync request,
+     * 處理「main 已推但 renderer 未訂閱」的開機競態。
+     */
+    WORK_COLLECT_RENDERER_READY: 'work:renderer-ready',
 } as const
