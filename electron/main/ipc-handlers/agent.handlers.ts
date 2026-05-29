@@ -44,8 +44,13 @@ export function registerAgentHandlers(
     agentToolService: AgentToolService,
 ): void {
     // ── 開窗 ─────────────────────────────────────────────────────────
+    // ipcMain.on 是 fire-and-forget,createAgentWindow 拋錯會被吞,故自行 try/catch
     ipcMain.on(IpcChannels.AGENT_OPEN_WINDOW, () => {
-        windowManager.createAgentWindow()
+        try {
+            windowManager.createAgentWindow()
+        } catch (err) {
+            logger.error('開啟 Agent 窗口失敗', 'IPC:agent', err)
+        }
     })
 
     // ── 配置 CRUD ────────────────────────────────────────────────────
@@ -53,9 +58,9 @@ export function registerAgentHandlers(
         return agentService?.readConfig() ?? {}
     })
 
+    // service 為 null 或寫入失敗都回 false,讓渲染端能感知(不再無腦 true)
     ipcMain.handle(IpcChannels.AGENT_WRITE_CONFIG, (_e, partial: AgentConfig) => {
-        agentService?.writeConfig(partial ?? {})
-        return true
+        return agentService?.writeConfig(partial ?? {}) ?? false
     })
 
     ipcMain.handle(IpcChannels.AGENT_CLEAR_CONFIG, () => {

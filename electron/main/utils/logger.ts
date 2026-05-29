@@ -3,12 +3,13 @@
  *
  * 用於:所有主進程模塊;autoUpdater.logger 也接到這裡統一格式。
  *
- * 三個寫入端互相獨立:
- *  - console:永遠輸出(dev 看 terminal、生產 stderr 也保留)
- *  - 文件(writeLine):**只 ERROR** 寫,維持現狀;需先 initLogFileWriter()
- *  - SQLite(_logService.write):**所有等級**都寫,給後續查詢 / 排查用;
- *    需 index.ts 在 DatabaseManager 初始化成功後呼叫 attachLogService();
- *    沒呼叫 / 失敗時,所有 logger.* 對 DB 的寫入靜默 noop,不影響 console / 文件
+ * 寫入端策略(刻意分級,避免 DB 被高頻 debug 淹沒):
+ *  - console:全等級
+ *  - 文件(writeLine):只 ERROR
+ *  - SQLite(_logService.write):info / warn / error 才寫;**debug 不落庫**
+ *
+ * debug 純 dev console 噪音,持久化只會讓排查時撈不到重點。需要追某條高頻流程時
+ * 看 dev terminal 即可,別用 logger.info 把它寫進 DB。
  *
  * 設計文件:[docs/08-本地數據庫設計.md §12](../../../docs/08-本地數據庫設計.md)
  */
@@ -73,22 +74,12 @@ function formatLine(level: string, message: string, module?: string, args?: unkn
 
 // ─── 主進程 logger ────────────────────────────────────────────────────
 
-/**
- * 寫入策略:
- *  - console:全等級
- *  - 文件:**只 ERROR**(維持原行為,給支援人員拿 .txt 排查)
- *  - DB:全等級(透過 _logService?.write)
- *
- * 想讓某些「重要 info」也落地 .txt 請改用 logger.error,
- * 不要放寬 info 規則 — 否則錯誤會被海量無用日誌淹沒。
- */
 export const logger = {
-  /** 調試(僅 dev console + DB) */
+  /** 調試:僅 dev console,**不落庫**(高頻噪音不污染 DB) */
   debug(message: string, module?: string, ...args: unknown[]): void {
     if (process.env.NODE_ENV !== 'production') {
       console.debug(formatLine('DEBUG', message, module, args))
     }
-    _logService?.write({level: 'debug', source: 'main', module, message, args})
   },
 
   /** 普通信息(console + DB) */
@@ -151,6 +142,8 @@ export function writeRendererLog(
     writeLine('renderer', line)
   }
 
-  // 全等級寫 DB
-  _logService?.write({level: LEVEL_MAP[level], source: 'renderer', module, message, args})
+  // 跟主進程一致:debug 不落庫,info/warn/error 才寫 DB
+  if (level !== 'DEBUG') {
+    _logService?.write({level: LEVEL_MAP[level], source: 'renderer', module, message, args})
+  }
 }

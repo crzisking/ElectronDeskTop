@@ -1,27 +1,21 @@
 /**
  * WorkRecordService:work_records 表的業務 API。
  *
- * 修正 #10:關鍵寫入返回明確 `OpResult` 而非吞錯。
- *   - insert / markSynced 失敗時呼叫方能感知,而不是靜默降級
- *   - 失敗計數 + lastError 暴露,讓 UI 能顯示「待同步 / 失敗」狀態
- *
- * 容錯仍維持「不對 caller 拋例外」;只是把錯誤訊號從吞錯改成 OpResult。
+ * 寫入失敗回 OpResult(不拋例外),並累積健康計數供 UI 顯示「待同步 / 失敗」。
  */
 
 import {and, asc, eq, gte, inArray, lt, sql, type SQL} from 'drizzle-orm'
+import {logger} from '../../../utils/logger'
 import type {DatabaseManager} from '../../database-manager'
 import {type NewWorkRecord, type WorkRecord, workRecords} from './schema'
 
-/** 寫入操作結果。ok=false 時 reason 必填 */
+/** 寫入結果;ok=false 時 reason 必填 */
 export type OpResult = { ok: true } | { ok: false; reason: string }
 
-/** Service 健康狀態,UI 用來顯示「同步失敗」徽章 */
+/** 健康計數,UI 顯示「同步失敗」徽章用 */
 export interface WorkRecordHealth {
-    /** 累計寫入失敗次數 */
     writeFailures: number
-    /** 累計標記同步失敗次數 */
     markFailures: number
-    /** 最近一次錯誤訊息(沒有則 null) */
     lastError: string | null
     /** 最近一次錯誤時間 Unix ms */
     lastErrorAt: number | null
@@ -41,10 +35,7 @@ export class WorkRecordService {
         return {...this.health}
     }
 
-    /**
-     * 寫入一筆採集紀錄。失敗回 OpResult,不拋例外。
-     * 之前簽名是 void —— 改回 OpResult 是 review 的修正點之一。
-     */
+    /** 寫入一筆採集紀錄。失敗回 OpResult,不拋例外。 */
     insert(entry: Omit<NewWorkRecord, 'id'>): OpResult {
         if (!this.dbManager.isReady()) {
             return this.recordFailure('write', 'DB not ready')
@@ -105,39 +96,23 @@ export class WorkRecordService {
     return row?.n ?? 0
   }
 
-  /**
-   * 把 localId 清單標記為已同步。修正 #10:失敗回 OpResult,不再吞錯。
-   * caller 看到 ok=false 時可以選擇下次 sync 重試前先 reload 本地紀錄。
-   */
+    /** 標記 localIds 為已同步。失敗回 OpResult,caller 可保留 unsynced 待重試。 */
   markSynced(localIds: number[], syncedAt: number): OpResult {
-      if (!this.dbManager.isReady()) {
-          return this.recordFailure('mark', 'DB not ready')
-      }
+        if (!this.dbManager.isReady()) return this.recordFailure('mark', 'DB not ready')
       if (localIds.length === 0) return {ok: true}
-    try {
-        const result = this.dbManager
-          .getDb()
-          .update(workRecords)
-          .set({synced: 1, syncedAt})
-          .where(inArray(workRecords.id, localIds))
-          .run()
-        // 成功路徑也 log:debug 階段必看「真的有 update 到幾行」,跟 caller 傳的 localIds.length 比對
-        // result.changes 是 better-sqlite3 回的 affected rows
-        const changes = (result as { changes?: number })?.changes ?? -1
-        console.log(
-            `[WorkRecordService] markSynced 完成 ids=${localIds.length} affected=${changes} ` +
-            `firstIds=[${localIds.slice(0, 5).join(',')}${localIds.length > 5 ? ',...' : ''}]`,
-        )
-        return {ok: true}
-    } catch (err) {
-        return this.recordFailure('mark', errMsg(err))
-    }
+        try {
+            this.dbManager.getDb()
+                .update(workRecords)
+                .set({synced: 1, syncedAt})
+                .where(inArray(workRecords.id, localIds))
+                .run()
+            return {ok: true}
+        } catch (err) {
+            return this.recordFailure('mark', errMsg(err))
+        }
   }
 
-  /**
-   * server backfill:把 server 端紀錄寫入本地;以 (capturedAt, screenshotHash) 粗略去重。
-   * server 為權威源,因此一定標 synced=1。
-   */
+    /** server backfill:寫入本地,以 (capturedAt, screenshotHash) 粗略去重,一律標 synced=1 */
   upsertFromServer(rows: Omit<NewWorkRecord, 'id'>[]): number {
     if (!this.dbManager.isReady() || rows.length === 0) return 0
     let inserted = 0
@@ -167,14 +142,12 @@ export class WorkRecordService {
     return inserted
   }
 
-    // ─── 內部:失敗紀錄 ────────────────────────────────────────────────
-
     private recordFailure(kind: 'write' | 'mark', reason: string): { ok: false; reason: string } {
         if (kind === 'write') this.health.writeFailures++
         else this.health.markFailures++
         this.health.lastError = reason
         this.health.lastErrorAt = Date.now()
-        console.error(`[WorkRecordService] ${kind} 失敗: ${reason}`)
+        logger.error(`${kind} 失敗: ${reason}`, 'WorkRecordService')
         return {ok: false, reason}
     }
 }

@@ -159,9 +159,9 @@ declare global {
 
         /**
          * 把指定 localIds 標記為已同步;syncedAt 用 server 返回的 ms。
-         * 失敗會 log,不丟例外(下次 sync 會再撈到)。
+         * 回 OpResult:ok=false 時 caller 可保留 unsynced 狀態待下次重試。
          */
-        markSynced: (localIds: number[], syncedAt: number) => Promise<void>
+        markSynced: (localIds: number[], syncedAt: number) => Promise<{ ok: boolean; reason?: string }>
 
         /**
          * server 拉回來的配置寫入本地 + 視變更重啟 scheduler。
@@ -180,6 +180,15 @@ declare global {
          * Main 收到後會補推任何曾經失敗的 config/sync request(處理「main 早於 renderer ready」的競態)。
          */
         notifyReady: () => Promise<void>
+
+        /**
+         * sync 完成 ack。Main 據此清 pending(ok)或保留待重試(fail)。
+         * 防止「事件已推但實際沒完成」的隱性故障。
+         *
+         * 註:採集健康狀態(待同步數 / 失敗計數)刻意不在主窗口暴露,
+         * 只在密碼保護的日誌查看器(logViewerAPI.workHealth)可見。
+         */
+        syncDone: (result: { ok: boolean; synced?: number; failed?: number; error?: string }) => Promise<void>
       }
 
       // ─── 使用者身份同步 ──────────────────────────────────────

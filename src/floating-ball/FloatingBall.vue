@@ -25,7 +25,7 @@
  * 只看時間的話，用戶按住不動也會被誤判為拖動，導致點擊失效。
  */
 
-import {ref} from 'vue'
+import {onUnmounted, ref} from 'vue'
 
 /** 是否正在拖動（用於樣式反饋） */
 const isDragging = ref(false)
@@ -33,6 +33,13 @@ const isDragging = ref(false)
 /** 拖動判定閾值：按住超過此時間（ms）且移動超過此距離（px）才算拖動 */
 const DRAG_TIME_THRESHOLD = 200
 const DRAG_DISTANCE_THRESHOLD = 5
+
+// 兜底:組件卸載時(例如拖拽中途窗口關閉,mouseup 不再觸發)移除殘留的 window 監聽器。
+// 函式宣告會被 hoist,此處引用無礙。
+onUnmounted(() => {
+  window.removeEventListener('mousemove', onWindowMousemove)
+  window.removeEventListener('mouseup', onWindowMouseup)
+})
 
 /** mousedown 時記錄的時間戳 */
 let mousedownTime = 0

@@ -5,11 +5,13 @@
  *  - 配置讀寫(KV 表,值統一 JSON.stringify)
  *  - 對話歷史 CRUD(分頁查詢、保存、按 conversationId 清空)
  *
- * 寫入容錯比照 LogService:失敗只 console.error,不擴散到 caller。
+ * 寫入容錯:不拋例外;失敗走 logger.error 落庫 + 回傳 false 讓 caller 感知。
+ * (不像 LogService 用 console.error —— 那是日誌服務本身,用 logger 會遞迴。)
  */
 
 import {asc, eq, sql} from 'drizzle-orm'
 // sql 在 listConversations 內仍會用到 — drop ensureTables 後 import 保留
+import {logger} from '../../../utils/logger'
 import type {DatabaseManager} from '../../database-manager'
 import {agentConfigs, type AgentMessageRow, agentMessages} from './schema'
 import type {AgentConfig, AgentMessage, OpenAIToolCall, ProviderConfig,} from '../../../../shared/types/agent.types'
@@ -78,9 +80,12 @@ export class AgentService {
         return cfg
     }
 
-    /** 寫入部分配置 */
-    writeConfig(partial: AgentConfig): void {
-        if (!this.dbManager.isReady()) return
+    /** 寫入部分配置。回 true 成功 / false 失敗(DB 未就緒或寫入異常)。 */
+    writeConfig(partial: AgentConfig): boolean {
+        if (!this.dbManager.isReady()) {
+            logger.error('writeConfig 失敗:DB 未就緒', 'AgentService')
+            return false
+        }
         const db = this.dbManager.getDb()
         const now = Date.now()
         try {
@@ -97,8 +102,10 @@ export class AgentService {
                         .run()
                 }
             })
+            return true
         } catch (err) {
-            console.error('[AgentService] writeConfig 失敗', err)
+            logger.error('writeConfig 失敗', 'AgentService', err)
+            return false
         }
     }
 
@@ -121,7 +128,7 @@ export class AgentService {
                 }
             })
         } catch (err) {
-            console.error('[AgentService] clearConfig 失敗', err)
+            logger.error('clearConfig 失敗', 'AgentService', err)
         }
     }
 
@@ -195,7 +202,7 @@ export class AgentService {
                 })
                 .run()
         } catch (err) {
-            console.error('[AgentService] saveMessage 失敗', err)
+            logger.error('saveMessage 失敗', 'AgentService', err)
         }
     }
 
@@ -209,10 +216,9 @@ export class AgentService {
                 db.delete(agentMessages).run()
             }
         } catch (err) {
-            console.error('[AgentService] clearMessages 失敗', err)
+            logger.error('clearMessages 失敗', 'AgentService', err)
         }
     }
-
 }
 
 /**

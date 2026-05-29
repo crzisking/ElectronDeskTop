@@ -83,57 +83,49 @@ onMounted(async () => {
     ElMessage.error(t('app.configLoadFailed'))
   }
 
-  // 2. 嘗試 AD 自動登入（Windows 本機帳號 → 後端換 JWT → 寫入 store）。
-  //    成功:後續守衛通過 requiresAuth,直接進原本 initialTarget。
-  //    失敗:authStore 未認證,守衛把它導去 /login,使用者手動輸帳號密碼。
-  //    刻意不阻塞 await:這支是「能成功就好」的旁路;
-  //    若超時或網路慢,寧可走手動登入也不要卡白屏。
-  if (!authStore.isAuthenticated) {
-    await authStore.loginByAd().catch((err) => {
-      logger.warn('AD 自動登入流程異常', 'App.Vue', err)
-      return false
-    })
+  // 步驟 2-6 用 try/finally 包住:任一步同步 throw(bootstrap / update / 訂閱)
+  // 都不能讓 hideGlobalLoading 漏掉,否則卡在全屏 loading 白屏。
+  try {
+    // 2. 嘗試 AD 自動登入（Windows 本機帳號 → 後端換 JWT → 寫入 store）。
+    //    失敗:authStore 未認證,守衛導去 /login 手動登入。不阻塞,寧可手動也別卡白屏。
+    if (!authStore.isAuthenticated) {
+      await authStore.loginByAd().catch((err) => {
+        logger.warn('AD 自動登入流程異常', 'App.Vue', err)
+        return false
+      })
+    }
+
+    // 3. 依 auth 狀態決定最終路由(沒登入 replace 去 /login,guard 會跑)
+    if (!authStore.isAuthenticated) {
+      await router.replace({name: 'login'}).catch(() => undefined)
+    } else {
+      // AD 登入成功 → 同步使用者身份(不 await,store 內已 catch);表單登入由 LoginView 自己同步
+      void useUserProfileStore().syncAfterLogin()
+      await router.replace(initialTarget).catch(() => undefined)
+    }
+
+    // 4. 注冊主進程推送事件監聽
+    window.electronAPI.on(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
+    window.electronAPI.on(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
+    window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
+
+    // 4.1 訂閱工作採集事件。必須在 App level 訂,否則 scheduler tick 推來時沒人接。
+    useWorkCollectStore().bootstrap()
+
+    // 5. 啟動自動更新監聽（訂閱 push:update-* 事件）
+    const update = useUpdate()
+    update.bootstrap()
+
+    // 5.1 AD 免密登入繞過 LoginView,在此補一次靜默檢查更新(須在 bootstrap 之後)
+    if (authStore.isAuthenticated) {
+      void update.loginCheck()
+    }
+  } catch (err) {
+    logger.error('App 初始化異常', 'App.Vue', err)
+  } finally {
+    // 6. 無論成功 / 異常都要關掉全屏 loading
+    uiStore.hideGlobalLoading()
   }
-
-  // 3. 配置就緒、AD 嘗試完成後,根據 auth 狀態決定最終路由。
-  // 在此明確判斷 isAuthenticated,沒登入就 replace 去 /login(不同路由,guard 會跑)。
-  if (!authStore.isAuthenticated) {
-    await router.replace({name: 'login'}).catch(() => undefined)
-  } else {
-    // AD 自動登入成功 → 同步使用者身份(拉 dingId/unionId 進本機 SQLite)。
-    // store 內已 catch 失敗,不阻塞後續流程;不 await 讓導頁先行。
-    // 表單登入路徑由 LoginView 自己負責呼叫一次,避免重複同步。
-    void useUserProfileStore().syncAfterLogin()
-    await router.replace(initialTarget).catch(() => undefined)
-  }
-
-  // 4. 注冊主進程推送事件監聽
-  window.electronAPI.on(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
-  window.electronAPI.on(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
-  window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
-
-  // 4.1 訂閱主進程工作採集事件。
-  //     PUSH_WORK_COLLECT_TICK:scheduler 每 N 分鐘採集到截圖 → renderer 走 createHttpClient 打後端 AI
-  //     PUSH_WORK_RECORD_NEW :DB 寫入完成 → renderer 重 query 流水線
-  //     必須在這裡(App level)訂閱,不能等使用者進 WorkCollect 子頁,
-  //     否則 scheduler tick 推來時沒人接,採集白做。
-  useWorkCollectStore().bootstrap()
-
-  // 5. 啟動自動更新監聽（訂閱 push:update-* 事件、處理通知/重啟確認）
-  const update = useUpdate()
-  update.bootstrap()
-
-  // 5.1 AD 自動登入成功時,順帶觸發一次靜默檢查更新。
-  //     舊流程靠 LoginView 在登入成功後呼叫 loginCheck(),AD 免密登入會繞過 LoginView,
-  //     若不在此處補上,使用者免密登入後永遠收不到「有新版本」的通知,只能等下次手動檢查。
-  //     必須放在 bootstrap() 之後 —— bootstrap 才會訂閱 push:update-* 事件,
-  //     提前呼叫 check 可能漏掉回應。
-  if (authStore.isAuthenticated) {
-    void update.loginCheck()
-  }
-
-  // 6. 初始化完成,隱藏全屏加載遮罩
-  uiStore.hideGlobalLoading()
 })
 
 onUnmounted(() => {

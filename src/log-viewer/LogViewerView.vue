@@ -16,7 +16,7 @@
  * 沒做(留給後續):清空、匯出 ZIP、自動刷新、模組下拉過濾
  */
 
-import {computed, onMounted, ref} from 'vue'
+import {onMounted, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 
 // ── 型別:跟主進程 LogService 對齊;為了不跨邊界 import,在此重宣告 ──
@@ -39,8 +39,17 @@ interface QueryResult {
   total: number
 }
 
+interface WorkHealth {
+  pendingSync: number
+  writeFailures: number
+  markFailures: number
+  lastError: string | null
+  lastErrorAt: number | null
+}
+
 interface LogViewerAPI {
   query: (params: Record<string, unknown>) => Promise<QueryResult>
+  workHealth: () => Promise<WorkHealth>
 }
 
 declare global {
@@ -70,6 +79,17 @@ const pageSize = ref(200)
 const rows = ref<LogRow[]>([])
 const total = ref(0)
 const loading = ref(false)
+
+// ── 採集健康狀態(只在此密碼保護窗口可見)─────────────────────────
+const health = ref<WorkHealth | null>(null)
+
+async function loadHealth() {
+  try {
+    health.value = await window.logViewerAPI.workHealth()
+  } catch {
+    health.value = null
+  }
+}
 
 // ── 查詢 ──────────────────────────────────────────────────────────
 
@@ -179,11 +199,30 @@ function rowClassName({row}: {row: LogRow}): string {
 // ── 初始載入 ──────────────────────────────────────────────────────
 onMounted(() => {
   runQuery()
+  loadHealth()
 })
 </script>
 
 <template>
   <div class="log-viewer">
+    <!-- ── 採集健康狀態(維運用,僅此密碼保護窗口可見)──────────── -->
+    <div v-if="health" class="health-bar">
+      <span class="health-title">採集健康</span>
+      <el-tag :type="health.pendingSync > 0 ? 'warning' : 'success'" effect="plain" size="small">
+        待同步 {{ health.pendingSync }} 筆
+      </el-tag>
+      <el-tag v-if="health.writeFailures > 0" effect="plain" size="small" type="danger">
+        寫入失敗 {{ health.writeFailures }}
+      </el-tag>
+      <el-tag v-if="health.markFailures > 0" effect="plain" size="small" type="danger">
+        標記失敗 {{ health.markFailures }}
+      </el-tag>
+      <span v-if="health.lastError" class="health-error">
+        最近異常 {{ health.lastErrorAt ? formatTime(health.lastErrorAt) : '' }} — {{ health.lastError }}
+      </span>
+      <el-button size="small" text @click="loadHealth">刷新</el-button>
+    </div>
+
     <!-- ── 過濾條 ──────────────────────────────────────── -->
     <div class="filter-bar">
       <el-select
@@ -304,6 +343,29 @@ onMounted(() => {
   padding: 12px;
   gap: 10px;
   box-sizing: border-box;
+}
+
+.health-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.health-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.health-error {
+  font-size: 12px;
+  color: #d97706;
 }
 
 .filter-bar {

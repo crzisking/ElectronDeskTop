@@ -146,30 +146,27 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     }
 
     /**
-     * 批次同步本地未上傳紀錄到 server。
-     *
-     * 流程:
-     *   1. IPC 撈 unsynced(每批最多 200)
-     *   2. 轉成 sync-daily 上傳格式(localId = 本地 record.id)
-     *   3. POST,拿回 successLocalIds
-     *   4. IPC mark 已同步
-     *   5. 若還有未傳就遞迴繼續(超過 5 批中斷,留下次觸發,避免無限 loop)
-     *
-     * 失敗只 log,留給下次觸發(work-end / safety-net / 重啟)再試。
+     * 批次同步本地 unsynced 到 server,最多 5 批(每批 200)。
+     * 只標 success + duplicate 為 synced,failed 留下次重試。
+     * 結束後 ack main(syncDone),讓 main 清 / 保留 pending。
      */
     async function syncDailyRecords(): Promise<void> {
+        let totalSynced = 0
+        let totalFailed = 0
+        let ok = true
+        let error: string | undefined
+
         for (let round = 0; round < 5; round++) {
-            let chunk: WorkRecord[] = []
+            let chunk: WorkRecord[]
             try {
                 chunk = (await window.electronAPI.workCollect.listUnsynced(200)) as WorkRecord[]
             } catch (err) {
-                logger.warn('撈 unsynced 失敗', 'WorkCollectStore', err)
-                return
+                ok = false;
+                error = '撈 unsynced 失敗'
+                logger.warn(error, 'WorkCollectStore', err)
+                break
             }
-            if (!chunk || chunk.length === 0) {
-                logger.debug('本地無未同步紀錄,sync 結束', 'WorkCollectStore')
-                return
-            }
+            if (!chunk || chunk.length === 0) break
 
             const records: WorkSyncRecordItem[] = chunk.map((r) => ({
                 localId: r.id,
@@ -185,39 +182,41 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
 
             try {
                 const resp = await workCollectApi.syncDaily(records)
-                // 只標 success(本次真插入)+ duplicate(server 已有),
-                // failed 留下次觸發補傳。舊版用 duplicates count > 0 推斷整批已收 →
-                // 在「全部失敗 + 0 duplicate」邊界會誤標,已修正。
-                const toMark = [
-                    ...(resp.successLocalIds ?? []),
-                    ...(resp.duplicateLocalIds ?? []),
-                ]
+                // success(真插入)+ duplicate(server 已有)才標 synced;failed 留下次
+                const toMark = [...(resp.successLocalIds ?? []), ...(resp.duplicateLocalIds ?? [])]
                 if (toMark.length > 0) {
-                    await window.electronAPI.workCollect.markSynced(toMark, resp.syncedAt ?? Date.now())
+                    const mark = await window.electronAPI.workCollect.markSynced(toMark, resp.syncedAt ?? Date.now())
+                    if (!mark.ok) {
+                        ok = false;
+                        error = `markSynced 失敗:${mark.reason}`
+                        logger.warn(error, 'WorkCollectStore')
+                        break // 本地沒標到,別繼續撈(會撈到同一批)
+                    }
                 }
-                const failedCount = (resp.failedLocalIds ?? []).length
-                logger.info(
-                    `sync-daily 完成 success=${resp.successLocalIds?.length ?? 0} duplicate=${resp.duplicateLocalIds?.length ?? 0} failed=${failedCount} marked=${toMark.length}`,
-                    'WorkCollectStore'
-                )
-                if (failedCount > 0) {
-                    logger.warn(`sync-daily 有 ${failedCount} 筆失敗,等下次觸發重傳`, 'WorkCollectStore')
-                }
-                if (chunk.length < 200) return // 已撈乾淨
+                totalSynced += toMark.length
+                totalFailed += (resp.failedLocalIds ?? []).length
+                if (chunk.length < 200) break // 已撈乾淨
             } catch (err) {
-                logger.warn('sync-daily HTTP 失敗,等下次觸發', 'WorkCollectStore', err)
-                return
+                ok = false;
+                error = 'sync-daily HTTP 失敗'
+                logger.warn(error, 'WorkCollectStore', err)
+                break
             }
         }
-        logger.info('sync-daily 達 5 批上限,剩餘留下次觸發', 'WorkCollectStore')
+
+        if (totalFailed > 0) ok = false
+        logger.info(`sync 完成 synced=${totalSynced} failed=${totalFailed} ok=${ok}`, 'WorkCollectStore')
+        // ack main:成功清 pending,失敗保留待重試。
+        // 失敗計數 / 待同步數透過 health 暴露,僅日誌查看器(需密碼)可見,主窗口不顯示。
+        window.electronAPI.workCollect
+            .syncDone({ok, synced: totalSynced, failed: totalFailed, error})
+            .catch(() => undefined)
     }
 
     function onSyncRequest(...args: unknown[]) {
         const payload = args[0] as { reason?: string } | undefined
-        logger.info(`收到 sync request reason=${payload?.reason ?? 'unknown'}`, 'WorkCollectStore')
-        syncDailyRecords().catch((err) => {
-            logger.warn('syncDailyRecords 異常', 'WorkCollectStore', err)
-        })
+        logger.debug(`收到 sync request reason=${payload?.reason ?? 'unknown'}`, 'WorkCollectStore')
+        syncDailyRecords().catch((err) => logger.warn('syncDailyRecords 異常', 'WorkCollectStore', err))
     }
 
   /**

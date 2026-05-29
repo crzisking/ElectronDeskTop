@@ -1,12 +1,11 @@
 /**
- * 工作自動採集 bridge。
+ * 工作採集 bridge。
  *
- * 主進程 scheduler 跑 timer + capture,然後 PUSH_WORK_COLLECT_TICK 推給渲染端;
- * 渲染端拿截圖呼叫後端 AI(走 createHttpClient 複用 auth),結果用 sendResult 回送;
- * 主進程 handler 寫 DB + 推 PUSH_WORK_RECORD_NEW 通知 UI 刷新。
+ * scheduler 推 tick → renderer 打 AI → sendResult 回 main 寫 DB。
+ * 集中化 sync:main 推 sync/config request → renderer 走 HTTP → 結果 IPC 回 main。
  *
- * 完整型別在 src/types/electron.d.ts 對齊;本 bridge 用 MinimalWorkRecord
- * 結構覆蓋,避免 renderer bundle 牽連主進程 schema 模組。
+ * 結構型別只在此檔本地定義,不 import 主進程 schema,避免牽連 renderer bundle。
+ * 完整型別對齊見 src/types/electron.d.ts。
  */
 import type {IpcRenderer} from 'electron'
 
@@ -18,6 +17,7 @@ export interface WorkCollectChannelMap {
     WORK_COLLECT_MARK_SYNCED: string
     WORK_COLLECT_APPLY_REMOTE_CONFIG: string
     WORK_COLLECT_RENDERER_READY: string
+    WORK_COLLECT_SYNC_DONE: string
 }
 
 interface MinimalWorkRecord {
@@ -34,6 +34,12 @@ interface MinimalWorkRecord {
     syncedAt: number | null
 }
 
+/** 寫入結果(對齊主進程 OpResult) */
+interface OpResult {
+    ok: boolean;
+    reason?: string
+}
+
 export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannelMap) {
   return {
     toggle: (enabled: boolean) =>
@@ -42,19 +48,15 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
         ipc.invoke(ch.WORK_COLLECT_LIST, params) as Promise<MinimalWorkRecord[]>,
     sendResult: (payload: unknown) => ipc.send(ch.WORK_COLLECT_RESULT, payload),
 
-      /** 集中化:撈未同步紀錄(synced=0),limit 上限對齊 server 200 條/批 */
-      listUnsynced: (limit: number = 200) =>
+      /** 撈未同步紀錄(synced=0) */
+      listUnsynced: (limit = 200) =>
           ipc.invoke(ch.WORK_COLLECT_LIST_UNSYNCED, limit) as Promise<MinimalWorkRecord[]>,
 
-      /** 集中化:server sync-daily 成功後標記已同步 */
+      /** 標記已同步;回 OpResult 讓 caller 感知失敗 */
       markSynced: (localIds: number[], syncedAt: number) =>
-          ipc.invoke(ch.WORK_COLLECT_MARK_SYNCED, {localIds, syncedAt}) as Promise<void>,
+          ipc.invoke(ch.WORK_COLLECT_MARK_SYNCED, {localIds, syncedAt}) as Promise<OpResult>,
 
-      /**
-       * 集中化:把 server 端配置寫入本地 ConfigManager。
-       * 主進程內部會比對版本決定是否 restart scheduler。
-       * 返回 { changed: boolean }:配置實際有變動才為 true。
-       */
+      /** 套用 server 配置;changed=true 表示已套用 + restart scheduler */
       applyRemoteConfig: (config: {
           enabled: boolean
           intervalMinutes: number
@@ -64,11 +66,14 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
       }) =>
           ipc.invoke(ch.WORK_COLLECT_APPLY_REMOTE_CONFIG, config) as Promise<{ changed: boolean }>,
 
-      /**
-       * Renderer bootstrap 完成 ack。main 收到後補推任何 pending 的 config/sync request,
-       * 處理「main 已推但 renderer 未訂閱」的競態。
-       */
+      /** bootstrap 完成 ack,main 重放 pending request */
       notifyReady: () =>
           ipc.invoke(ch.WORK_COLLECT_RENDERER_READY) as Promise<void>,
+
+      /** sync 完成 ack,main 據此清 / 保留 pending */
+      syncDone: (result: { ok: boolean; synced?: number; failed?: number; error?: string }) =>
+          ipc.invoke(ch.WORK_COLLECT_SYNC_DONE, result) as Promise<void>,
+      // 注意:健康狀態(getHealth)刻意不在主窗口暴露 —— 只在密碼保護的日誌查看器
+      // (log-viewer.preload)可達,避免普通使用者看到「待同步 / 失敗」維運資訊。
   }
 }

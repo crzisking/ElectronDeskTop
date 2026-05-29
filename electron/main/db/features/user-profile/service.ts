@@ -5,11 +5,12 @@
  *  - upsert():寫入或更新(以 userId 為 conflict target)
  *  - clearAll():清空整張表;**只在 AD 帳號變更時由 AccountChangeCleaner 呼叫**,避免到處亂清
  *
- * 容錯:寫入 / 查詢失敗只 console.error,不擴散到 caller —— 跟其他 service 一致。
+ * 容錯:寫入 / 查詢失敗走 logger.error 落庫,不擴散到 caller(回 null / false)。
  */
 
+import {logger} from '../../../utils/logger'
 import type {DatabaseManager} from '../../database-manager'
-import {userProfiles, type NewUserProfile, type UserProfile} from './schema'
+import {type NewUserProfile, type UserProfile, userProfiles} from './schema'
 
 export class UserProfileService {
   constructor(private readonly dbManager: DatabaseManager) {}
@@ -29,7 +30,7 @@ export class UserProfileService {
         .get()
       return row ?? null
     } catch (err) {
-      console.error('[UserProfileService] getActive 失敗', err)
+        logger.error('getActive 失敗', 'UserProfileService', err)
       return null
     }
   }
@@ -61,7 +62,7 @@ export class UserProfileService {
         .run()
       return true
     } catch (err) {
-      console.error('[UserProfileService] upsert 失敗', err)
+        logger.error('upsert 失敗', 'UserProfileService', err)
       return false
     }
   }
