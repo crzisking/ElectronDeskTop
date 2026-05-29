@@ -1,8 +1,8 @@
 # Agent 訊息渲染系統設計
 
-> **本文針對本專案實際情況**(已完成 doc 16 §1.4 目錄重構 + §1.7 composable 拆分),不是通用方案。
+> **本文針對本專案實際情況**(已完成 Agent 目錄重構 + composable 拆分),不是通用方案。
 >
-> 配套文檔:[14-Agent功能設計.md](./14-Agent功能設計.md) · [16-修復方案.md](./16-修復方案.md)
+> 配套文檔:[14-Agent功能設計.md](./14-Agent功能設計.md)
 >
 > **改造目標**:把 `src/features/agent/AgentWindow.vue` 現在用 `{{ m.content }}` **純文字渲染**的訊息升級為支援
 > Markdown / 程式碼高亮 / KaTeX / Tool Call / Thinking Block / Mermaid 的**可演進渲染系統**。
@@ -1003,7 +1003,7 @@ src/features/agent/
 
 **為什麼這個結構**:
 
-- 跟 doc 16 §1.4 的目錄規劃對齊
+- 跟 features/ 目錄規範(見 05-开发规范)對齊
 - `composables/` 放純邏輯 / 純函式;`components/` 放 Vue SFC
 - `MessageRenderer.vue` 是擴展核心(將來新 block type 只動這檔 + 加新 component)
 - 將 `AgentWindow.vue` 從 ~700 行降到 ~150 行(只剩佈局 + 對話列表編排)
@@ -1220,7 +1220,7 @@ export function renderMarkdown(source: string): string {
 ### 14.2 修改後的 `useAgentStream.ts`(rAF 節流關鍵段)
 
 ```ts
-// 只列出加 rAF 的部分,其它跟 doc 16 §1.7 拆完的版本一致
+// 只列出加 rAF 的部分,其它跟 composable 拆分後的版本一致
 export async function consumeStream(
   stream: AsyncIterable<...>,
   assistantMsg: AgentMessage,

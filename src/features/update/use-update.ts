@@ -15,10 +15,11 @@
  *  - electron/preload/index.ts 暴露的 window.electronAPI.update / on / off
  */
 
-import { ref, readonly } from 'vue'
-import { ElNotification, ElMessage } from 'element-plus'
+import {readonly, ref} from 'vue'
+import {ElMessage, ElNotification} from 'element-plus'
 import {i18n} from '@/locales'
 import {logger} from '@/utils/logger'
+import {IpcChannels} from '@shared/ipc-channels'
 
 /**
  * useUpdate 是模塊級單例（在 setup() 之外被呼叫），所以不能用 useI18n()。
@@ -91,12 +92,12 @@ function bootstrap(): void {
   const api = window.electronAPI
 
   // 開始檢查
-  api.on('push:update-checking', () => {
+    api.on(IpcChannels.PUSH_UPDATE_CHECKING, () => {
     state.value = 'checking'
   })
 
   // 發現新版 → 通知用戶開始背景下載（同一版本只通知一次）
-  api.on('push:update-available', (...args: unknown[]) => {
+    api.on(IpcChannels.PUSH_UPDATE_AVAILABLE, (...args: unknown[]) => {
     clearCheckTimeout()
     const info = args[0] as UpdateInfo
     state.value = 'available'
@@ -121,7 +122,7 @@ function bootstrap(): void {
   })
 
   // 已是最新版
-  api.on('push:update-not-available', () => {
+    api.on(IpcChannels.PUSH_UPDATE_NOT_AVAILABLE, () => {
     clearCheckTimeout()
     state.value = 'not-available'
     if (userInitiated) {
@@ -132,7 +133,7 @@ function bootstrap(): void {
   })
 
   // 下載進度
-  api.on('push:update-progress', (...args: unknown[]) => {
+    api.on(IpcChannels.PUSH_UPDATE_PROGRESS, (...args: unknown[]) => {
     clearCheckTimeout()
     state.value = 'downloading'
     progress.value = args[0] as UpdateProgress
@@ -141,7 +142,7 @@ function bootstrap(): void {
   // 下載完成 → 通知用戶後強制重啟（不給延後選項）
   // 設計取捨：避免用戶長期掛在舊版上錯過修復，下載即重啟；
   // 給 RESTART_DELAY_MS 緩衝讓用戶看清通知並保存任何進行中的工作
-  api.on('push:update-downloaded', (...args: unknown[]) => {
+    api.on(IpcChannels.PUSH_UPDATE_DOWNLOADED, (...args: unknown[]) => {
     clearCheckTimeout()
     const info = args[0] as UpdateInfo
     state.value = 'downloaded'
@@ -169,7 +170,7 @@ function bootstrap(): void {
   })
 
   // 錯誤：清掉超時 timer，更新狀態，必要時提示用戶
-  api.on('push:update-error', (...args: unknown[]) => {
+    api.on(IpcChannels.PUSH_UPDATE_ERROR, (...args: unknown[]) => {
     clearCheckTimeout()
     const err = args[0] as { message: string }
     state.value = 'error'
