@@ -115,12 +115,19 @@ export class WorkRecordService {
       }
       if (localIds.length === 0) return {ok: true}
     try {
-      this.dbManager
+        const result = this.dbManager
           .getDb()
           .update(workRecords)
           .set({synced: 1, syncedAt})
           .where(inArray(workRecords.id, localIds))
           .run()
+        // 成功路徑也 log:debug 階段必看「真的有 update 到幾行」,跟 caller 傳的 localIds.length 比對
+        // result.changes 是 better-sqlite3 回的 affected rows
+        const changes = (result as { changes?: number })?.changes ?? -1
+        console.log(
+            `[WorkRecordService] markSynced 完成 ids=${localIds.length} affected=${changes} ` +
+            `firstIds=[${localIds.slice(0, 5).join(',')}${localIds.length > 5 ? ',...' : ''}]`,
+        )
         return {ok: true}
     } catch (err) {
         return this.recordFailure('mark', errMsg(err))

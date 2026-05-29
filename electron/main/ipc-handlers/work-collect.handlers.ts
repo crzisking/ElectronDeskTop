@@ -192,6 +192,7 @@ export function registerWorkCollectHandlers(
     ipcMain.handle(
         IpcChannels.WORK_COLLECT_MARK_SYNCED,
         (_event, payload: unknown) => {
+            logger.info(`收到 MARK_SYNCED 請求 payload=${JSON.stringify(payload)?.slice(0, 200)}`, 'IPC:work')
             if (!recordService) return {ok: false, reason: 'DB not ready'} as const
             if (!validateMarkSyncedPayload(payload)) {
                 logger.warn('WORK_COLLECT_MARK_SYNCED payload 校驗失敗,丟棄', 'IPC:work', payload)
