@@ -259,7 +259,6 @@ function exportTxt() {
             :total="filteredRecords.length"
             background
             layout="total, sizes, prev, pager, next"
-            small
         />
       </div>
     </template>
