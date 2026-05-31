@@ -44,7 +44,8 @@ export const workCollectApi = {
     activeWindow: string,
     appName: string,
     allWindows: string[],
-    capturedAt: number
+    capturedAt: number,
+    userName: string
   ): Promise<WorkAnalyzeResponse> {
     const form = new FormData()
     // IPC 過來的 Uint8Array 底層可能是 ArrayBufferLike(TS 嚴格認為含 SharedArrayBuffer),
@@ -53,6 +54,8 @@ export const workCollectApi = {
     const jpegCopy = new Uint8Array(jpeg.byteLength)
     jpegCopy.set(jpeg)
     form.append('screenshot', new Blob([jpegCopy], {type: 'image/jpeg'}), 'screenshot.jpg')
+      // 工號:後端 [AllowAnonymous] 取不到 CurrentUser,由前端從 JWT 解出顯式帶上
+      form.append('userName', userName)
     form.append('activeWindow', activeWindow)
     form.append('appName', appName)
     form.append('allWindows', JSON.stringify(allWindows))
@@ -70,10 +73,11 @@ export const workCollectApi = {
    * 啟動時 + 每天首次 tick 進工時前各拉一次。
    * 比對 version,新版本就覆蓋本地 config + scheduler 重啟。
    */
-  async getMyConfig(): Promise<WorkConfigResponse> {
+  async getMyConfig(userName: string): Promise<WorkConfigResponse> {
     // config 拉取多半 08:00 / 啟動時集中發生,走 25s 散佈窗口削峰
+      // 工號當 query 參數傳(後端 AllowAnonymous 取不到 CurrentUser)
     return await scheduleRequest(
-        () => getClient().get<WorkConfigResponse>('/api/WorkCollect/my-config'),
+        () => getClient().get<WorkConfigResponse>('/api/WorkCollect/my-config', {params: {userName}}),
         {profile: 'config', label: 'getMyConfig'},
     )
   },
@@ -82,12 +86,13 @@ export const workCollectApi = {
    * 批次上傳未同步的採集紀錄。後端冪等(UNIQUE on UserId+LocalId)。
    * 單請求最多 200 條,呼叫方自行分批。
    */
-  async syncDaily(records: WorkSyncRecordItem[]): Promise<WorkSyncDailyResponse> {
+  async syncDaily(records: WorkSyncRecordItem[], userName: string): Promise<WorkSyncDailyResponse> {
     // sync-daily 集中在 17:00 工時結束爆發,走 25s 散佈窗口削峰
+      // 工號放 body,後端落庫時當 Work_Records.UserId(AllowAnonymous 取不到 CurrentUser)
     return await scheduleRequest(
         () => getClient().post<WorkSyncDailyResponse>(
             '/api/WorkCollect/sync-daily',
-            {records},
+            {userName, records},
         ),
         {profile: 'sync-daily', label: 'syncDaily'},
     )

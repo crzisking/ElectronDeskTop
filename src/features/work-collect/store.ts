@@ -14,6 +14,7 @@
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import {useConfigStore} from '@/stores/config.store'
+import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
 import {workCollectApi} from './api'
@@ -21,6 +22,14 @@ import type {WorkCollectTickPayload, WorkRecord, WorkResultPayload, WorkSyncReco
 
 export const useWorkCollectStore = defineStore('workCollect', () => {
   const configStore = useConfigStore()
+    const authStore = useAuthStore()
+
+    /**
+     * 當前登入工號(從 JWT 解析後存在 authStore.user.userName)。
+     * 後端 work-collect 接口 [AllowAnonymous] 取不到 CurrentUser,所有上報都要顯式帶這個。
+     * 未登入時為空字串 —— 呼叫方需自行判斷(沒工號別上報,避免 server UserId 空)。
+     */
+    const currentUserName = (): string => authStore.user?.userName ?? ''
 
   /** 採集總開關;鏡像 config.workCollect.enabled */
   const enabled = computed<boolean>(() => configStore.appConfig?.workCollect?.enabled ?? false)
@@ -90,7 +99,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
         payload.activeWindow,
         payload.appName,
         payload.allWindows,
-        payload.capturedAt
+          payload.capturedAt,
+          currentUserName()
       )
 
       const resultPayload: WorkResultPayload = {
@@ -126,8 +136,13 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
      * 失敗只 log;網路不通就等下次觸發(啟動 / 第二天 8 點)。
      */
     async function onConfigRequest() {
+        const userName = currentUserName()
+        if (!userName) {
+            logger.warn('未登入(無工號),跳過拉取 config', 'WorkCollectStore')
+            return
+        }
         try {
-            const remote = await workCollectApi.getMyConfig()
+            const remote = await workCollectApi.getMyConfig(userName)
             const result = await window.electronAPI.workCollect.applyRemoteConfig({
                 enabled: remote.enabled,
                 intervalMinutes: remote.intervalMinutes,
@@ -151,6 +166,13 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
      * 結束後 ack main(syncDone),讓 main 清 / 保留 pending。
      */
     async function syncDailyRecords(): Promise<void> {
+        const userName = currentUserName()
+        if (!userName) {
+            // 沒工號(未登入)就別上報 —— 否則 server 端 UserId 會是空,記錄歸屬不明
+            logger.warn('未登入(無工號),跳過 sync,等登入後下次觸發', 'WorkCollectStore')
+            return
+        }
+
         let totalSynced = 0
         let totalFailed = 0
         let ok = true
@@ -181,7 +203,7 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
             }))
 
             try {
-                const resp = await workCollectApi.syncDaily(records)
+                const resp = await workCollectApi.syncDaily(records, userName)
                 // success(真插入)+ duplicate(server 已有)才標 synced;failed 留下次
                 const toMark = [...(resp.successLocalIds ?? []), ...(resp.duplicateLocalIds ?? [])]
                 if (toMark.length > 0) {
