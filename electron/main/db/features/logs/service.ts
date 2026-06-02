@@ -14,7 +14,7 @@
 
 import {and, desc, eq, gte, inArray, like, lt, sql, type SQL} from 'drizzle-orm'
 import type {DatabaseManager} from '../../database-manager'
-import {logs, type LogLevel, type LogRow, type LogSource} from './schema'
+import {type LogLevel, type LogRow, logs, type LogSource} from './schema'
 
 /** 查詢條件(預留給未來 dev 面板) */
 export interface LogQueryParams {
@@ -113,6 +113,35 @@ export class LogService {
     if (params.search) conds.push(like(logs.message, `%${params.search}%`))
     return conds
   }
+
+    /**
+     * 取 logs 表中出現過的所有 module 名稱(distinct,按出現頻率倒序)。
+     *
+     * 給 log-viewer 模組下拉用 —— 訊息一多手動輸入 module 名 typo 風險高,
+     * 提供下拉避免猜「IPC:ball」還是「IPC:Ball」之類的問題。
+     *
+     * 為什麼按頻率排序:常用的模組(WorkCollector / WindowManager / IPC:* 等)
+     * 出現次數遠多於偶發模組,排前面省選擇時間。
+     *
+     * 性能:logs 表規模 < 100K 行時直接 GROUP BY,無壓力。
+     * 超大資料量可以改成只看最近 N 天,但目前無此需求。
+     */
+    listModules(): string[] {
+        if (!this.dbManager.isReady()) return []
+        const rows = this.dbManager
+            .getDb()
+            .select({module: logs.module, n: sql<number>`count(*)`})
+            .from(logs)
+            .where(sql`${logs.module}
+            IS NOT NULL AND
+            ${logs.module}
+            !=
+            ''`)
+            .groupBy(logs.module)
+            .orderBy(desc(sql`count(*)`))
+            .all()
+        return rows.map((r) => r.module!).filter((m): m is string => !!m)
+    }
 
   /**
    * 刪除 N 天前的舊紀錄。

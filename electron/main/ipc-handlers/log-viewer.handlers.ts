@@ -20,7 +20,7 @@
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
-import type {LogService, LogQueryParams} from '../db/features/logs/service'
+import type {LogQueryParams, LogService} from '../db/features/logs/service'
 import type {WindowManager} from '../window-manager'
 
 /**
@@ -68,6 +68,15 @@ export function registerLogViewerHandlers(
       total: logService.count(params),
     }
   })
+
+    // ── 模組列表(下拉用) ───────────────────────────────────────────
+    ipcMain.handle(IpcChannels.LOG_LIST_MODULES, () => {
+        if (!_unlocked) {
+            throw new Error('Forbidden: log viewer is locked')
+        }
+        if (!logService) return []
+        return logService.listModules()
+    })
 
   // ── 開子視窗 ─────────────────────────────────────────────────────
   ipcMain.on(IpcChannels.WINDOW_OPEN_LOG_VIEWER, () => {

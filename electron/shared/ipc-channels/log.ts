@@ -24,6 +24,12 @@ export const LogChannels = {
    */
   LOG_QUERY: 'log-viewer:query',
 
+    /**
+     * LOG_LIST_MODULES:取 logs 表中所有 distinct module 名稱(給下拉用)。
+     * 未解鎖 session 主進程直接 throw。invoke。返回:string[]
+     */
+    LOG_LIST_MODULES: 'log-viewer:list-modules',
+
   /** WINDOW_OPEN_LOG_VIEWER:開啟日誌查看器子視窗(必須先 unlock)。send */
   WINDOW_OPEN_LOG_VIEWER: 'window:open-log-viewer',
 } as const

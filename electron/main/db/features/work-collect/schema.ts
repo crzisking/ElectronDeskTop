@@ -4,7 +4,7 @@
  * 每筆代表一次定時採集的結果 —— AI 分析後寫入,只存文字結果(category / description),
  * 不存原始截圖(端到端不落地政策)。
  *
- * 配套設計:[docs/11-工作自動採集設計.md](../../../../docs/11-工作自動採集設計.md)
+ * 配套設計:[docs/11-工作採集設計.md](../../../../docs/11-工作採集設計.md)
  */
 
 import {index, integer, real, sqliteTable, text} from 'drizzle-orm/sqlite-core'

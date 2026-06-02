@@ -5,6 +5,7 @@
  * 功能(MVP):
  *  - 等級多選過濾(debug/info/warn/error)
  *  - 來源過濾(main/renderer)
+ *  - 模組下拉過濾(可搜尋,從 DB distinct module 拉)
  *  - 訊息關鍵字搜尋
  *  - 日期區間過濾
  *  - 分頁(預設 200/頁)
@@ -13,7 +14,7 @@
  * 資料來源:logViewerAPI.query(...) → 主進程 LogService.query
  *           (主進程 handler 內已驗 _unlocked,本視窗不會在未解鎖時被開)
  *
- * 沒做(留給後續):清空、匯出 ZIP、自動刷新、模組下拉過濾
+ * 沒做(留給後續):清空、匯出 ZIP、自動刷新
  */
 
 import {onMounted, ref} from 'vue'
@@ -49,6 +50,7 @@ interface WorkHealth {
 
 interface LogViewerAPI {
   query: (params: Record<string, unknown>) => Promise<QueryResult>
+  listModules: () => Promise<string[]>
   workHealth: () => Promise<WorkHealth>
 }
 
@@ -64,6 +66,12 @@ const levelFilter = ref<LogLevel[]>([])
 
 /** 來源,'' = 全部 */
 const sourceFilter = ref<LogSource | ''>('')
+
+/** 模組,'' = 全部;選項從 DB 拉 distinct list */
+const moduleFilter = ref<string>('')
+
+/** 可選的模組清單(初次掛載 + 重置時刷新) */
+const moduleOptions = ref<string[]>([])
 
 /** 訊息搜尋關鍵字 */
 const searchKeyword = ref('')
@@ -109,6 +117,7 @@ async function runQuery() {
     }
     if (levelFilter.value.length > 0) params.level = [...levelFilter.value]
     if (sourceFilter.value) params.source = sourceFilter.value
+    if (moduleFilter.value) params.module = moduleFilter.value
     if (searchKeyword.value.trim()) params.search = searchKeyword.value.trim()
     if (dateRange.value) {
       params.since = dateRange.value[0].getTime()
@@ -138,10 +147,22 @@ function handleSearch() {
 function handleReset() {
   levelFilter.value = []
   sourceFilter.value = ''
+  moduleFilter.value = ''
   searchKeyword.value = ''
   dateRange.value = null
   currentPage.value = 1
   runQuery()
+  // 順手刷新模組清單(若有新模組第一次出現,reset 時也能看到)
+  void loadModules()
+}
+
+/** 從主進程拉一份 distinct module list */
+async function loadModules() {
+  try {
+    moduleOptions.value = await window.logViewerAPI.listModules()
+  } catch {
+    moduleOptions.value = []
+  }
 }
 
 /** 切頁不變動其他條件,直接重查 */
@@ -200,6 +221,7 @@ function rowClassName({row}: {row: LogRow}): string {
 onMounted(() => {
   runQuery()
   loadHealth()
+  loadModules()
 })
 </script>
 
@@ -242,6 +264,26 @@ onMounted(() => {
       <el-select v-model="sourceFilter" placeholder="來源" clearable class="filter-source">
         <el-option label="主進程" value="main" />
         <el-option label="渲染進程" value="renderer" />
+      </el-select>
+
+      <!--
+        模組下拉:filterable=可輸入過濾,因為模組名可能有 50+ 個(IPC:agent / IPC:ball /
+        WindowManager / WorkCollector / ConfigManager / Agent / ...),靠捲動找太慢。
+        選項從 DB 拉 distinct,按出現頻率排序,常用的在最上面。
+      -->
+      <el-select
+          v-model="moduleFilter"
+          class="filter-module"
+          clearable
+          filterable
+          placeholder="模組"
+      >
+        <el-option
+            v-for="m in moduleOptions"
+            :key="m"
+            :label="m"
+            :value="m"
+        />
       </el-select>
 
       <el-date-picker
@@ -311,7 +353,16 @@ onMounted(() => {
 
       <el-table-column prop="module" label="模組" width="160">
         <template #default="{row}">
-          <span v-if="row.module" class="mono small">{{ row.module }}</span>
+          <!--
+            點擊模組名 → 自動填到過濾下拉並立即查詢。
+            重複定位「這個模組的所有訊息」時最方便,不用手動下拉找。
+          -->
+          <span
+              v-if="row.module"
+              :title="`篩選此模組:${row.module}`"
+              class="mono small module-cell"
+              @click="moduleFilter = row.module; handleSearch()"
+          >{{ row.module }}</span>
           <span v-else class="placeholder">—</span>
         </template>
       </el-table-column>
@@ -378,8 +429,15 @@ onMounted(() => {
 
 .filter-level { width: 200px; }
 .filter-source { width: 120px; }
+
+.filter-module {
+  width: 200px;
+}
 .filter-date { width: 260px; }
-.filter-search { width: 260px; }
+
+.filter-search {
+  width: 240px;
+}
 
 .log-table {
   flex: 1;
@@ -395,6 +453,19 @@ onMounted(() => {
 .mono.small {
   font-size: 11.5px;
   color: #4b5563;
+}
+
+/* 模組單元格:hover 出底色 + 變藍提示可點 */
+.module-cell {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.module-cell:hover {
+  background: #e0e7ff;
+  color: #3730a3;
 }
 
 .placeholder {

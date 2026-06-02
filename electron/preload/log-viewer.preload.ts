@@ -15,6 +15,7 @@ import {contextBridge, ipcRenderer} from 'electron'
 
 const IPC = {
   LOG_QUERY: 'log-viewer:query',
+    LOG_LIST_MODULES: 'log-viewer:list-modules',
     // 採集健康狀態。只在密碼保護的日誌查看器窗口暴露,普通使用者不可見。
     // 🔗 source of truth:electron/shared/ipc-channels/work-collect.ts(WORK_COLLECT_HEALTH)
     WORK_HEALTH: 'work:health',
@@ -44,6 +45,8 @@ interface LogQueryParams {
 contextBridge.exposeInMainWorld('logViewerAPI', {
   /** 查詢日誌。失敗(例如未解鎖)會 reject */
   query: (params: LogQueryParams) => ipcRenderer.invoke(IPC.LOG_QUERY, params),
+    /** 取所有出現過的模組名(按頻率倒序),給下拉用 */
+    listModules: () => ipcRenderer.invoke(IPC.LOG_LIST_MODULES) as Promise<string[]>,
     /** 採集健康狀態:待同步數 / 失敗計數 / 最後錯誤 */
     workHealth: () => ipcRenderer.invoke(IPC.WORK_HEALTH) as Promise<WorkHealth>,
 })
