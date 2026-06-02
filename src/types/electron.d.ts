@@ -175,6 +175,8 @@ declare global {
           version: number
           categoryTemplateId?: number | null
           templateName?: string | null
+          /** 模板整份詳情;main 端落到 work_template_cache,給 tick 組 prompt 用 */
+          templateDetail?: unknown
         }) => Promise<{ changed: boolean }>
 
         /**

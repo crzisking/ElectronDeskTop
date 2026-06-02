@@ -111,7 +111,9 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
         payload.appName,
         payload.allWindows,
           payload.capturedAt,
-          currentUserName()
+          currentUserName(),
+          payload.prompt ?? '',
+          payload.allowedCodes ?? [],
       )
 
       const resultPayload: WorkResultPayload = {
@@ -162,6 +164,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 version: remote.version,
                 categoryTemplateId: remote.categoryTemplateId ?? null,
                 templateName: remote.templateName ?? null,
+                // 整份 templateDetail 透傳到 main → 落 work_template_cache,後續 tick 本地組 prompt
+                templateDetail: remote.templateDetail ?? null,
             })
             // 配置變了 → 重新 load 一次,讓 configStore.appConfig 對齊本地剛寫的 DB
             if (result.changed) {

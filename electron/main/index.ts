@@ -17,6 +17,7 @@ import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 import {DatabaseManager} from './db/database-manager'
 import {LogService} from './db/features/logs/service'
 import {WorkRecordService} from './db/features/work-collect/service'
+import {WorkTemplateCacheService} from './db/features/work-collect/template-cache.service'
 import {UserProfileService} from './db/features/user-profile/service'
 import {AgentService} from './db/features/agent/service'
 import {AgentToolService} from './services/agent-tool.service'
@@ -32,6 +33,7 @@ let updateMgr: UpdateManager
 let dbManager: DatabaseManager | null = null
 let logService: LogService | null = null
 let workRecordService: WorkRecordService | null = null
+let workTemplateCacheService: WorkTemplateCacheService | null = null
 let userProfileService: UserProfileService | null = null
 let accountChangeCleaner: AccountChangeCleaner | null = null
 let agentService: AgentService | null = null
@@ -126,6 +128,7 @@ app.whenReady().then(async () => {
     }
     // 同一個 dbManager,連 work_records / user_profiles service 一起建
     workRecordService = new WorkRecordService(dbManager)
+      workTemplateCacheService = new WorkTemplateCacheService(dbManager)
     userProfileService = new UserProfileService(dbManager)
     accountChangeCleaner = new AccountChangeCleaner(dbManager)
     // Agent feature 自管 schema(ensureTables in constructor),不影響 drizzle migration
@@ -135,6 +138,7 @@ app.whenReady().then(async () => {
     dbManager = null
     logService = null
     workRecordService = null
+      workTemplateCacheService = null
     userProfileService = null
     accountChangeCleaner = null
     agentService = null
@@ -204,7 +208,7 @@ app.whenReady().then(async () => {
 
   // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用。
   // scheduler 負責 timer + capture + 推 IPC;命中閒置時直接走 recordService 寫 DB 跳過 AI。
-  workCollector = new WorkCollectorScheduler(configManager, windowManager, workRecordService)
+    workCollector = new WorkCollectorScheduler(configManager, windowManager, workRecordService, workTemplateCacheService)
 
   registerAllHandlers({
     windowManager,
@@ -214,6 +218,7 @@ app.whenReady().then(async () => {
     logService,
     workCollector,
     workRecordService,
+      workTemplateCacheService,
     userProfileService,
     accountChangeCleaner,
     agentService,

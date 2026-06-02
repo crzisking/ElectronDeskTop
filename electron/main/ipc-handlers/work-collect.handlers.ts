@@ -12,6 +12,7 @@ import type {ConfigManager} from '../config-manager'
 import type {WindowManager} from '../window-manager'
 import type {WorkCollectorScheduler} from '../work-collector'
 import type {WorkRecordService} from '../db/features/work-collect/service'
+import type {CachedTemplateDetail, WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
 import type {WorkCategory} from '../db/features'
 
 interface WorkResultPayload {
@@ -27,11 +28,6 @@ interface WorkResultPayload {
 
 // ─── Runtime guards ──────────────────────────────────────────────────
 
-const VALID_CATEGORIES = new Set<WorkCategory>([
-    'coding', 'documenting', 'browsing', 'communicating',
-    'meeting', 'designing', 'idle', 'other',
-])
-
 function isPositiveInt(v: unknown): v is number {
     return typeof v === 'number' && Number.isInteger(v) && v > 0
 }
@@ -43,7 +39,9 @@ function isNonNegativeNumber(v: unknown): v is number {
 function validateWorkResult(p: any): p is WorkResultPayload {
     if (!p || typeof p !== 'object') return false
     if (!isPositiveInt(p.capturedAt)) return false
-    if (!VALID_CATEGORIES.has(p.category)) return false
+    // 模板化後 category 是動態 code(BOM_MAINT 等),不再固定列舉。
+    // 只校驗「非空字串 + 合理長度 + 大寫英數底線」 — 跟模板 Code 規範對齊
+    if (typeof p.category !== 'string' || p.category.length === 0 || p.category.length > 50) return false
     if (typeof p.description !== 'string') return false
     if (typeof p.confidence !== 'number' || p.confidence < 0 || p.confidence > 1) return false
     if (p.activeApp != null && typeof p.activeApp !== 'string') return false
@@ -67,6 +65,8 @@ interface RemoteConfigPayload {
     /** 模板 ID,null=未綁(scheduler 不啟動) */
     categoryTemplateId?: number | null
     templateName?: string | null
+    /** 整份模板詳情,null=未綁;有值時 main 落地到 work_template_cache */
+    templateDetail?: CachedTemplateDetail | null
 }
 
 function validateRemoteConfig(p: any): p is RemoteConfigPayload {
@@ -79,6 +79,14 @@ function validateRemoteConfig(p: any): p is RemoteConfigPayload {
     // categoryTemplateId / templateName 為選填,只校驗型別(null / number / string)
     if (p.categoryTemplateId !== undefined && p.categoryTemplateId !== null
         && !(Number.isInteger(p.categoryTemplateId) && p.categoryTemplateId > 0)) return false
+    // templateDetail 只校驗最關鍵結構(templateId + version + items array),內部 items 結構放寬
+    if (p.templateDetail !== undefined && p.templateDetail !== null) {
+        const td = p.templateDetail
+        if (typeof td !== 'object') return false
+        if (!Number.isInteger(td.templateId) || td.templateId <= 0) return false
+        if (!Number.isInteger(td.version) || td.version < 1) return false
+        if (!Array.isArray(td.items)) return false
+    }
     return Number.isInteger(p.version) && p.version >= 1
 }
 
@@ -89,6 +97,7 @@ export function registerWorkCollectHandlers(
   recordService: WorkRecordService | null,
   configManager: ConfigManager,
   windowManager: WindowManager,
+  templateCacheService: WorkTemplateCacheService | null,
 ): void {
 
     // 切換採集開關
@@ -157,6 +166,13 @@ export function registerWorkCollectHandlers(
             || current.workEndHour !== remote.workEndHour
             || (current.categoryTemplateId ?? null) !== newTemplateId
             || (current.templateName ?? null) !== (remote.templateName ?? null)
+
+        // ── 模板 cache 寫入(獨立於 KV config 變更判斷;templateDetail 隨 my-config 一起來) ──
+        // 有 detail → upsert(覆寫單行 id=1);無 detail(管理員解綁) → 清空 cache
+        if (templateCacheService) {
+            if (remote.templateDetail) templateCacheService.upsert(remote.templateDetail)
+            else templateCacheService.clear()
+        }
 
         if (!changed) {
             scheduler.markConfigSynced()

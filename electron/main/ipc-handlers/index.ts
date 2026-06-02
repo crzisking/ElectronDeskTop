@@ -26,6 +26,7 @@ import type {FloatingBallManager} from '../floating-ball'
 import type {UpdateManager} from '../update-manager'
 import type {LogService} from '../db/features/logs/service'
 import type {WorkRecordService} from '../db/features/work-collect/service'
+import type {WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
 import type {UserProfileService} from '../db/features/user-profile/service'
 import type {AgentService} from '../db/features/agent/service'
 import type {AgentToolService} from '../services/agent-tool.service'
@@ -48,6 +49,7 @@ export interface IpcHandlerContext {
   logService: LogService | null
   workCollector: WorkCollectorScheduler
   workRecordService: WorkRecordService | null
+    workTemplateCacheService: WorkTemplateCacheService | null
   userProfileService: UserProfileService | null
   accountChangeCleaner: AccountChangeCleaner | null
   agentService: AgentService | null
@@ -67,6 +69,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     logService,
     workCollector,
     workRecordService,
+      workTemplateCacheService,
     userProfileService,
     accountChangeCleaner,
     agentService,
@@ -79,7 +82,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerLogHandlers()
   registerAuthHandlers()
   registerLogViewerHandlers(logService, windowManager)
-  registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager)
+    registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService)
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
   registerAgentHandlers(windowManager, agentService, agentToolService)

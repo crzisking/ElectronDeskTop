@@ -45,7 +45,9 @@ export const workCollectApi = {
     appName: string,
     allWindows: string[],
     capturedAt: number,
-    userName: string
+    userName: string,
+    prompt: string,
+    allowedCodes: string[],
   ): Promise<WorkAnalyzeResponse> {
     const form = new FormData()
     // IPC 過來的 Uint8Array 底層可能是 ArrayBufferLike(TS 嚴格認為含 SharedArrayBuffer),
@@ -60,6 +62,9 @@ export const workCollectApi = {
     form.append('appName', appName)
     form.append('allWindows', JSON.stringify(allWindows))
     form.append('capturedAt', String(capturedAt))
+    // 模板移到 client(docs/23 Phase A):main 組好的 prompt + 白名單透傳給 server
+    form.append('prompt', prompt)
+    form.append('allowedCodes', JSON.stringify(allowedCodes))
 
     // analyze:走 15s 散佈窗口,壓平整點對齊的瞬時峰值,又不至於拖太久回 UI
     return await scheduleRequest(

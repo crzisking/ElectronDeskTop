@@ -22,6 +22,13 @@ export interface WorkCollectTickPayload {
   capturedAt: number
   /** 主進程算好的截圖 dHash(16 hex),renderer 拿到不處理,直接帶回 main 寫 DB */
   screenshotHash: string
+  /**
+   * main 端用本地模板 cache 組好的 system prompt(docs/23 Phase A)。
+   * renderer 不解析,原樣透傳給 server。空字串 → server 走 fallback(查 DB 自組)
+   */
+  prompt: string
+  /** 模板合法 code 集合(+ "OTHER")。renderer 不關心,JSON.stringify 後透傳 */
+  allowedCodes: string[]
 }
 
 /** renderer → main:AI 結果回送 */
@@ -65,6 +72,37 @@ export interface WorkConfigResponse {
     categoryTemplateId?: number | null
     /** 模板名稱,設定頁顯示「我的崗位」用 */
     templateName?: string | null
+  /**
+   * 整份模板詳情(docs/23 Phase A)。renderer 拿到後透過 IPC applyRemoteConfig
+   * 丟給 main 落 work_template_cache 表,後續 tick 內主進程自己組 prompt。
+   */
+  templateDetail?: WorkTemplateDetail | null
+}
+
+export interface WorkTemplateDetail {
+  templateId: number
+  version: number
+  name: string
+  description?: string | null
+  promptSnippet?: string | null
+  items: WorkTemplateItem[]
+}
+
+export interface WorkTemplateItem {
+  itemId: number
+  code: string
+  label: string
+  description?: string | null
+  color?: string | null
+  sortOrder: number
+  isActive: boolean
+  examples: WorkTemplateExample[]
+}
+
+export interface WorkTemplateExample {
+  exampleId: number
+  content: string
+  sortOrder: number
 }
 
 /** sync-daily 單筆紀錄 payload */

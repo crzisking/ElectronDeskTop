@@ -81,3 +81,21 @@ export type WorkRecord = typeof workRecords.$inferSelect
 
 /** Drizzle 推導的 INSERT 物件型別 */
 export type NewWorkRecord = typeof workRecords.$inferInsert
+
+/**
+ * 業務分類模板的本地 cache(docs/23 Phase A — 模板移到 client)。
+ *
+ * 一個 user 同時只綁一個模板 → 固定 PK=1,每次 my-config 拉到新版直接 INSERT OR REPLACE。
+ * detailJson 存整份 templateDetail JSON(name/items/examples/promptSnippet),
+ * 本地不關心結構,反序列化用 → 結構變了也不用改 schema。
+ */
+export const workTemplateCache = sqliteTable('work_template_cache', {
+    id: integer('id').primaryKey(),                       // 固定 1
+    templateId: integer('templateId').notNull(),          // server TemplateId
+    version: integer('version').notNull(),                // 對齊 server Version
+    detailJson: text('detailJson').notNull(),             // JSON.stringify(templateDetail)
+    updatedAt: integer('updatedAt').notNull(),
+})
+
+export type WorkTemplateCache = typeof workTemplateCache.$inferSelect
+export type NewWorkTemplateCache = typeof workTemplateCache.$inferInsert

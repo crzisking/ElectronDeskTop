@@ -15,6 +15,8 @@ import {IpcChannels} from '../shared/ipc-channels'
 import type {ConfigManager} from './config-manager'
 import type {WindowManager} from './window-manager'
 import type {WorkRecordService} from './db/features/work-collect/service'
+import type {WorkTemplateCacheService} from './db/features/work-collect/template-cache.service'
+import {buildSystemPrompt, collectAllowedCodes} from './work-collect-prompt-builder'
 
 /** dHash Hamming 距離 ≤ 此值視為畫面未變(64 bit 容忍 ~15%) */
 const HASH_SIMILAR_THRESHOLD = 10
@@ -221,6 +223,8 @@ export class WorkCollectorScheduler {
         private readonly cfg: ConfigManager,
         private readonly winMgr: WindowManager,
         private readonly recordService: WorkRecordService | null,
+        // 模板 cache:tick 內讀,組 prompt;為 null 表 DB 沒就緒,退化為 fallback(server 兜底)
+        private readonly templateCache: WorkTemplateCacheService | null = null,
     ) {
         this.sync = new WorkSyncCoordinator(winMgr, recordService)
         powerMonitor.on('lock-screen', this.onLock)
@@ -325,7 +329,12 @@ export class WorkCollectorScheduler {
                 return
             }
 
-            // 非 idle → 推 renderer 走 AI 分析
+            // 非 idle → 本地組 prompt(從 cache 拿模板)→ 推 renderer 走 AI 分析
+            // 模板 cache 沒拿到時 prompt='' allowedCodes=[],server 會 fallback 查 DB 組
+            const cached = this.templateCache?.read() ?? null
+            const prompt = cached ? buildSystemPrompt(cached) : ''
+            const allowedCodes = cached ? collectAllowedCodes(cached) : []
+
             win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_TICK, {
                 jpeg: new Uint8Array(thumb.toJPEG(70)),
                 activeWindow: activeTitle,
@@ -333,6 +342,8 @@ export class WorkCollectorScheduler {
                 allWindows: allWindowTitles,
                 capturedAt,
                 screenshotHash: hash,
+                prompt,
+                allowedCodes,
             })
             this.idle.rememberState(hash, activeTitle)
         } catch (err) {
