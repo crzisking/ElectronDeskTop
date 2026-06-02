@@ -11,7 +11,7 @@
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {Aim, Clock, Histogram, Refresh} from '@element-plus/icons-vue'
-import {CATEGORY_LABEL_KEY} from '../category-colors'
+import {getCategoryLabel} from '../category-colors'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = defineProps<{
@@ -27,18 +27,18 @@ const coveredHours = computed(() => {
   return set.size
 })
 
-/** 最多類別 + 佔比 */
+/** 最多類別 + 佔比 — 模板化後 category 是動態 code,直接用 getCategoryLabel 兜底 */
 const topCategory = computed<{label: string; ratio: number} | null>(() => {
   if (props.records.length === 0) return null
   const counts = new Map<WorkCategory, number>()
   for (const r of props.records) counts.set(r.category, (counts.get(r.category) ?? 0) + 1)
-  let topCat: WorkCategory = 'other'
+  let topCat: WorkCategory = ''
   let topCount = 0
   for (const [cat, c] of counts) {
     if (c > topCount) { topCat = cat; topCount = c }
   }
   return {
-    label: t(CATEGORY_LABEL_KEY[topCat]),
+    label: getCategoryLabel(topCat),
     ratio: topCount / props.records.length,
   }
 })

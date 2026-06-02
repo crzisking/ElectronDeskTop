@@ -64,6 +64,9 @@ interface RemoteConfigPayload {
     workStartHour: number
     workEndHour: number
     version: number
+    /** 模板 ID,null=未綁(scheduler 不啟動) */
+    categoryTemplateId?: number | null
+    templateName?: string | null
 }
 
 function validateRemoteConfig(p: any): p is RemoteConfigPayload {
@@ -73,6 +76,9 @@ function validateRemoteConfig(p: any): p is RemoteConfigPayload {
     if (!Number.isInteger(p.workStartHour) || p.workStartHour < 0 || p.workStartHour > 23) return false
     if (!Number.isInteger(p.workEndHour) || p.workEndHour < 1 || p.workEndHour > 24) return false
     if (p.workEndHour <= p.workStartHour) return false
+    // categoryTemplateId / templateName 為選填,只校驗型別(null / number / string)
+    if (p.categoryTemplateId !== undefined && p.categoryTemplateId !== null
+        && !(Number.isInteger(p.categoryTemplateId) && p.categoryTemplateId > 0)) return false
     return Number.isInteger(p.version) && p.version >= 1
 }
 
@@ -143,11 +149,14 @@ export function registerWorkCollectHandlers(
             return {changed: false}
         }
         const current = configManager.getConfig().workCollect
+        const newTemplateId = remote.categoryTemplateId ?? null
         const changed = !current
             || current.enabled !== remote.enabled
             || current.intervalMinutes !== remote.intervalMinutes
             || current.workStartHour !== remote.workStartHour
             || current.workEndHour !== remote.workEndHour
+            || (current.categoryTemplateId ?? null) !== newTemplateId
+            || (current.templateName ?? null) !== (remote.templateName ?? null)
 
         if (!changed) {
             scheduler.markConfigSynced()
@@ -159,12 +168,18 @@ export function registerWorkCollectHandlers(
                 intervalMinutes: remote.intervalMinutes,
                 workStartHour: remote.workStartHour,
                 workEndHour: remote.workEndHour,
+                categoryTemplateId: newTemplateId,
+                templateName: remote.templateName ?? null,
             },
         })
         scheduler.stop()
-        if (remote.enabled) scheduler.start()
+        // 啟用 + 已綁模板才真的起 scheduler;沒模板等同設定不完整
+        if (remote.enabled && newTemplateId) scheduler.start()
         scheduler.markConfigSynced()
-        logger.info(`server 配置已套用 interval=${remote.intervalMinutes} v=${remote.version}`, 'IPC:work')
+        logger.info(
+            `server 配置已套用 interval=${remote.intervalMinutes} template=${newTemplateId ?? 'null'} v=${remote.version}`,
+            'IPC:work',
+        )
         return {changed: true}
     })
 

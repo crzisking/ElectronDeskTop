@@ -173,6 +173,8 @@ declare global {
           workStartHour: number
           workEndHour: number
           version: number
+          categoryTemplateId?: number | null
+          templateName?: string | null
         }) => Promise<{ changed: boolean }>
 
         /**

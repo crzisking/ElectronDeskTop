@@ -132,6 +132,8 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
       intervalMinutes: getKv(kv, 'workCollect.intervalMinutes', DEFAULT_CONFIG.workCollect.intervalMinutes),
       workStartHour: getKv(kv, 'workCollect.workStartHour', DEFAULT_CONFIG.workCollect.workStartHour),
       workEndHour: getKv(kv, 'workCollect.workEndHour', DEFAULT_CONFIG.workCollect.workEndHour),
+      categoryTemplateId: getKv(kv, 'workCollect.categoryTemplateId', null),
+      templateName: getKv(kv, 'workCollect.templateName', null),
     },
   }
 }
@@ -273,6 +275,8 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
       upsertKv(tx, 'workCollect.intervalMinutes', partial.workCollect.intervalMinutes)
       upsertKv(tx, 'workCollect.workStartHour', partial.workCollect.workStartHour)
       upsertKv(tx, 'workCollect.workEndHour', partial.workCollect.workEndHour)
+      upsertKv(tx, 'workCollect.categoryTemplateId', partial.workCollect.categoryTemplateId)
+      upsertKv(tx, 'workCollect.templateName', partial.workCollect.templateName)
     }
   })
 }
@@ -319,6 +323,8 @@ export const USER_OWNED_KEYS: ReadonlySet<string> = new Set([
   'workCollect.intervalMinutes',
   'workCollect.workStartHour',
   'workCollect.workEndHour',
+  'workCollect.categoryTemplateId',
+  'workCollect.templateName',
 ])
 
 /**
@@ -457,6 +463,8 @@ export function allSingletons(c: typeof DEFAULT_CONFIG): Array<[string, unknown]
     ['workCollect.intervalMinutes', c.workCollect.intervalMinutes],
     ['workCollect.workStartHour', c.workCollect.workStartHour],
     ['workCollect.workEndHour', c.workCollect.workEndHour],
+    ['workCollect.categoryTemplateId', c.workCollect.categoryTemplateId ?? null],
+    ['workCollect.templateName', c.workCollect.templateName ?? null],
   ]
 }
 

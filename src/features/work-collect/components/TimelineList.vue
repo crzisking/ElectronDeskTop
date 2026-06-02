@@ -13,7 +13,7 @@ import {computed, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {ElMessage} from 'element-plus'
 import {Download} from '@element-plus/icons-vue'
-import {CATEGORY_LABEL_KEY, CATEGORY_ORDER, CATEGORY_TAG_TYPE} from '../category-colors'
+import {CATEGORY_TAG_TYPE, getCategoryLabel} from '../category-colors'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = withDefaults(
@@ -37,6 +37,13 @@ function defaultRange(): [Date, Date] {
 
 /** 選定日期區間;el-date-picker daterange 綁定 [start, end] 兩個 Date */
 const selectedRange = ref<[Date, Date]>(defaultRange())
+
+/** 過濾下拉的可選分類 — 從當前 records 動態派生(模板化後 category 不固定) */
+const availableCategories = computed<WorkCategory[]>(() => {
+  const set = new Set<WorkCategory>()
+  for (const r of props.records) set.add(r.category)
+  return [...set].sort()
+})
 
 /** 禁止選未來日期 */
 function disabledDate(time: Date): boolean {
@@ -140,7 +147,7 @@ function exportTxt() {
   const header = ['時間', '類別', '描述', '前台視窗'].join('\t')
   const lines = records.map((r) => {
     const time = formatTimestampForExport(r.capturedAt)
-    const cat = t(CATEGORY_LABEL_KEY[r.category])
+    const cat = getCategoryLabel(r.category)
     const desc = (r.description ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
     const win = (r.activeWindowTitle ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
     return [time, cat, desc, win].join('\t')
@@ -196,10 +203,11 @@ function exportTxt() {
             size="small"
             @change="resetToFirstPage"
         >
+          <!-- 模板化後 category 動態 — 過濾選項從當前 records 派生 -->
           <el-option
-              v-for="cat in CATEGORY_ORDER"
+              v-for="cat in availableCategories"
               :key="cat"
-              :label="t(CATEGORY_LABEL_KEY[cat])"
+              :label="getCategoryLabel(cat)"
               :value="cat"
           />
         </el-select>
@@ -236,7 +244,7 @@ function exportTxt() {
         >
           <div class="record-row">
             <el-tag :type="CATEGORY_TAG_TYPE[rec.category]" size="small">
-              {{ t(CATEGORY_LABEL_KEY[rec.category]) }}
+              {{ getCategoryLabel(rec.category) }}
             </el-tag>
             <span class="record-desc">{{ rec.description }}</span>
           </div>

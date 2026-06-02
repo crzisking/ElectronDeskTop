@@ -27,9 +27,20 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     /**
      * 當前登入工號(從 JWT 解析後存在 authStore.user.userName)。
      * 後端 work-collect 接口 [AllowAnonymous] 取不到 CurrentUser,所有上報都要顯式帶這個。
-     * 未登入時為空字串 —— 呼叫方需自行判斷(沒工號別上報,避免 server UserId 空)。
+     *
+     * dev 模式下若沒登入(`npm run dev` 跳過登入流程),允許用 VITE_DEV_USERNAME 兜底,
+     * 在 .env.development 配你的工號。生產環境(import.meta.env.PROD)即使設了也不生效,
+     * 避免打包後上線假冒身份。
      */
-    const currentUserName = (): string => authStore.user?.userName ?? ''
+    const currentUserName = (): string => {
+        const real = authStore.user?.userName
+        if (real) return real
+        if (!import.meta.env.PROD) {
+            const devUser = (import.meta.env.VITE_DEV_USERNAME as string | undefined) ?? ''
+            if (devUser) return devUser.trim()
+        }
+        return ''
+    }
 
   /** 採集總開關;鏡像 config.workCollect.enabled */
   const enabled = computed<boolean>(() => configStore.appConfig?.workCollect?.enabled ?? false)
@@ -149,6 +160,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 workStartHour: remote.workStartHour,
                 workEndHour: remote.workEndHour,
                 version: remote.version,
+                categoryTemplateId: remote.categoryTemplateId ?? null,
+                templateName: remote.templateName ?? null,
             })
             // 配置變了 → 重新 load 一次,讓 configStore.appConfig 對齊本地剛寫的 DB
             if (result.changed) {
@@ -200,6 +213,7 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 confidence: r.confidence,
                 screenshotHash: r.screenshotHash,
                 reason: r.reason,
+                activityState: r.activityState,
             }))
 
             try {

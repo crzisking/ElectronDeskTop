@@ -9,10 +9,15 @@
 
 import {index, integer, real, sqliteTable, text} from 'drizzle-orm/sqlite-core'
 
-/** 工作類別,跟後端 WorkCategory 列舉一致 */
-export type WorkCategory =
-  | 'coding' | 'documenting' | 'browsing' | 'communicating'
-  | 'meeting' | 'designing' | 'idle' | 'other'
+/**
+ * 工作分類 code:模板化後由管理員定義(例 BOM_MAINT / IT_REPAIR)+ 系統保留 OTHER。
+ * 舊資料可能還是 coding/documenting/... 字串,前端對未識別 code 顯示「未分類」。
+ * 用 string 不再用 union,因為 code 集合是動態的(管理員配)。
+ */
+export type WorkCategory = string
+
+/** 採集時的活動狀態:active / idle。idle 紀錄 UI 永遠不顯示 */
+export type ActivityState = 'active' | 'idle'
 
 export const workRecords = sqliteTable(
   'work_records',
@@ -53,6 +58,14 @@ export const workRecords = sqliteTable(
 
       /** server 端 SyncedAt(Unix ms);未同步為 null */
       syncedAt: integer('syncedAt'),
+
+      /**
+       * 採集時的活動狀態:
+       *   - 'active':正常採集(AI 分析過)
+       *   - 'idle':鍵鼠空閒,本地直接寫,不打 AI
+       * UI / API 對使用者預設過濾 idle,管理員端可帶 includeIdle=true 查。
+       */
+      activityState: text('activityState').$type<ActivityState>().notNull().default('active'),
   },
   (table) => ({
     /** 流水線按時間倒序列;按日期區間查詢時走這條 */

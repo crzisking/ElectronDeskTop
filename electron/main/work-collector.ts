@@ -133,7 +133,12 @@ class WorkSyncCoordinator {
         logger.info('config 已同步', 'WorkSync')
     }
 
-    /** 推 sync request(未 ack 前以最高優先 reason 暫存) */
+    /**
+     * 推 sync request(未 ack 前以最高優先 reason 暫存)。
+     *
+     * 順便 pull 一次 config:跟「上報寫在一起」,使用者沒綁模板就 fail 一次了事,
+     * 不額外排重試 timer;下次 sync 觸發再順道拉。
+     */
     requestSync(reason: SyncReason): void {
         const win = this.winMgr.getMainWindow()
         if (!win || win.isDestroyed()) {
@@ -144,6 +149,9 @@ class WorkSyncCoordinator {
         win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, {reason})
         this.pendingSyncReason = reason
         logger.debug(`已推 sync request reason=${reason}`, 'WorkSync')
+
+        // 順道 pull config:tryPushConfigRequest 自帶當日去重,同日多次 sync 只會推一次 IPC
+        this.tryPushConfigRequest(getBeijingDate())
     }
 
     /** renderer sync 完成 ack:成功清 pending,失敗保留待下次觸發 / ready 重放 */
@@ -180,11 +188,12 @@ class WorkSyncCoordinator {
         const win = this.winMgr.getMainWindow()
         this.pendingConfigDay = targetDay
         if (!win || win.isDestroyed()) {
-            logger.debug('config pull 暫緩,等 renderer ready', 'WorkSync')
+            // 臨時改 info,排錯期觀察 IPC 推送時機;穩定後可降回 debug
+            logger.info('config pull 暫緩,等 renderer ready', 'WorkSync')
             return
         }
         win.webContents.send(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST)
-        logger.debug(`已推 config pull(target=${targetDay})`, 'WorkSync')
+        logger.info(`已推 config pull(target=${targetDay})`, 'WorkSync')
     }
 
     /** safety-net > work-end > startup;pending 只升不降 */
@@ -219,10 +228,17 @@ export class WorkCollectorScheduler {
     }
 
     start(): void {
+        // 啟動先 pull 一次 config(管理員 PATCH 後重啟 desktop 走這條拿新模板)
+        this.sync.forceConfigPull()
+
         const c = this.cfg.getConfig().workCollect
         if (!c?.enabled) {
             logger.info('採集未啟用,scheduler 不啟動', 'WorkCollector')
-            return
+            return  // gate fail 不重試;下次有 sync trigger 會順道再 pull
+        }
+        if (!c.categoryTemplateId) {
+            logger.info('未綁業務模板,scheduler 不啟動(請管理員指派模板)', 'WorkCollector')
+            return  // 同上,不重試;管理員指派後使用者重啟 desktop 即可
         }
         if (this.timer || this.startupTimer) return // jitter 期間 timer 仍 null,要靠 startupTimer 擋重入
 
@@ -230,7 +246,7 @@ export class WorkCollectorScheduler {
         const jitterMs = Math.floor(Math.random() * intervalMs * 0.5)
         this.startupTimer = setTimeout(() => {
             this.startupTimer = null
-            this.sync.forceConfigPull()
+            // sync trigger 內部會順道 pull config,不用單獨 forceConfigPull
             this.sync.requestSync('startup')
             void this.tick()
             this.timer = setInterval(() => void this.tick(), intervalMs)
@@ -326,15 +342,17 @@ export class WorkCollectorScheduler {
 
     private writeIdleRecord(capturedAt: number, activeApp: string | null, activeTitle: string | null, hash: string): void {
         if (!this.recordService) return
+        // 模板化後:idle 的 category 用 'OTHER' 佔位,實際靠 activityState='idle' 區分
         const result = this.recordService.insert({
             capturedAt,
             activeApp: activeApp || null,
             activeWindowTitle: activeTitle || null,
-            category: 'idle',
+            category: 'OTHER',
             description: '畫面與輸入皆無變化,判定為閒置',
             reason: '系統 idle 超過一次採集間隔,或 dHash 與上次近似且前台視窗未變',
             confidence: 1,
             screenshotHash: hash,
+            activityState: 'idle',
         })
         if (result.ok) {
             this.winMgr.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)

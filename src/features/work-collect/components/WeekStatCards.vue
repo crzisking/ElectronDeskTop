@@ -2,11 +2,11 @@
 /**
  * 週檢視統計卡片
  */
-import { computed } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { Calendar, Clock, Histogram, Trophy } from '@element-plus/icons-vue'
-import { CATEGORY_LABEL_KEY } from '../category-colors'
-import type { WorkCategory, WorkRecord } from '../types'
+import {computed} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {Calendar, Clock, Histogram, Trophy} from '@element-plus/icons-vue'
+import {getCategoryLabel} from '../category-colors'
+import type {WorkCategory, WorkRecord} from '../types'
 
 const props = defineProps<{
   records: WorkRecord[]
@@ -29,7 +29,7 @@ const topCategory = computed<{ label: string; count: number } | null>(() => {
   if (props.records.length === 0) return null
   const counts = new Map<WorkCategory, number>()
   for (const r of props.records) counts.set(r.category, (counts.get(r.category) ?? 0) + 1)
-  let topCat: WorkCategory = 'other'
+  let topCat: WorkCategory = ''
   let topCount = 0
   for (const [cat, count] of counts) {
     if (count > topCount) {
@@ -37,7 +37,7 @@ const topCategory = computed<{ label: string; count: number } | null>(() => {
       topCount = count
     }
   }
-  return { label: t(CATEGORY_LABEL_KEY[topCat]), count: topCount }
+  return {label: getCategoryLabel(topCat), count: topCount}
 })
 
 /** 最高采集日 */

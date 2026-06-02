@@ -11,8 +11,23 @@
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import type {CallbackDataParams} from 'echarts/types/dist/shared'
-import {CATEGORY_COLOR, CATEGORY_LABEL_KEY, CATEGORY_ORDER} from '../category-colors'
+import {getCategoryColor, getCategoryLabel} from '../category-colors'
 import type {WorkCategory, WorkRecord} from '../types'
+
+/**
+ * 模板化後 category 是動態 code(BOM_MAINT 等),不再寫死 8 類。
+ * deriveCategories:從實際資料推導當前出現過的 category,按出現頻次降序。
+ * 圖表 legend / series 都用這個動態清單,空資料時 legend 自然為空,不再顯示 coding/documenting 等過時固定項。
+ */
+function deriveCategories(records: WorkRecord[]): WorkCategory[] {
+    const counts = new Map<WorkCategory, number>()
+    for (const r of records) {
+        counts.set(r.category, (counts.get(r.category) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([k]) => k)
+}
 
 /**
  * ECharts tooltip formatter 的 params 結構。
@@ -37,16 +52,12 @@ type TooltipParam = CallbackDataParams & {
   percent?: number
 }
 
-type CategoryCounts = Record<WorkCategory, number>
+// 模板化後 category 是動態 code,counts 改用 plain map,key 按需新增
+type CategoryCounts = Record<string, number>
 
-function emptyCategoryCounts(): CategoryCounts {
-  return { coding: 0, documenting: 0, browsing: 0, communicating: 0, meeting: 0, designing: 0, idle: 0, other: 0 }
-}
-
-/** records → category → count */
 function countByCategory(records: WorkRecord[]): CategoryCounts {
-  const counts = emptyCategoryCounts()
-  for (const r of records) counts[r.category]++
+    const counts: CategoryCounts = {}
+    for (const r of records) counts[r.category] = (counts[r.category] ?? 0) + 1
   return counts
 }
 
@@ -164,14 +175,15 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
       days.push(`${d.getMonth() + 1}/${d.getDate()}`)
     }
 
-    const matrix: Record<WorkCategory, number[]> = {} as any
-    for (const cat of CATEGORY_ORDER) matrix[cat] = new Array(days.length).fill(0)
+      const cats = deriveCategories(records.value)
+      const matrix: Record<string, number[]> = {}
+      for (const cat of cats) matrix[cat] = new Array(days.length).fill(0)
 
     for (const r of records.value) {
       const d = new Date(r.capturedAt)
       const dayKey = `${d.getMonth() + 1}/${d.getDate()}`
       const idx = days.indexOf(dayKey)
-      if (idx >= 0) matrix[r.category][idx]++
+        if (idx >= 0 && matrix[r.category]) matrix[r.category][idx]++
     }
 
     return {
@@ -180,7 +192,7 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
         axisPointer: { type: 'shadow' as const },
       },
       legend: {
-        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
+          data: cats.map(c => getCategoryLabel(c)),
         top: 0,
         textStyle: { fontSize: 11 },
       },
@@ -195,12 +207,12 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
         minInterval: 1,
         axisLabel: { fontSize: 10 },
       },
-      series: CATEGORY_ORDER.map(cat => ({
-        name: t(CATEGORY_LABEL_KEY[cat]),
+        series: cats.map(cat => ({
+            name: getCategoryLabel(cat),
         type: 'bar' as const,
         stack: 'total',
         data: matrix[cat],
-        color: CATEGORY_COLOR[cat],
+            color: getCategoryColor(cat),
         emphasis: { focus: 'series' as const },
         itemStyle: { borderRadius: [2, 2, 0, 0] },
       })),
@@ -218,13 +230,14 @@ export function useHourlyStackedOption(
   return computed(() => {
     void locale.value
     const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
-    const matrix: Record<WorkCategory, number[]> = {} as any
-    for (const cat of CATEGORY_ORDER) matrix[cat] = new Array(hours.length).fill(0)
+      const cats = deriveCategories(records.value)
+      const matrix: Record<string, number[]> = {}
+      for (const cat of cats) matrix[cat] = new Array(hours.length).fill(0)
 
     for (const r of records.value) {
       const h = new Date(r.capturedAt).getHours()
       const idx = hours.indexOf(h)
-      if (idx >= 0) matrix[r.category][idx]++
+        if (idx >= 0 && matrix[r.category]) matrix[r.category][idx]++
     }
 
     return {
@@ -246,7 +259,7 @@ export function useHourlyStackedOption(
         },
       },
       legend: {
-        data: CATEGORY_ORDER.map(c => t(CATEGORY_LABEL_KEY[c])),
+          data: cats.map(c => getCategoryLabel(c)),
         top: 0,
         textStyle: { fontSize: 11 },
       },
@@ -261,12 +274,12 @@ export function useHourlyStackedOption(
         minInterval: 1,
         axisLabel: { fontSize: 10 },
       },
-      series: CATEGORY_ORDER.map(cat => ({
-        name: t(CATEGORY_LABEL_KEY[cat]),
+        series: cats.map(cat => ({
+            name: getCategoryLabel(cat),
         type: 'bar' as const,
         stack: 'total',
         data: matrix[cat],
-        color: CATEGORY_COLOR[cat],
+            color: getCategoryColor(cat),
         emphasis: { focus: 'series' as const },
         itemStyle: { borderRadius: [2, 2, 0, 0] },
       })),
@@ -280,12 +293,14 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
   return computed(() => {
     void locale.value
     const counts = countByCategory(records.value)
-    const data = CATEGORY_ORDER
-      .filter(cat => counts[cat] > 0)
-      .map(cat => ({
-        name: t(CATEGORY_LABEL_KEY[cat]),
-        value: counts[cat],
-        itemStyle: { color: CATEGORY_COLOR[cat] },
+      // 直接按 counts 出現順序展示,降序排好看
+      const data = Object.entries(counts)
+          .filter(([, v]) => v > 0)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, v]) => ({
+              name: getCategoryLabel(cat),
+              value: v,
+              itemStyle: {color: getCategoryColor(cat)},
       }))
 
     return {
@@ -336,39 +351,35 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
   const { t, locale } = useI18n()
   return computed(() => {
     void locale.value
+      const cats = deriveCategories(records.value)
     const dateMap = new Map<string, CategoryCounts>()
     const now = new Date()
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
       const key = `${d.getMonth() + 1}/${d.getDate()}`
-      dateMap.set(key, emptyCategoryCounts())
+        const init: CategoryCounts = {}
+        for (const c of cats) init[c] = 0
+        dateMap.set(key, init)
     }
 
     for (const r of records.value) {
       const d = new Date(r.capturedAt)
       const key = `${d.getMonth() + 1}/${d.getDate()}`
-      if (dateMap.has(key)) dateMap.get(key)![r.category]++
+        const bucket = dateMap.get(key)
+        if (bucket) bucket[r.category] = (bucket[r.category] ?? 0) + 1
     }
 
     const dates = [...dateMap.keys()]
 
-    // ── 堆疊面積排序(修復:值大的類別應視覺呈現在上層) ────────────────
-    // ECharts 堆疊面積:series[0] 畫在最底層,series[N-1] 畫在最上層。
-    // 之前固定走 CATEGORY_ORDER('coding' 在首位)導致 coding 永遠在底,
-    // 即使 coding 是當日最大值也被疊在所有類別之下,跟「最大應在上」直覺相悖。
-    //
-    // 修法:依「總和(所有日期累加)」排序 ——
-    //   - series 順序:ASC(小的在前 / 底層,大的在後 / 頂層)→ 視覺上大值類別位於最上層
-    //   - legend / tooltip:DESC(大的排第一)→ 使用者第一眼看到主導類別
-    //   - tooltip.order='valueDesc' 雙保險,讓每個時間點的彈窗也按值降序
+      // 堆疊面積:大值類別放最上層(series 末尾),legend / tooltip 仍按 DESC 顯示
     const categoryTotals = new Map<WorkCategory, number>()
-    for (const cat of CATEGORY_ORDER) {
+      for (const cat of cats) {
       let sum = 0
-      for (const d of dates) sum += dateMap.get(d)![cat] || 0
+          for (const d of dates) sum += dateMap.get(d)?.[cat] ?? 0
       categoryTotals.set(cat, sum)
     }
-    const stackOrder = [...CATEGORY_ORDER].sort(
+      const stackOrder = [...cats].sort(
         (a, b) => (categoryTotals.get(a) ?? 0) - (categoryTotals.get(b) ?? 0),
     )
     const legendOrder = [...stackOrder].reverse()
@@ -380,7 +391,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
         order: 'valueDesc' as const,
       },
       legend: {
-        data: legendOrder.map(c => t(CATEGORY_LABEL_KEY[c])),
+          data: legendOrder.map(c => getCategoryLabel(c)),
         bottom: 0,
         textStyle: { fontSize: 10 },
       },
@@ -395,12 +406,12 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
         minInterval: 1,
       },
       series: stackOrder.map(cat => ({
-        name: t(CATEGORY_LABEL_KEY[cat]),
+          name: getCategoryLabel(cat),
         type: 'line' as const,
         stack: 'total',
         areaStyle: { opacity: 0.15 },
-        data: dates.map(d => dateMap.get(d)![cat] || 0),
-        color: CATEGORY_COLOR[cat],
+          data: dates.map(d => dateMap.get(d)?.[cat] ?? 0),
+          color: getCategoryColor(cat),
         smooth: true,
         symbol: 'circle' as const,
         symbolSize: 4,

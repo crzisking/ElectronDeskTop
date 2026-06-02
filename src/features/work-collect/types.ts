@@ -9,9 +9,9 @@
 
 // 跨進程 type-only import:relative path 跨 src/ → electron/main/。
 // 只引型別,vite 不會把主進程代碼打進 renderer bundle。
-import type {NewWorkRecord, WorkCategory, WorkRecord} from '../../../electron/main/db/features'
+import type {ActivityState, NewWorkRecord, WorkCategory, WorkRecord} from '../../../electron/main/db/features'
 
-export type {WorkCategory, WorkRecord, NewWorkRecord}
+export type {ActivityState, WorkCategory, WorkRecord, NewWorkRecord}
 
 /** main → renderer:採集 tick payload */
 export interface WorkCollectTickPayload {
@@ -60,6 +60,11 @@ export interface WorkConfigResponse {
   /** Unix ms(UTC) */
   updatedAt: number
   updatedBy?: string
+
+    /** 業務模板 ID,null=未綁(此情況 desktop 不啟動採集) */
+    categoryTemplateId?: number | null
+    /** 模板名稱,設定頁顯示「我的崗位」用 */
+    templateName?: string | null
 }
 
 /** sync-daily 單筆紀錄 payload */
@@ -74,6 +79,8 @@ export interface WorkSyncRecordItem {
   confidence: number | null
   screenshotHash: string | null
   reason: string | null
+    /** 'active' / 'idle';舊版 desktop 沒帶時 server 預設 'active' */
+    activityState: ActivityState
 }
 
 /**

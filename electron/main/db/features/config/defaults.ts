@@ -170,5 +170,8 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
     intervalMinutes: 5,
     workStartHour: 8,
     workEndHour: 17,
+      // 模板化:server 下發,null=未綁(scheduler 不啟動)
+      categoryTemplateId: null,
+      templateName: null,
   },
 }

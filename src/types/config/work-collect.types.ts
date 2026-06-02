@@ -22,4 +22,13 @@ export interface WorkCollectConfig {
    * 設 17 表示 17:00:00 整就停止(覆蓋 8:00 ~ 16:59:59)。
    */
   workEndHour: number
+
+    /**
+     * 業務分類模板 ID(從 my-config 同步下來)。
+     * null = 未綁,scheduler 不啟動採集(設定不完整等同未啟用)。
+     */
+    categoryTemplateId?: number | null
+
+    /** 模板名稱,設定頁顯示「我的崗位」用 */
+    templateName?: string | null
 }

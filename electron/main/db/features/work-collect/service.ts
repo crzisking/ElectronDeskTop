@@ -50,15 +50,17 @@ export class WorkRecordService {
 
   /**
    * 列出某時間區間內的紀錄,按時間正序(早 → 晚),適合畫流水線。
-   * @param since createdAt >= since(Unix ms)
-   * @param until createdAt <  until(Unix ms)
+   * 預設過濾掉 idle 紀錄(activityState='idle') — 使用者 UI 永不展示。
+   * 同步上傳走 listUnsynced(),那個會帶 idle,不在這裡管。
    */
-  listByRange(since: number, until: number): WorkRecord[] {
+  listByRange(since: number, until: number, includeIdle = false): WorkRecord[] {
     if (!this.dbManager.isReady()) return []
     const conds: SQL[] = [
       gte(workRecords.capturedAt, since),
       lt(workRecords.capturedAt, until),
     ]
+      if (!includeIdle) conds.push(sql`${workRecords.activityState}
+      != 'idle'`)
     return this.dbManager
       .getDb()
       .select()
