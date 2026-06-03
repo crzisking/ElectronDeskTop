@@ -47,7 +47,8 @@
     },
     "submit": "Sign In",
     "submitting": "Signing in…",
-    "errorFallback": "Sign in failed. Please try again later."
+    "errorFallback": "Sign in failed. Please try again later.",
+    "rememberPassword": "Remember password"
   },
 
   "sidebar": {

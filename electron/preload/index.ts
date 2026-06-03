@@ -27,6 +27,7 @@ import {createAuthBridge} from './bridges/auth.bridge'
 import {createLogViewerBridge} from './bridges/log-viewer.bridge'
 import {createWorkCollectBridge} from './bridges/work-collect.bridge'
 import {createUserProfileBridge} from './bridges/user-profile.bridge'
+import {createSavedCredentialsBridge} from './bridges/saved-credentials.bridge'
 
 // ── 推送事件白名單(渲染端 on/off 用)─────────────────────────────
 // 字串直接從 IpcChannels 取,避免兩份手動同步。
@@ -70,6 +71,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   logViewer: createLogViewerBridge(ipcRenderer, IpcChannels),
   workCollect: createWorkCollectBridge(ipcRenderer, IpcChannels),
   userProfile: createUserProfileBridge(ipcRenderer, IpcChannels),
+  savedCredentials: createSavedCredentialsBridge(ipcRenderer, IpcChannels),
 
   /**
    * 訂閱主進程推送事件,走白名單。

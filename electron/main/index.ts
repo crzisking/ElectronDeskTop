@@ -19,10 +19,11 @@ import {LogService} from './db/features/logs/service'
 import {WorkRecordService} from './db/features/work-collect/service'
 import {WorkTemplateCacheService} from './db/features/work-collect/template-cache.service'
 import {UserProfileService} from './db/features/user-profile/service'
+import {SavedCredentialsService} from './db/features/saved-credentials/service'
 import {AgentService} from './db/features/agent/service'
 import {AgentToolService} from './services/agent-tool.service'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
-import {WorkCollectorScheduler} from './work-collector'
+import {WorkCollectorScheduler} from './work-collect'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -35,6 +36,7 @@ let logService: LogService | null = null
 let workRecordService: WorkRecordService | null = null
 let workTemplateCacheService: WorkTemplateCacheService | null = null
 let userProfileService: UserProfileService | null = null
+let savedCredentialsService: SavedCredentialsService | null = null
 let accountChangeCleaner: AccountChangeCleaner | null = null
 let agentService: AgentService | null = null
 // AgentToolService 不依賴 DB,單純包系統 API 的 wrapper,無 null state
@@ -130,6 +132,7 @@ app.whenReady().then(async () => {
     workRecordService = new WorkRecordService(dbManager)
       workTemplateCacheService = new WorkTemplateCacheService(dbManager)
     userProfileService = new UserProfileService(dbManager)
+    savedCredentialsService = new SavedCredentialsService(dbManager)
     accountChangeCleaner = new AccountChangeCleaner(dbManager)
     // Agent feature 自管 schema(ensureTables in constructor),不影響 drizzle migration
     agentService = new AgentService(dbManager)
@@ -140,6 +143,7 @@ app.whenReady().then(async () => {
     workRecordService = null
       workTemplateCacheService = null
     userProfileService = null
+    savedCredentialsService = null
     accountChangeCleaner = null
     agentService = null
   }
@@ -220,6 +224,7 @@ app.whenReady().then(async () => {
     workRecordService,
       workTemplateCacheService,
     userProfileService,
+    savedCredentialsService,
     accountChangeCleaner,
     agentService,
     agentToolService,

@@ -16,6 +16,7 @@ import type {UpdateAPI} from './electron/update'
 import type {LogViewerAPI} from './electron/log-viewer'
 import type {WorkCollectAPI} from './electron/work-collect'
 import type {UserProfileAPI} from './electron/user-profile'
+import type {SavedCredentialsAPI} from './electron/saved-credentials'
 import type {AuthAPI} from './electron/auth'
 
 // 確保此檔被視為模塊(避免全局聲明衝突)
@@ -32,6 +33,7 @@ declare global {
       logViewer: LogViewerAPI
       workCollect: WorkCollectAPI
       userProfile: UserProfileAPI
+      savedCredentials: SavedCredentialsAPI
       auth: AuthAPI
 
       /**

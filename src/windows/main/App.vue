@@ -97,10 +97,19 @@ async function initCritical(initialTarget: string): Promise<void> {
     // 配置失敗仍繼續走,讓使用者進得了 /login,不徹底卡死
   }
 
-  // 2. AD 自動登入(失敗不拋 — 守衛會導去 /login 手動登入,寧可手動也別卡)
+  // 2. 自動登入鏈:AD → 記住的密碼 → 失敗就放手讓 /login 接管。
+  //    AD 先,因為公司域內 AD 帳號是「不需任何儲存憑證」的最佳體驗;
+  //    AD 不可用(無 AD 帳號 / 接口失敗)再拿本機憑證頂上 — 純文字密碼盡量少用。
+  //    任一步失敗都靜默繼續,讓守衛導去 /login。
   if (!authStore.isAuthenticated) {
     await authStore.loginByAd().catch((err) => {
       logger.warn('AD 自動登入流程異常', 'App.Vue', err)
+      return false
+    })
+  }
+  if (!authStore.isAuthenticated) {
+    await authStore.loginBySaved().catch((err) => {
+      logger.warn('記住密碼自動登入流程異常', 'App.Vue', err)
       return false
     })
   }

@@ -47,6 +47,22 @@ const form = reactive({
 })
 
 /**
+ * 「記住密碼」勾選狀態。
+ * 進頁面預設沿用上次的偏好:若 SQLite 已有憑證,代表使用者上次勾過,進來預勾;
+ * 沒憑證就維持未勾(避免在不知情下把密碼存到磁碟)。
+ * 工號 / 密碼**不**從憑證帶回填,記住密碼的目的是自動登入,不是表單代填。
+ */
+const rememberPassword = ref(false)
+onMounted(async () => {
+  try {
+    const existing = await window.electronAPI.savedCredentials.get()
+    if (existing) rememberPassword.value = true
+  } catch (err) {
+    logger.warn('讀取已記住憑證 IPC 失敗(忽略)', 'Login', err as Error)
+  }
+})
+
+/**
  * 前端基礎校驗規則。
  * message 用 t() 動態讀取 → 切換語言時 form 校驗提示自動跟著變。
  * 原文：請輸入工號 / 工號格式不正確 / 請輸入密碼 / 密碼不能為空
@@ -84,6 +100,22 @@ async function handleLogin() {
 
   try {
     await authStore.login(form.userName, form.password)
+
+    // 登入成功後依使用者勾選決定:存進 SQLite 或主動清掉。
+    // 必須兩個分支都動作 —— 使用者「之前勾過、這次不勾」就應該清,不是維持舊憑證。
+    // 失敗只 log,不阻塞登入跳轉(IPC 出問題是邊緣場景,本次仍登入成功)。
+    try {
+      if (rememberPassword.value) {
+        await window.electronAPI.savedCredentials.save({
+          userId: form.userName,
+          password: form.password,
+        })
+      } else {
+        await window.electronAPI.savedCredentials.clear()
+      }
+    } catch (err) {
+      logger.warn('寫入/清除已記住憑證失敗(不影響登入)', 'Login', err as Error)
+    }
 
     // 登錄成功 → 同步使用者身份(從 /api/UserInfo/ding/userinfo 拉 dingId / unionId 寫進本機 SQLite)。
     // 失敗不阻塞登入(store 內已 catch,UI 後續可從 userProfileStore.profileError 讀錯誤)。
@@ -162,6 +194,13 @@ async function handleLogin() {
             @keyup.enter="handleLogin"
           />
         </el-form-item>
+
+        <!-- 記住密碼:預設依本機是否已有憑證決定勾選狀態 -->
+        <div class="login-remember">
+          <el-checkbox v-model="rememberPassword">
+            {{ t('login.rememberPassword') }}
+          </el-checkbox>
+        </div>
 
         <!-- 錯誤提示 -->
         <el-alert
@@ -271,6 +310,11 @@ async function handleLogin() {
   color: var(--app-text-secondary);
   margin: 0;
   letter-spacing: 0.04em;
+}
+
+.login-remember {
+  margin: -4px 0 12px;
+  font-size: 13px;
 }
 
 .login-error {

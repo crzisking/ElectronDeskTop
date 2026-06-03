@@ -14,8 +14,7 @@
  */
 
 import {logger} from '../utils/logger'
-import {userProfiles} from './features/user-profile/schema'
-import {workRecords} from './features/work-collect/schema'
+import {savedCredentials, userProfiles, workRecords} from './features'
 import type {DatabaseManager} from './database-manager'
 
 export class AccountChangeCleaner {
@@ -38,10 +37,13 @@ export class AccountChangeCleaner {
       this.dbManager.getDb().transaction((tx) => {
         tx.delete(userProfiles).run()
         tx.delete(workRecords).run()
+        // saved_credentials 屬於 per-user 表 — 跨帳號時舊密碼絕不能留給新帳號用,
+        // 否則下次啟動會用舊憑證自動登入(換帳號又被切回去)
+        tx.delete(savedCredentials).run()
         // 未來新增 per-user 表:
         //   tx.delete(<新表>).run()
       })
-      logger.info('AD 帳號變更,已清空所有 per-user 表(user_profiles + work_records)', 'AccountChangeCleaner')
+      logger.info('AD 帳號變更,已清空所有 per-user 表(user_profiles + work_records + saved_credentials)', 'AccountChangeCleaner')
       return true
     } catch (err) {
       logger.error('帳號變更清空交易失敗,DB 維持原狀', 'AccountChangeCleaner', err)

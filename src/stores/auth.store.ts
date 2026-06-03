@@ -131,18 +131,64 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * 登出：清空所有內存狀態。
+   * 用記住的密碼自動登入。
+   *
+   * 流程:
+   *  1. 從本機 SQLite 讀已記住的憑證
+   *  2. 拿憑證走標準 authApi.login(同表單登入流程,完全等價)
+   *
+   * 對齊 loginByAd 的設計:不拋例外,失敗回 false 讓上層決定降級。
+   * 失敗會自動清掉憑證(避免下次又拿過期密碼徒勞嘗試)。
+   *
+   * @returns true 成功並寫入 store;false 沒憑證 / 登入失敗。
+   */
+  async function loginBySaved(): Promise<boolean> {
+      let entry: Awaited<ReturnType<typeof window.electronAPI.savedCredentials.get>>
+      try {
+          entry = await window.electronAPI.savedCredentials.get()
+      } catch (err) {
+          logger.warn('讀取已記住的憑證 IPC 失敗', 'Auth', err as Error)
+          return false
+      }
+      if (!entry) return false
+
+      try {
+          const {token, user: userInfo} = await authApi.login({
+              username: entry.userId,
+              password: entry.password,
+          })
+          accessToken.value = token
+          user.value = userInfo
+          isAuthenticated.value = true
+          logger.info(`記住密碼自動登入成功,使用者=${entry.userId}`, 'Auth')
+          return true
+      } catch (err) {
+          // 密碼可能被後端改了 / 帳號鎖了 — 清掉憑證,讓使用者下次手動重來
+          logger.warn(`記住密碼自動登入失敗,清除憑證,使用者=${entry.userId}`, 'Auth', err as Error)
+          await window.electronAPI.savedCredentials.clear().catch(() => undefined)
+          return false
+      }
+  }
+
+    /**
+     * 登出：清空所有內存狀態 + 清除已記住的密碼。
    * 用於：登出按鈕、401 攔截器強制登出。
    *
    * 設置 adLoginDisabledThisSession 防止 401 攔截器 / App.vue 又自動 AD 登入,
    * 形成「登出 → 自動登入 → 又看到自己登入了」的鬼打牆。
    * 完全關閉 App 重啟後該 flag 復原,使用者下次開啟仍享受 AD 自動登入。
+     *
+     * 已記住的密碼也一併清掉(對齊使用者預期:登出 = 我不要這台機器自動進去了)。
    */
   async function logout(): Promise<void> {
     accessToken.value = null
     user.value = null
     isAuthenticated.value = false
     adLoginDisabledThisSession.value = true
+        // 清除本機憑證 — IPC 失敗不擴散,登出狀態本身仍然完成
+        await window.electronAPI.savedCredentials.clear().catch((err) => {
+            logger.warn('登出時清除已記住密碼失敗', 'Auth', err as Error)
+        })
   }
 
   return {
@@ -157,6 +203,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     login,
     loginByAd,
+      loginBySaved,
     logout
   }
 })

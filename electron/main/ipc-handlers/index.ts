@@ -31,6 +31,7 @@ import {registerLogViewerHandlers} from './log-viewer.handlers'
 import {registerWorkCollectHandlers} from './work-collect.handlers'
 import {registerFloatingBallHandlers} from './floating-ball.handlers'
 import {registerUserProfileHandlers} from './user-profile.handlers'
+import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
 import {registerAgentHandlers} from './agent.handlers'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
@@ -40,6 +41,7 @@ import type {LogService} from '../db/features/logs/service'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
 import type {UserProfileService} from '../db/features/user-profile/service'
+import type {SavedCredentialsService} from '../db/features/saved-credentials/service'
 import type {AgentService} from '../db/features/agent/service'
 import type {AgentToolService} from '../services/agent-tool.service'
 import type {WorkCollectorScheduler} from '../work-collect'
@@ -61,8 +63,9 @@ export interface IpcHandlerContext {
   logService: LogService | null
   workCollector: WorkCollectorScheduler
   workRecordService: WorkRecordService | null
-    workTemplateCacheService: WorkTemplateCacheService | null
+  workTemplateCacheService: WorkTemplateCacheService | null
   userProfileService: UserProfileService | null
+  savedCredentialsService: SavedCredentialsService | null
   accountChangeCleaner: AccountChangeCleaner | null
   agentService: AgentService | null
   agentToolService: AgentToolService
@@ -81,8 +84,9 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     logService,
     workCollector,
     workRecordService,
-      workTemplateCacheService,
+    workTemplateCacheService,
     userProfileService,
+    savedCredentialsService,
     accountChangeCleaner,
     agentService,
     agentToolService,
@@ -94,9 +98,10 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerLogHandlers()
   registerAuthHandlers()
   registerLogViewerHandlers(logService, windowManager)
-    registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService)
+  registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService)
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
+  registerSavedCredentialsHandlers(savedCredentialsService)
   registerAgentHandlers(windowManager, agentService, agentToolService)
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')

@@ -49,7 +49,8 @@
     },
     "submit": "登 錄",
     "submitting": "登錄中...",
-    "errorFallback": "登錄失敗，請稍後再試"
+    "errorFallback": "登錄失敗，請稍後再試",
+    "rememberPassword": "記住密碼"
   },
 
   "sidebar": {
