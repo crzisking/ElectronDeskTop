@@ -124,6 +124,7 @@ onMounted(async () => {
       <div class="rules">
         <div class="rule">
           <el-icon><Monitor /></el-icon>
+          <!-- eslint-disable-next-line vue/no-v-html -- 內容來自應用內 i18n 字典(我方控制) + 受控的 workHoursLabel 字串,無外部輸入 -->
           <span v-html="t('workCollect.ruleHours', { hours: workHoursLabel })"></span>
         </div>
         <div class="rule">

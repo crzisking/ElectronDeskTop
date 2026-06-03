@@ -11,6 +11,7 @@
 
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
+import {ArrowLeft, ChromeFilled} from '@element-plus/icons-vue'
 import {useAuthStore} from '@/stores/auth.store'
 import {useConfigText} from '@/shared/composables/useConfigText'
 import IframeContainer from '@/components/common/IframeContainer.vue'
@@ -85,12 +86,6 @@ function openInBrowser() {
     </div>
   </div>
 </template>
-
-<script lang="ts">
-// 需要從 icons 導入（非 setup 區域，避免 setup 中 import 衝突）
-import { ArrowLeft, ChromeFilled } from '@element-plus/icons-vue'
-export default { components: { ArrowLeft, ChromeFilled } }
-</script>
 
 <style scoped>
 .system-launcher {

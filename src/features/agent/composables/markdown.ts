@@ -141,7 +141,7 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
         'data-language',                    // CodeBlock 標籤
     ],
     // 允許的 URI 協議白名單(對 javascript: / data:text/html 拒絕)
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
     FORBID_TAGS: ['style', 'iframe', 'object', 'embed', 'form', 'input', 'script'],
     FORBID_ATTR: [
         'onload', 'onerror', 'onclick', 'onmouseover', 'onfocus', 'onblur',

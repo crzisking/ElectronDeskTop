@@ -55,10 +55,10 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
  * on 註冊的是包裝函數(剝離 _event 參數),off 時需要用同一個包裝函數引用才能正確移除。
  * WeakMap 避免阻止 callback 被 GC。
  */
-const listenerMap = new WeakMap<
-  Function,
-  (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void
->()
+type PushCallback = (...args: unknown[]) => void
+type PushWrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void
+
+const listenerMap = new WeakMap<PushCallback, PushWrapper>()
 
 contextBridge.exposeInMainWorld('electronAPI', {
   config: createConfigBridge(ipcRenderer, IpcChannels),
@@ -73,10 +73,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   /**
    * 訂閱主進程推送事件,走白名單。
-   * 重複 on 同一個 callback 會被 wrapper map 自動覆蓋,off 用同個 callback 引用即可解除。
+   *
+   * 重複 on 同個 callback 時:先把舊 wrapper 從 ipcRenderer 拆掉,再註冊新的。
+   * 不這樣做的話 WeakMap 雖然被覆蓋,ipcRenderer 那邊兩個 wrapper 並存,
+   * 後續 off 只能拆掉最新一份,舊監聽殘留 → callback 仍會被多次觸發。
    */
   on(channel: string, callback: (...args: unknown[]) => void) {
     if (!ALLOWED_PUSH_CHANNELS.includes(channel)) return
+    const existing = listenerMap.get(callback)
+    if (existing) ipcRenderer.off(channel, existing)
     const wrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
     listenerMap.set(callback, wrapper)
     ipcRenderer.on(channel, wrapper)

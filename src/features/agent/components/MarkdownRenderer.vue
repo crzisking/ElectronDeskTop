@@ -52,6 +52,7 @@ onBeforeUnmount(cleanup)
 </script>
 
 <template>
+  <!-- eslint-disable-next-line vue/no-v-html -- renderMarkdown 內部已經 DOMPurify.sanitize,見 composables/markdown.ts -->
   <div ref="containerRef" class="md-body" v-html="renderedHtml"/>
 </template>
 

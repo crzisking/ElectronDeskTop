@@ -37,13 +37,13 @@ const t = (key: string) => i18n.global.t(key)
  *  - 潤色彈窗的「原始描述」展示
  *
  * 實現：用 div.innerHTML + textContent，比 innerText 更可靠（後者部分環境不可用）。
- *   是 HTML 的 &nbsp;，替換為普通空格避免字數誤算。
+ * \u00A0 是 HTML 的 &nbsp;，替換為普通空格避免字數誤算。
  */
 export function getPlainText(html: string): string {
     if (!html) return ''
     const container = document.createElement('div')
     container.innerHTML = html
-    return (container.textContent ?? '').replace(/ /g, ' ').trim()
+    return (container.textContent ?? '').replace(/\u00A0/g, ' ').trim()
 }
 
 /**

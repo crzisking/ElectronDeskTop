@@ -38,6 +38,10 @@ const statusLabel = computed(() => {
       return '完成'
     case 'fail':
       return '失敗'
+    default:
+      // status 是 'running' | 'ok' | 'fail' 聯合型別,理論上不會到這;
+      // 留 default 兜底保證 computed 一定回字串,避免 v-if 比對到 undefined
+      return ''
   }
 })
 </script>

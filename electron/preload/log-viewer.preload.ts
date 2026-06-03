@@ -67,10 +67,10 @@ contextBridge.exposeInMainWorld('logViewerAPI', {
  * on/off 走白名單,用 WeakMap 對齊主窗口 preload 的 wrapper 管理方式。
  * viewer 用不到 off,但保留對稱介面,讓 store 的 .on / .off 簽名共用。
  */
-const listenerMap = new WeakMap<
-    Function,
-    (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void
->()
+type PushCallback = (...args: unknown[]) => void
+type PushWrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void
+
+const listenerMap = new WeakMap<PushCallback, PushWrapper>()
 
 contextBridge.exposeInMainWorld('electronAPI', {
     config: {
@@ -84,6 +84,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     on(channel: string, callback: (...args: unknown[]) => void) {
         if (!ALLOWED_PUSH_CHANNELS.includes(channel)) return
+        // 重複 on 同個 callback:先拆舊 wrapper,避免 ipcRenderer 累積殘留監聽
+        const existing = listenerMap.get(callback)
+        if (existing) ipcRenderer.off(channel, existing)
         const wrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
         listenerMap.set(callback, wrapper)
         ipcRenderer.on(channel, wrapper)

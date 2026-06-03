@@ -117,6 +117,7 @@ function sanitize(html: string): string {
         <!-- 原文 section title：問題描述 -->
         <div class="section">
           <div class="section-title">{{ t('repair.fieldDesc') }}</div>
+          <!-- eslint-disable-next-line vue/no-v-html -- sanitize() 直接呼叫 DOMPurify.sanitize,見本檔 line 69 -->
           <div class="section-body rich-text" v-html="sanitize(detail.description)"></div>
         </div>
 
@@ -129,6 +130,7 @@ function sanitize(html: string): string {
               {{ detail.resultTime }}
             </span>
           </div>
+          <!-- eslint-disable-next-line vue/no-v-html -- 同上,sanitize() = DOMPurify.sanitize -->
           <div v-if="detail.resultContent" class="section-body rich-text" v-html="sanitize(detail.resultContent)"></div>
           <div v-else class="section-body section-empty">
             {{ t('repair.itReplyEmpty') }}

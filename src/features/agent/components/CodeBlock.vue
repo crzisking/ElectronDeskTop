@@ -60,6 +60,7 @@ async function copy(): Promise<void> {
         {{ copied ? '已複製' : '複製' }}
       </button>
     </div>
+    <!-- eslint-disable-next-line vue/no-v-html -- highlightedHtml 由上游 renderMarkdown 經 DOMPurify 清洗後再交 hljs token 著色,只剩 <span class="hljs-*"> -->
     <pre class="code-block__body"><code v-html="highlightedHtml"/></pre>
   </div>
 </template>

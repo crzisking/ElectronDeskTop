@@ -18,7 +18,7 @@ import {computed, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
-import {setLocale, SUPPORTED_LOCALES, isSupportedLocale, type SupportedLocale} from '@/locales'
+import {isSupportedLocale, setLocale, type SupportedLocale} from '@/locales'
 import SettingsRow from '../components/SettingsRow.vue'
 
 const configStore = useConfigStore()
@@ -67,7 +67,7 @@ async function handleChange(value: SupportedLocale) {
     await configStore.writeConfig({app: {...configStore.appConfig!.app, language: value}})
     // 原文：語言已切換
     ElMessage.success(t('settings.language.switched'))
-  } catch (err) {
+  } catch (_err) {
     // 寫盤失敗：回滾 UI
     setLocale(previous)
     currentLanguage.value = previous

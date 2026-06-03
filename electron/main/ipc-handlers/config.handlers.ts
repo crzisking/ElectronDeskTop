@@ -13,11 +13,15 @@ import type {AppConfig} from '../../../src/types/config'
  * AppConfig 頂層合法字段白名單。
  * 用於：CONFIG_WRITE 時校驗渲染進程傳入的 partial 是否只包含合法字段，
  * 防止惡意或有 bug 的渲染進程寫入非法數據。
+ *
+ * 刻意排除的字段(repository 支援但這裡不放行):
+ *   - version       由主進程從 app.getVersion() 注入,唯一真實源是 package.json
+ *   - workCollect   採集字段走專用通道 WORK_COLLECT_TOGGLE / WORK_COLLECT_APPLY_REMOTE_CONFIG,
+ *                   那兩條通道會在寫完後重啟 scheduler;放開通用 write 會繞過該重啟邏輯
  */
-// version 由主進程從 app.getVersion() 注入，不允許渲染端寫入
 const ALLOWED_CONFIG_KEYS = new Set<keyof AppConfig>([
-    'app', 'sidebar', 'floatingBall',
-    'unifiedPlatform', 'internalFunctions', 'update'
+    'app', 'sidebar', 'systemLinks', 'floatingBall',
+    'unifiedPlatform', 'internalFunctions', 'personalFunctions', 'update'
 ])
 
 /**
