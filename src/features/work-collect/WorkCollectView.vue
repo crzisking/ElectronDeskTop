@@ -13,9 +13,8 @@
  */
 
 import {computed, onMounted, ref} from 'vue'
-import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {ArrowLeft, Monitor, VideoCamera} from '@element-plus/icons-vue'
+import {Monitor, VideoCamera} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {useWorkCollectStore} from './store'
 import {filterTodayRecords, filterWeekRecords} from './composables/useChartOptions'
@@ -30,7 +29,14 @@ import TimelineList from './components/TimelineList.vue'
 import WeekDailyBar from './components/WeekDailyBar.vue'
 import WeekDailyStacked from './components/WeekDailyStacked.vue'
 
-const router = useRouter()
+/**
+ * embedded:嵌在 LogViewer tab 內時為 true。
+ *  - 隱藏「返回」按鈕(LogViewer 無 router)
+ *  - 隱藏內層標題(LogViewer 側欄已標示「工作採集」,再加一行 H2 是視覺重複)
+ * 主視窗本來不會渲染此 view(階段一已移除路由),保留 prop 留個逃生口。
+ */
+const props = defineProps<{ embedded?: boolean }>()
+
 const store = useWorkCollectStore()
 const { t } = useI18n()
 
@@ -52,11 +58,6 @@ const filteredRecords = computed(() => {
  * 否則日檢視只剩今天一列、其他六列全空,圖意義全失。
  */
 const weeklyHeatmapRecords = computed(() => filterWeekRecords(store.records))
-
-function handleBack() {
-  if (window.history.length > 1) router.back()
-  else router.push({ name: 'personal-functions' })
-}
 
 async function onToggleChange(next: boolean) {
   try {
@@ -86,8 +87,7 @@ onMounted(async () => {
   <div class="work-collect-view">
     <!-- ── 頂部 ──────────────────────────────────────────── -->
     <div class="header">
-      <el-button text :icon="ArrowLeft" @click="handleBack">{{ t('workCollect.back') }}</el-button>
-      <h2 class="title">
+      <h2 v-if="!props.embedded" class="title">
         <el-icon><VideoCamera /></el-icon>
         {{ t('workCollect.title') }}
       </h2>

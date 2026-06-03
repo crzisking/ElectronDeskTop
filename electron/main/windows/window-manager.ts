@@ -78,9 +78,30 @@ export class WindowManager {
         return this.agent.instance
     }
 
+    /**
+     * LogViewer 子視窗(密碼保護)。
+     * 階段二後 LogViewer 內嵌工作採集 tab,寫入完成事件需要也推給它,
+     * 否則 LogViewer 打開時看到的流水線不會自動 refresh。
+     */
+    getLogViewerWindow(): BrowserWindow | null {
+        return this.logViewer.instance
+    }
+
     // ── 跨進程通訊 ─────────────────────────────────────────────────
     sendToMainWindow(channel: string, ...args: unknown[]): void {
         this.main.send(channel, ...args)
+    }
+
+    /**
+     * 廣播給「會看採集紀錄」的所有 renderer。
+     * 目前:主窗(永遠跑 store.bootstrap('main'))+ LogViewer(打開時跑 viewer mode)。
+     * LogViewer 沒開就跳過,不會報錯。
+     */
+    broadcastToWorkRecordViewers(channel: string, ...args: unknown[]): void {
+        const main = this.getMainWindow()
+        if (main && !main.isDestroyed()) main.webContents.send(channel, ...args)
+        const lv = this.getLogViewerWindow()
+        if (lv && !lv.isDestroyed()) lv.webContents.send(channel, ...args)
     }
 
     // ── 浮球位置(FloatingBallManager 用)────────────────────────

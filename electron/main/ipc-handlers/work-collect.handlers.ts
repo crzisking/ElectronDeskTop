@@ -106,7 +106,8 @@ export function registerWorkCollectHandlers(
             logger.warn(`AI 結果寫入失敗 reason=${result.reason}`, 'IPC:work')
             return
         }
-      windowManager.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)
+        // 主窗 + LogViewer(若開著)同步收到,LogViewer 內嵌的工作採集 tab 也會跟著 refresh
+        windowManager.broadcastToWorkRecordViewers(IpcChannels.PUSH_WORK_RECORD_NEW)
     })
 
     // ── 集中化 sync ──────────────────────────────────────────────────

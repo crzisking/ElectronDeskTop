@@ -181,7 +181,7 @@ export class WorkCollectorScheduler {
             activityState: 'idle',
         })
         if (result.ok) {
-            this.winMgr.getMainWindow()?.webContents.send(IpcChannels.PUSH_WORK_RECORD_NEW)
+            this.winMgr.broadcastToWorkRecordViewers(IpcChannels.PUSH_WORK_RECORD_NEW)
         } else {
             logger.warn(`idle 紀錄寫入失敗 reason=${result.reason}`, 'WorkCollector')
         }

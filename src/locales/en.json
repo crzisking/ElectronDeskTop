@@ -278,7 +278,7 @@
 
   "router": {
     "login": "Sign In",
-    "unifiedPlatform": "Unified Platform",
+    "unifiedPlatform": "Systems",
     "internalFunctions": "Internal Tools",
     "personalFunctions": "Personal",
     "bpmFinder": "BPM Owner Lookup",
@@ -292,7 +292,7 @@
     "subtitle": "Features dedicated to you",
     "mySection": "My Features",
     "comingSoonDesc": "More personal features coming",
-    "emptyAll": "No personal tools configured. Add entries in personalFunctions.tools in app-config.json"
+    "emptyAll": "No tools available"
   },
 
   "workCollect": {
@@ -370,15 +370,16 @@
 
   "config": {
     "sidebar": {
-      "unified-platform": "Unified Platform",
-      "internal-functions": "Internal Tools"
+      "unified-platform": "Systems",
+      "internal-functions": "Internal Tools",
+      "personal-functions": "Personal"
     },
     "systemLinks": {
       "docs-center": "Documentation Center"
     },
     "floatingBall": {
       "menu-show-main": "Open Main Window",
-      "menu-go-platform": "Unified Platform",
+      "menu-go-platform": "Systems",
       "menu-go-internal": "Internal Tools",
       "menu-quit": "Quit"
     },

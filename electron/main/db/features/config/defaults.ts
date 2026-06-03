@@ -28,9 +28,9 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
   sidebar: {
     defaultCollapsed: false,
     items: [
-      {id: 'unified-platform',   label: '統一平台', icon: 'Grid', routeName: 'unified-platform',   enabled: true},
+        {id: 'unified-platform', label: '系統整理', icon: 'Grid', routeName: 'unified-platform', enabled: true},
       {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true},
-      {id: 'personal-functions', label: '個人功能', icon: 'User', routeName: 'personal-functions', enabled: true},
+        {id: 'personal-functions', label: '個人', icon: 'User', routeName: 'personal-functions', enabled: true},
     ],
   },
   systemLinks: {
@@ -46,7 +46,14 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
     quickMenu: [
       {id: 'menu-show-main',   label: '打開主窗口', icon: 'Monitor',     enabled: true, separator: false, action: {type: 'show-main-window'}},
       {id: 'menu-sep-1',       label: '',                                  enabled: true, separator: true,  action: {type: 'show-main-window'}},
-      {id: 'menu-go-platform', label: '統一平台',   icon: 'Grid',         enabled: true, separator: false, action: {type: 'navigate', routeName: 'unified-platform'}},
+        {
+            id: 'menu-go-platform',
+            label: '系統整理',
+            icon: 'Grid',
+            enabled: true,
+            separator: false,
+            action: {type: 'navigate', routeName: 'unified-platform'}
+        },
       {id: 'menu-go-internal', label: '內部功能',   icon: 'Grid',         enabled: true, separator: false, action: {type: 'navigate', routeName: 'internal-functions'}},
       {
         id: 'menu-open-agent',
@@ -143,17 +150,9 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
     ],
   },
   personalFunctions: {
-    tools: [
-      {
-        id: 'workCollect',
-        name: '工作自動採集',
-        description: '每 5 分鐘自動分析螢幕內容，產生個人工作流水線（工時內 + 螢幕未鎖才採集）',
-        icon: 'Aim',
-        enabled: true,
-        openMode: 'page',
-        routeName: 'work-collect',
-      },
-    ],
+      // 工作自動採集已移到 LogViewer 子視窗(密碼保護),不再從個人功能入口進入。
+      // 此處保留空陣列;之後新增個人工具直接加回來即可。
+      tools: [],
   },
   update: {
     // 公司強制策略:自動更新必開,使用者不可關

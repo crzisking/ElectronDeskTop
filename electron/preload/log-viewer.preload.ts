@@ -1,25 +1,40 @@
 /**
  * 日誌查看器子視窗 preload。
  *
- * 只暴露最小 API:logQuery 查 logs 表。
- * 不需要 log.write / config / 浮球等其他 API —— 子視窗目的單一,縮減暴露面降低風險。
+ * 暴露兩個 API:
+ *   - logViewerAPI:日誌查詢專屬(query / listModules / workHealth)
+ *   - electronAPI :跟主窗口同名,但**只暴露 viewer 視角需要的子集**:
+ *       config.read           讀整份應用配置(workCollect 設定要從這拿)
+ *       workCollect.toggle    切換採集開關
+ *       workCollect.list      撈紀錄
+ *       on / off              訂閱推送(白名單只放 PUSH_WORK_RECORD_NEW)
  *
- * ⚠️ channel 內聯不走 @shared/ipc-channels 的原因:
+ * 不暴露 tick / configRequest / syncRequest:那些事件主窗口已訂閱並走完 HTTP,
+ * LogViewer 重複訂閱會兩個 renderer 同時打 AI analyze。LogViewer 只「看」。
+ *
+ * ⚠️ channel 字串內聯不走 @shared/ipc-channels 的原因:
  *   sandbox: true 下 Electron 不解析 chunks/,3 個 preload 共用模組會被 Rollup 抽 chunk。
  *   見 floating-ball.preload.ts 內的說明。
- *
- * 🔗 source of truth:electron/shared/ipc-channels/log.ts(LOG_QUERY)
  */
 
 import {contextBridge, ipcRenderer} from 'electron'
 
 const IPC = {
-  LOG_QUERY: 'log-viewer:query',
+    // log-viewer 專屬
+    LOG_QUERY: 'log-viewer:query',
     LOG_LIST_MODULES: 'log-viewer:list-modules',
-    // 採集健康狀態。只在密碼保護的日誌查看器窗口暴露,普通使用者不可見。
-    // 🔗 source of truth:electron/shared/ipc-channels/work-collect.ts(WORK_COLLECT_HEALTH)
     WORK_HEALTH: 'work:health',
+
+    // electronAPI 子集需要的 channel
+    CONFIG_READ: 'config:read',
+    WORK_COLLECT_TOGGLE: 'work:toggle',
+    WORK_COLLECT_LIST: 'work:list',
+
+    // 白名單推送(viewer 模式只關心「有新紀錄寫入,要 refresh」)
+    PUSH_WORK_RECORD_NEW: 'push:work-record-new',
 } as const
+
+const ALLOWED_PUSH_CHANNELS: readonly string[] = [IPC.PUSH_WORK_RECORD_NEW]
 
 /** 採集健康狀態(對齊主進程 WORK_COLLECT_HEALTH 返回) */
 interface WorkHealth {
@@ -32,21 +47,52 @@ interface WorkHealth {
 
 /** 跟主進程 LogService.query 對齊 */
 interface LogQueryParams {
-  level?: 'debug' | 'info' | 'warn' | 'error' | ('debug' | 'info' | 'warn' | 'error')[]
-  source?: 'main' | 'renderer'
-  module?: string
-  since?: number
-  until?: number
-  search?: string
-  limit?: number
-  offset?: number
+    level?: 'debug' | 'info' | 'warn' | 'error' | ('debug' | 'info' | 'warn' | 'error')[]
+    source?: 'main' | 'renderer'
+    module?: string
+    since?: number
+    until?: number
+    search?: string
+    limit?: number
+    offset?: number
 }
 
 contextBridge.exposeInMainWorld('logViewerAPI', {
-  /** 查詢日誌。失敗(例如未解鎖)會 reject */
-  query: (params: LogQueryParams) => ipcRenderer.invoke(IPC.LOG_QUERY, params),
-    /** 取所有出現過的模組名(按頻率倒序),給下拉用 */
+    query: (params: LogQueryParams) => ipcRenderer.invoke(IPC.LOG_QUERY, params),
     listModules: () => ipcRenderer.invoke(IPC.LOG_LIST_MODULES) as Promise<string[]>,
-    /** 採集健康狀態:待同步數 / 失敗計數 / 最後錯誤 */
     workHealth: () => ipcRenderer.invoke(IPC.WORK_HEALTH) as Promise<WorkHealth>,
+})
+
+/**
+ * on/off 走白名單,用 WeakMap 對齊主窗口 preload 的 wrapper 管理方式。
+ * viewer 用不到 off,但保留對稱介面,讓 store 的 .on / .off 簽名共用。
+ */
+const listenerMap = new WeakMap<
+    Function,
+    (_event: Electron.IpcRendererEvent, ...args: unknown[]) => void
+>()
+
+contextBridge.exposeInMainWorld('electronAPI', {
+    config: {
+        read: () => ipcRenderer.invoke(IPC.CONFIG_READ),
+    },
+    workCollect: {
+        toggle: (enabled: boolean) =>
+            ipcRenderer.invoke(IPC.WORK_COLLECT_TOGGLE, enabled) as Promise<boolean>,
+        list: (params: { since: number; until: number }) =>
+            ipcRenderer.invoke(IPC.WORK_COLLECT_LIST, params),
+    },
+    on(channel: string, callback: (...args: unknown[]) => void) {
+        if (!ALLOWED_PUSH_CHANNELS.includes(channel)) return
+        const wrapper = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
+        listenerMap.set(callback, wrapper)
+        ipcRenderer.on(channel, wrapper)
+    },
+    off(channel: string, callback: (...args: unknown[]) => void) {
+        const wrapper = listenerMap.get(callback)
+        if (wrapper) {
+            ipcRenderer.off(channel, wrapper)
+            listenerMap.delete(callback)
+        }
+    },
 })

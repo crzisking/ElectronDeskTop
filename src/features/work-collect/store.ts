@@ -262,22 +262,34 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
   /**
    * 訂閱主進程推送。冪等 —— 多次呼叫不會重複註冊(用模組級 flag 守住)。
    * App.vue mount 後呼叫一次即可。
+   *
+   * mode:
+   *   'main'   — 主窗口模式(預設):訂閱 tick / config / sync request + 寫回 / ack,
+   *              是真正驅動採集 HTTP 流程的那一份。
+   *   'viewer' — LogViewer 等只「看」紀錄的視窗:只訂閱 PUSH_WORK_RECORD_NEW
+   *              讓流水線自動 refresh。**不**訂 tick / config / sync,否則兩個 renderer
+   *              都會打一次 analyze HTTP。也不打 notifyReady(那是給 main 補推 pending 用的)。
+   *
+   * Pinia store 在每個 renderer 是獨立 instance,subscribed flag 是模組級,
+   * 主窗口跑 'main'、LogViewer 跑 'viewer',各自的 flag 互不影響。
    */
-  function bootstrap(): void {
+  function bootstrap(mode: 'main' | 'viewer' = 'main'): void {
     if (subscribed) return
-    window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_TICK, onTick)
     window.electronAPI.on(IpcChannels.PUSH_WORK_RECORD_NEW, onRecordNew)
-      // 集中化:訂閱 main 推來的 config / sync request
+      if (mode === 'main') {
+          window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_TICK, onTick)
       window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST, onConfigRequest)
       window.electronAPI.on(IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST, onSyncRequest)
+      }
     subscribed = true
 
+      if (mode === 'main') {
       // 修正 #6:訂閱完成 ack 給 main,讓 main 補推任何 pending request,
-      // 處理「main 已推但 renderer 未訂閱」的開機競態。
-      // 失敗不阻塞 — 若 main 沒實作此 channel,只是退化成「等下次 tick 觸發」。
+          // 處理「main 已推但 renderer 未訂閱」的開機競態。失敗不阻塞。
       window.electronAPI.workCollect
           .notifyReady()
           .catch((err) => logger.warn('notifyReady 失敗,等下次觸發', 'WorkCollectStore', err))
+      }
   }
 
     return {
