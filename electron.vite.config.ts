@@ -105,15 +105,13 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          // 主窗口 HTML 入口 → out/renderer/index.html
-          index: resolve('src/index.html'),
-          // 浮球窗口 HTML 入口 → out/renderer/floating-ball.html
-          floatingBall: resolve('src/floating-ball.html'),
-          // 日誌查看器子視窗 HTML 入口 → out/renderer/log-viewer.html
-          logViewer: resolve('src/log-viewer.html'),
-          // Agent 獨立窗口 HTML 入口 → out/renderer/agent.html
-          // 入口移到 src/entries/agent/(對齊 §1.4 重構,集中所有獨立窗口入口)
-          agent: resolve('src/entries/agent/index.html')
+          // 4 個窗口 entry 統一在 src/windows/<name>/index.html(對齊 docs/24 §5.6)。
+          // 各自輸出到 out/renderer/src/windows/<name>/index.html
+          // main 進程 loadFile 對應這個輸出路徑。
+          index: resolve('src/windows/main/index.html'),
+          floatingBall: resolve('src/windows/floating-ball/index.html'),
+          logViewer: resolve('src/windows/log-viewer/index.html'),
+          agent: resolve('src/windows/agent/index.html')
         }
       }
     },

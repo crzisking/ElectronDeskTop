@@ -12,7 +12,7 @@
 
 import type {AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig} from 'axios'
 import {useAuthStore} from '@/stores/auth.store'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import router from '@/router'
 import {i18n} from '@/locales'
 

@@ -19,7 +19,7 @@ import {computed, ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
 import {i18n} from '@/locales'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import {plainTextToHtml} from './useRepairForm'
 
 /** 模塊級 i18n helper（composable 在 setup 內呼叫，但回調在 setup 外執行） */

@@ -13,11 +13,11 @@
  *  - collapsed：側邊欄是否折疊（折疊時只顯示圖標）
  */
 
-import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import {computed} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
-import {useConfigText} from '@/composables/useConfigText'
-import type { SidebarItem } from '@/types/config.types'
+import {useConfigText} from '@/shared/composables/useConfigText'
+import type {SidebarItem} from '@/types/config'
 
 const props = defineProps<{
   item: SidebarItem

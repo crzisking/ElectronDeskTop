@@ -14,16 +14,11 @@ import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import type {UserProfileService} from '../db/features/user-profile/service'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
-import type {NewUserProfile, UserProfile} from '../db/features/user-profile/schema'
+import type {NewUserProfile, UserProfile} from '../db/features'
+import type {AccountChangedPayload} from '@shared/types/user-profile.types'
 
 /** USER_PROFILE_UPSERT 的 payload(渲染端送的),syncedAt 由主進程自動填,renderer 不必傳 */
 type UpsertPayload = Omit<NewUserProfile, 'syncedAt'>
-
-/** ACCOUNT_CHANGED_CLEAR 的 payload */
-interface AccountChangedPayload {
-  oldUserId: string | null
-  newUserId: string
-}
 
 export function registerUserProfileHandlers(
   userProfileService: UserProfileService | null,

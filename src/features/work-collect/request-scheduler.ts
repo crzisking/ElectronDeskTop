@@ -26,7 +26,7 @@
  * 因此:純無狀態 random delay,單機極簡。
  */
 
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 
 /** server 目標峰值(docs/20 §6.1 估算 20 req/s 為單實例上限) */
 const TARGET_PEAK_RPS = 20

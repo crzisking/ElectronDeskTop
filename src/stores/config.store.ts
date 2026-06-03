@@ -11,8 +11,8 @@
 
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
-import {logger} from '@/utils/logger'
-import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink, SystemLinkItem} from '@/types/config.types'
+import {logger} from '@/shared/utils/logger'
+import type {AppConfig, QuickMenuItem, SidebarItem, SystemLink, SystemLinkItem} from '@/types/config'
 
 export const useConfigStore = defineStore('config', () => {
   // ─── State ────────────────────────────────────────────────

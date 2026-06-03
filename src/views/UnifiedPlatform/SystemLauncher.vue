@@ -9,12 +9,12 @@
  *  3. 提供返回列表和在外部瀏覽器打開的操作
  */
 
-import { computed } from 'vue'
+import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
-import { useAuthStore } from '@/stores/auth.store'
-import {useConfigText} from '@/composables/useConfigText'
+import {useAuthStore} from '@/stores/auth.store'
+import {useConfigText} from '@/shared/composables/useConfigText'
 import IframeContainer from '@/components/common/IframeContainer.vue'
-import type { SystemLink } from '@/types/config.types'
+import type {SystemLink} from '@/types/config'
 
 const props = defineProps<{
   /** 當前打開的系統配置 */

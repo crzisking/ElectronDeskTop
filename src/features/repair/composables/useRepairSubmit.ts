@@ -29,20 +29,16 @@
 import {ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {i18n} from '@/locales'
+import {repairApi} from '../api'
+import {logger} from '@/shared/utils/logger'
+
+import {getPlainText, normalizeEditorHtml, useRepairForm} from './useRepairForm'
+import {useRepairUpload} from './useRepairUpload'
+import {useRepairEditor} from './useRepairEditor'
+import {POLISH_LIMIT, useRepairPolish} from './useRepairPolish'
 
 const t = (key: string, named?: Record<string, unknown>) =>
   named ? i18n.global.t(key, named) : i18n.global.t(key)
-import {repairApi} from '../api'
-import {logger} from '@/utils/logger'
-
-import {
-    useRepairForm,
-    getPlainText,
-    normalizeEditorHtml
-} from './useRepairForm'
-import {useRepairUpload} from './useRepairUpload'
-import {useRepairEditor} from './useRepairEditor'
-import {useRepairPolish, POLISH_LIMIT} from './useRepairPolish'
 
 // 工具與常量 re-export，保持與舊版接口兼容
 export {POLISH_LIMIT}

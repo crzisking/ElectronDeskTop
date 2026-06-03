@@ -7,9 +7,9 @@
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import type {UserProfile} from '@/types/api.types'
-import {authApi} from '@/api/modules/auth.api'
-import {parseUserFromJwt} from '@/utils/jwt'
-import {logger} from '@/utils/logger'
+import {authApi} from '@/api/auth.api'
+import {parseUserFromJwt} from '@/shared/utils/jwt'
+import {logger} from '@/shared/utils/logger'
 
 export const useAuthStore = defineStore('auth', () => {
 

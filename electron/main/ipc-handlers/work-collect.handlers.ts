@@ -10,21 +10,10 @@ import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import type {ConfigManager} from '../config-manager'
 import type {WindowManager} from '../window-manager'
-import type {WorkCollectorScheduler} from '../work-collector'
+import type {WorkCollectorScheduler} from '../work-collect'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {CachedTemplateDetail, WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
-import type {WorkCategory} from '../db/features'
-
-interface WorkResultPayload {
-  capturedAt: number
-  activeApp: string | null
-  activeWindowTitle: string | null
-  category: WorkCategory
-  description: string
-  confidence: number
-    screenshotHash: string | null
-    reason: string | null
-}
+import type {RemoteConfigPayload, WorkResultPayload} from '@shared/types/work-collect.types'
 
 // ─── Runtime guards ──────────────────────────────────────────────────
 
@@ -54,19 +43,6 @@ function validateMarkSyncedPayload(p: any): p is { localIds: number[]; syncedAt:
     if (!p || typeof p !== 'object') return false
     if (!Array.isArray(p.localIds) || !p.localIds.every(isPositiveInt)) return false
     return isNonNegativeNumber(p.syncedAt)
-}
-
-interface RemoteConfigPayload {
-    enabled: boolean
-    intervalMinutes: number
-    workStartHour: number
-    workEndHour: number
-    version: number
-    /** 模板 ID,null=未綁(scheduler 不啟動) */
-    categoryTemplateId?: number | null
-    templateName?: string | null
-    /** 整份模板詳情,null=未綁;有值時 main 落地到 work_template_cache */
-    templateDetail?: CachedTemplateDetail | null
 }
 
 function validateRemoteConfig(p: any): p is RemoteConfigPayload {
@@ -169,8 +145,11 @@ export function registerWorkCollectHandlers(
 
         // ── 模板 cache 寫入(獨立於 KV config 變更判斷;templateDetail 隨 my-config 一起來) ──
         // 有 detail → upsert(覆寫單行 id=1);無 detail(管理員解綁) → 清空 cache
+        //
+        // RemoteConfigPayload.templateDetail 是 unknown(shared 型別不耦合 main 的 CachedTemplateDetail),
+        // validateRemoteConfig 已確保 templateId / version / items 三個關鍵欄位存在,這裡安全 cast 即可。
         if (templateCacheService) {
-            if (remote.templateDetail) templateCacheService.upsert(remote.templateDetail)
+            if (remote.templateDetail) templateCacheService.upsert(remote.templateDetail as CachedTemplateDetail)
             else templateCacheService.clear()
         }
 

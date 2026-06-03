@@ -18,7 +18,7 @@
 import {readonly, ref} from 'vue'
 import {ElMessage, ElNotification} from 'element-plus'
 import {i18n} from '@/locales'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
 
 /**

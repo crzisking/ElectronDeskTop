@@ -31,19 +31,8 @@ export interface WorkCollectTickPayload {
   allowedCodes: string[]
 }
 
-/** renderer → main:AI 結果回送 */
-export interface WorkResultPayload {
-  capturedAt: number
-  activeApp: string | null
-  activeWindowTitle: string | null
-  category: WorkCategory
-  description: string
-  confidence: number
-  /** dHash,from tick payload 透傳 */
-  screenshotHash: string | null
-  /** AI 分類理由,可空 */
-  reason: string | null
-}
+// WorkResultPayload 抽到 electron/shared/types,跟 main 共享,避免雙方寫兩份漂移
+export type {WorkResultPayload} from '@shared/types/work-collect.types'
 
 /** 後端 unified response 的 .data */
 export interface WorkAnalyzeResponse {

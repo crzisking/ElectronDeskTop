@@ -17,7 +17,7 @@
 
 import OpenAI from 'openai'
 import {toRaw} from 'vue'
-import {uuid} from '@/utils/uuid'
+import {uuid} from '@/shared/utils/uuid'
 import {useAgentStore} from '../store'
 import {getToolDefinitions} from '../tools'
 import type {AgentMessage} from '../types'

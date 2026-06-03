@@ -1,36 +1,32 @@
 <script setup lang="ts">
 /**
- * 內部功能入口頁面 — Warm Editorial 風格
+ * 內部功能入口 — Warm Editorial 風格,薄殼。
  *
- * 結構：
- *  ── eyebrow（INTERNAL TOOLS · 內部工具）
- *  ── 大標題（內部 [功能] 中心，中間段斜體金色）
- *  ── 副標題
- *  ── 右側搜索框（帶 ⌘K 快捷鍵提示）
- *  ── Section（常用功能 · 06 ITEMS）+ filter pills（全部/流程/支援/報表）
- *  ── 卡片網格（每張卡片右上角分類 tag、左上圖標、標題、描述、底部元數據+箭頭）
- *  ── 「即將推出」虛線占位卡
- *  ── footer（系統運作正常 · build x.y.z）
+ * 結構:搜尋框 + 「常用功能」section + filter pills + 卡片網格 + 底部。
+ * 共用元件:ToolCard / ComingSoonCard / PageFooter / FilterPills(都在 components/common/)。
  *
- * 卡片由 config.internalFunctions.tools 驅動。
- * 分類（流程/支援/報表）暫由 tool.id 啟發式判斷，後續可在 config 增加 category 字段。
+ * 卡片由 config.internalFunctions.tools 驅動。分類(流程/支援)由 tool.id 啟發式判斷,
+ * 後續可在 config 增加 category 字段。
  */
 
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
+import {Search} from '@element-plus/icons-vue'
 import {useConfigStore} from '@/stores/config.store'
-import {useConfigText} from '@/composables/useConfigText'
-import {logger} from '@/utils/logger'
-import type {InternalTool} from '@/types/config.types'
-import {ArrowRight, Plus, Search} from '@element-plus/icons-vue'
+import {useConfigText} from '@/shared/composables/useConfigText'
+import {logger} from '@/shared/utils/logger'
+import type {InternalTool} from '@/types/config'
+import ToolCard from '@/components/common/ToolCard.vue'
+import ComingSoonCard from '@/components/common/ComingSoonCard.vue'
+import PageFooter from '@/components/common/PageFooter.vue'
+import FilterPills from '@/components/common/FilterPills.vue'
 
 const router = useRouter()
 const configStore = useConfigStore()
 const {t} = useI18n()
 const {ct} = useConfigText()
 
-/** 工具顯示用名稱（i18n 字典缺失時 fallback 到 JSON name） */
 function toolName(tool: InternalTool): string {
   return ct(`config.tools.${tool.id}.name`, tool.name)
 }
@@ -39,37 +35,32 @@ function toolDesc(tool: InternalTool): string {
   return ct(`config.tools.${tool.id}.description`, tool.description)
 }
 
-/** 搜索關鍵詞 */
 const searchKeyword = ref('')
 
 /**
- * 當前 filter pill 值。
- * 注意：value 用穩定英文字符串（'all' / 'process' / 'support'），不隨語言變化；
- * label 才走 i18n。原文 label：全部 / 流程 / 支援
+ * 過濾分類。value 用穩定英文字符串(不隨語言變化);label 走 i18n。
  */
 type FilterValue = 'all' | 'process' | 'support'
+
 const currentFilter = ref<FilterValue>('all')
 
-/** Filter pills 配置（label 在模板中用 t() 解析，這裡只記 i18n key） */
-const filters: Array<{ value: FilterValue; labelKey: string }> = [
-  { value: 'all',     labelKey: 'internal.filterAll' },
-  { value: 'process', labelKey: 'internal.filterProcess' },
-  { value: 'support', labelKey: 'internal.filterSupport' }
-]
+const filterOptions = computed(() => [
+  {value: 'all', label: t('internal.filterAll')},
+  {value: 'process', label: t('internal.filterProcess')},
+  {value: 'support', label: t('internal.filterSupport')},
+])
 
-/** 工具到分類的映射（啟發式：基於 id/name 關鍵字） */
+/** 工具到分類的映射(啟發式:基於 id/name 關鍵字) */
 function categorizeTool(tool: InternalTool): Exclude<FilterValue, 'all'> {
   const text = `${tool.id} ${tool.name}`.toLowerCase()
   if (/repair|報修|support|tools/.test(text)) return 'support'
   return 'process'
 }
 
-/** 所有啟用的功能 */
 const allTools = computed<InternalTool[]>(
-  () => configStore.functionsConfig?.tools.filter((t) => t.enabled) ?? []
+    () => configStore.functionsConfig?.tools.filter((tl) => tl.enabled) ?? [],
 )
 
-/** 過濾後的功能列表（搜索 + 分類） */
 const tools = computed<InternalTool[]>(() => {
   const kw = searchKeyword.value.trim().toLowerCase()
   return allTools.value.filter((tool) => {
@@ -79,18 +70,12 @@ const tools = computed<InternalTool[]>(() => {
     const name = toolName(tool).toLowerCase()
     const desc = toolDesc(tool).toLowerCase()
     return name.includes(kw)
-      || desc.includes(kw)
-      || tool.name.toLowerCase().includes(kw)
-      || tool.description.toLowerCase().includes(kw)
+        || desc.includes(kw)
+        || tool.name.toLowerCase().includes(kw)
+        || tool.description.toLowerCase().includes(kw)
   })
 })
 
-/** 卡片元數據（佔位文字，目前使用描述本身；後續可由 API/配置提供） */
-function toolMeta(tool: InternalTool): string {
-  return toolDesc(tool)
-}
-
-/** 點擊功能卡片 */
 function handleOpen(tool: InternalTool) {
   if (tool.openMode === 'external' && tool.url) {
     window.open(tool.url, '_blank')
@@ -101,124 +86,67 @@ function handleOpen(tool: InternalTool) {
   }
 }
 
-/** 應用版本：從 app-config.json 的 version 字段讀取 */
 const appVersion = computed(() => configStore.appConfig?.version ?? '—')
 </script>
 
 <template>
   <div class="app-page internal-functions-view">
-    <!-- ── 頁面頂部：搜索框 ────────────────────────────────── -->
+    <!-- ── 搜尋框 ──────────────────────────────────────── -->
     <div class="app-page-header app-page-header--compact">
       <div class="app-page-header__right">
         <div class="search-input">
-          <!-- 原文 placeholder：搜尋功能名稱或描述… -->
           <el-input
-            v-model="searchKeyword"
-            :placeholder="t('internal.searchPlaceholder')"
-            :prefix-icon="Search"
-            clearable
+              v-model="searchKeyword"
+              :placeholder="t('internal.searchPlaceholder')"
+              :prefix-icon="Search"
+              clearable
           />
         </div>
       </div>
     </div>
 
-    <!-- ── Section 標題列 + Filter Pills ────────────────────── -->
+    <!-- ── Section 標題 + Filter Pills ─────────────────── -->
     <div class="section-bar">
       <div class="app-section-title">
-        <!-- 原文：常用功能 -->
         <span class="app-section-title__main">{{ t('internal.commonTools') }}</span>
         <span class="app-section-title__count">
           {{ String(allTools.length).padStart(2, '0') }} {{ t('internal.itemsLabel') }}
         </span>
       </div>
-      <!-- 原文 pills：全部 / 流程 / 支援 -->
-      <div class="filter-pills">
-        <button
-          v-for="f in filters"
-          :key="f.value"
-          type="button"
-          class="app-pill"
-          :class="{ 'is-active': currentFilter === f.value }"
-          @click="currentFilter = f.value"
-        >
-          {{ t(f.labelKey) }}
-        </button>
-      </div>
+      <FilterPills v-model="currentFilter" :options="filterOptions"/>
     </div>
 
-    <!-- ── 卡片網格 ───────────────────────────────────────── -->
+    <!-- ── 卡片網格 ───────────────────────────────────── -->
     <div class="tools-grid">
-      <div
-        v-for="tool in tools"
-        :key="tool.id"
-        class="app-card app-card--interactive tool-card"
-        @click="handleOpen(tool)"
-      >
-        <div class="tool-card__top">
-          <div class="tool-card__icon">
-            <el-icon :size="20">
-              <component :is="tool.icon" />
-            </el-icon>
-          </div>
-        </div>
-
-        <div class="tool-card__body">
-          <h3 class="tool-card__title">{{ toolName(tool) }}</h3>
-          <p class="tool-card__desc">{{ toolDesc(tool) }}</p>
-        </div>
-
-        <div class="tool-card__footer">
-          <span class="tool-card__meta">{{ toolMeta(tool) }}</span>
-          <el-icon class="tool-card__arrow" :size="16"><ArrowRight /></el-icon>
-        </div>
-      </div>
-
-      <!-- 即將推出占位卡 -->
-      <!-- 原文 title：即將推出；desc：更多企業內部工具陸續上線中 -->
-      <div class="app-card app-card--dashed coming-soon">
-        <div class="coming-soon__icon">
-          <el-icon :size="22"><Plus /></el-icon>
-        </div>
-        <div class="coming-soon__title">{{ t('internal.comingSoon') }}</div>
-        <div class="coming-soon__desc">{{ t('internal.comingSoonDesc') }}</div>
-      </div>
+      <ToolCard
+          v-for="tool in tools"
+          :key="tool.id"
+          :description="toolDesc(tool)"
+          :icon="tool.icon"
+          :meta="toolDesc(tool)"
+          :title="toolName(tool)"
+          @click="handleOpen(tool)"
+      />
+      <ComingSoonCard :description="t('internal.comingSoonDesc')" :title="t('internal.comingSoon')"/>
     </div>
 
     <!-- 空狀態 -->
-    <!-- 原文：尚未配置任何功能，請在 app-config.json 的 internalFunctions.tools 中添加 -->
     <el-empty
-      v-if="tools.length === 0 && allTools.length === 0"
-      :description="t('internal.emptyAll')"
-      :image-size="120"
+        v-if="tools.length === 0 && allTools.length === 0"
+        :description="t('internal.emptyAll')"
+        :image-size="120"
     />
-    <!-- 原文：未找到符合的功能 -->
     <el-empty
-      v-else-if="tools.length === 0"
-      :description="t('internal.emptySearch')"
-      :image-size="100"
+        v-else-if="tools.length === 0"
+        :description="t('internal.emptySearch')"
+        :image-size="100"
     />
 
-    <!-- ── 頁面底部 ───────────────────────────────────────── -->
-    <!-- 原文：系統運作正常 -->
-    <div class="page-footer">
-      <div class="page-footer__left">
-        <span class="status-dot" />
-        <span>{{ t('internal.statusOk') }}</span>
-        <span class="footer-sep">·</span>
-      </div>
-      <div class="page-footer__right">
-        © {{ new Date().getFullYear() }} ICHIA Enterprise {{ appVersion }}
-      </div>
-    </div>
+    <PageFooter :version="appVersion"/>
   </div>
 </template>
 
 <style scoped>
-.internal-functions-view {
-  /* 繼承 .app-page 的 padding/gap，這裡僅作個別調整 */
-}
-
-/* ── 搜索框（含 ⌘K 提示） ────────────────────────────────── */
 .search-input {
   position: relative;
   width: 320px;
@@ -228,23 +156,6 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
   height: 40px;
 }
 
-.search-shortcut {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--app-bg-elevated);
-  border: 1px solid var(--app-border-subtle);
-  color: var(--app-text-muted);
-  pointer-events: none;
-}
-
-/* ── Section bar：標題 + filter pills ─────────────────────── */
 .section-bar {
   display: flex;
   align-items: center;
@@ -253,12 +164,6 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
   margin-top: 6px;
 }
 
-.filter-pills {
-  display: flex;
-  gap: 6px;
-}
-
-/* ── 卡片網格 ────────────────────────────────────────────── */
 .tools-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
@@ -266,147 +171,5 @@ const appVersion = computed(() => configStore.appConfig?.version ?? '—')
   align-content: start;
   flex: 1;
   min-height: 0;
-}
-
-.tool-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 22px 22px 18px;
-  min-height: 200px;
-}
-
-.tool-card__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.tool-card__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--app-bg-elevated);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--app-text-primary);
-  flex-shrink: 0;
-}
-
-.tool-card__body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.tool-card__title {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--app-text-primary);
-  margin: 0;
-  letter-spacing: -0.005em;
-}
-
-.tool-card__desc {
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--app-text-secondary);
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.tool-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid var(--app-border-subtle);
-}
-
-.tool-card__meta {
-  font-size: 12px;
-  color: var(--app-text-muted);
-  letter-spacing: 0.02em;
-}
-
-.tool-card__arrow {
-  color: var(--app-text-muted);
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.tool-card:hover .tool-card__arrow {
-  color: var(--app-text-primary);
-  transform: translateX(2px);
-}
-
-/* ── 即將推出占位卡 ─────────────────────────────────────── */
-.coming-soon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 28px;
-  min-height: 200px;
-  text-align: center;
-  color: var(--app-text-muted);
-}
-
-.coming-soon__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 1.5px dashed var(--app-border-default);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.coming-soon__title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--app-text-secondary);
-}
-
-.coming-soon__desc {
-  font-size: 12px;
-  color: var(--app-text-muted);
-}
-
-/* ── 頁面底部 ────────────────────────────────────────────── */
-.page-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--app-text-muted);
-  letter-spacing: 0.03em;
-  padding-top: 8px;
-  flex-shrink: 0;
-}
-
-.page-footer__left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--app-success);
-  box-shadow: 0 0 0 3px rgba(79, 125, 58, 0.15);
-}
-
-.footer-sep {
-  color: var(--app-border-strong);
 }
 </style>

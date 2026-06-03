@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <!--
+      Content Security Policy：
+      - default-src 'self'        只允許加載同源資源
+      - script-src 'self' 'unsafe-inline'  Vite 開發模式需要 inline script
+      - style-src 'self' 'unsafe-inline'   Element Plus 動態注入 style
+      - img-src 'self' data: https:       允許 data URI 圖片和 HTTPS 圖片
+      - connect-src 'self' https:         允許 HTTPS API 請求
+      注意：生產環境應移除 unsafe-inline，使用 CSP nonce
+    -->
+    <meta
+            content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https: http:; connect-src 'self' https: http:; frame-src 'self' http: https:;"
+            http-equiv="Content-Security-Policy"
+    />
+    <title>ichiaDesktop</title>
+</head>
+<body>
+<!-- Vue 3 應用掛載點 -->
+<div id="app"></div>
+<!-- 渲染進程入口腳本 -->
+<script src="./main.ts" type="module"></script>
+</body>
+</html>

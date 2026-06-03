@@ -15,7 +15,7 @@ import {useI18n} from 'vue-i18n'
 import {useAuthStore} from '@/stores/auth.store'
 import {useUpdate} from '@/features/update/use-update'
 import {useUserProfileStore} from '@/features/user-profile/store'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import {Lock, User} from '@element-plus/icons-vue'
 import type {FormInstance, FormRules} from 'element-plus'
 

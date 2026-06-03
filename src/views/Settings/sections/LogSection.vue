@@ -11,12 +11,12 @@
  *   「設定 → 日誌與診斷 → 打開日誌資料夾，把當天的 .log 檔發過來」
  */
 
-import { ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {ref} from 'vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {useI18n} from 'vue-i18n'
 import SettingsRow from '../components/SettingsRow.vue'
-import { FolderOpened, DocumentCopy, View } from '@element-plus/icons-vue'
-import { logger } from '@/utils/logger'
+import {DocumentCopy, FolderOpened, View} from '@element-plus/icons-vue'
+import {logger} from '@/shared/utils/logger'
 
 const {t} = useI18n()
 

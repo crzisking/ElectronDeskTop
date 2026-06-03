@@ -6,10 +6,10 @@
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
-import { toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { WorkRecord } from '../types'
-import { useAppRankOption } from '../composables/useChartOptions'
+import {toRef} from 'vue'
+import {useI18n} from 'vue-i18n'
+import type {WorkRecord} from '../types'
+import {useAppRankOption} from '../composables/useChartOptions'
 
 const props = withDefaults(
   defineProps<{

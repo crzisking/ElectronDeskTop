@@ -9,7 +9,7 @@
  * 純流程函式,不持有狀態。被 useAgentChat 每輪迴圈呼叫一次(若該輪有 tool_calls)。
  */
 
-import {uuid} from '@/utils/uuid'
+import {uuid} from '@/shared/utils/uuid'
 import {executeAgentTool} from '../tools'
 import type {AgentMessage, OpenAIToolCall} from '../types'
 import {MAX_TOOL_CONTENT_FOR_LLM, previewFor, truncate} from './agent-utils'

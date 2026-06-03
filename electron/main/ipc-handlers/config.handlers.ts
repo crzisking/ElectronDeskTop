@@ -7,7 +7,7 @@ import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import type {ConfigManager} from '../config-manager'
-import type {AppConfig} from '../../../src/types/config.types'
+import type {AppConfig} from '../../../src/types/config'
 
 /**
  * AppConfig 頂層合法字段白名單。

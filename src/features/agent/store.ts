@@ -16,7 +16,7 @@
 
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
-import {uuid} from '@/utils/uuid'
+import {uuid} from '@/shared/utils/uuid'
 import type {AgentConfig, AgentMessage, ProviderConfig} from './types'
 import {DEFAULT_SYSTEM_PROMPT} from './prompts'
 

@@ -12,7 +12,7 @@
  *   work-collect.types.ts       ─ WorkCollectConfig
  *
  * 為什麼拆檔:單檔 685 行太肥,每個 feature 自己一份小檔好維護;
- * 統一從 '@/types/config.types' 或 '@/types/config' import 都行(後者解析到 index.ts)。
+ * 統一從 '@/types/config' import,解析到此 index.ts。
  */
 
 import type {AppSettings} from './app.types'
@@ -65,7 +65,7 @@ export interface AppConfig {
   workCollect: WorkCollectConfig
 }
 
-// ── re-export 子型別,讓 `from '@/types/config.types'` 仍可拿到所有型別 ──
+// ── re-export 子型別,讓使用方可直接從 `@/types/config` 拿到所有型別 ──
 export type {AppSettings} from './app.types'
 export type {SidebarConfig, SidebarItem} from './sidebar.types'
 export type {SystemLinksConfig, SystemLinkItem} from './system-links.types'

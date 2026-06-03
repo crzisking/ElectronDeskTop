@@ -2,7 +2,7 @@
  * Auth / 用戶身份相關類型
  *
  * 使用方：
- *  - src/api/modules/auth.api.ts
+ *  - src/api/auth.api.ts
  *  - src/stores/auth.store.ts
  *  - src/api/interceptors/auth.interceptor.ts
  */

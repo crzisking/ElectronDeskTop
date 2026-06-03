@@ -13,10 +13,10 @@
 import {computed, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useConfigStore} from '@/stores/config.store'
-import {useConfigText} from '@/composables/useConfigText'
+import {useConfigText} from '@/shared/composables/useConfigText'
 import SystemCard from './SystemCard.vue'
 import SystemLauncher from './SystemLauncher.vue'
-import type {SystemLink} from '@/types/config.types'
+import type {SystemLink} from '@/types/config'
 import {Search} from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()

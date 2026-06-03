@@ -16,7 +16,7 @@
 import {reactive, ref} from 'vue'
 import {useAuthStore} from '@/stores/auth.store'
 import {repairApi} from '../api'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import type {RepairDetail, RepairListItem, RepairStatus} from '../types'
 
 // ── 狀態顯示映射（模塊級常量，直接 export 供模板使用） ────────────

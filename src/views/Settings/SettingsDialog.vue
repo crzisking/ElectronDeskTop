@@ -25,7 +25,7 @@ import {useI18n} from 'vue-i18n'
 import UpdateSection from './sections/UpdateSection.vue'
 import LanguageSection from './sections/LanguageSection.vue'
 import LogSection from './sections/LogSection.vue'
-import { Setting } from '@element-plus/icons-vue'
+import {Setting} from '@element-plus/icons-vue'
 
 const {t} = useI18n()
 

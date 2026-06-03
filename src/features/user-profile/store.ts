@@ -14,7 +14,7 @@
 import {defineStore} from 'pinia'
 import {computed, ref} from 'vue'
 import {useAuthStore} from '@/stores/auth.store'
-import {logger} from '@/utils/logger'
+import {logger} from '@/shared/utils/logger'
 import {userProfileApi} from './api'
 import type {DingUserResponse, ProfileState, UserProfile, UserProfileUpsertInput} from './types'
 
