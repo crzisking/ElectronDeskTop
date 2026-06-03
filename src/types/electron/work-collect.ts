@@ -2,7 +2,7 @@
  * electronAPI.workCollect 子介面 — 工作自動採集。
  */
 
-import type {WorkRecord, WorkResultPayload} from '@/features/work-collect/types'
+import type {WorkRecord, WorkResultPayload, WorkTemplateDetail} from '@/features/work-collect/types'
 
 export interface WorkCollectAPI {
     /**
@@ -67,4 +67,10 @@ export interface WorkCollectAPI {
      * 只在密碼保護的日誌查看器(logViewerAPI.workHealth)可見。
      */
     syncDone: (result: { ok: boolean; synced?: number; failed?: number; error?: string }) => Promise<void>
+
+    /**
+     * 取本地模板 cache(沒 server config / 模板被解綁時回 null)。
+     * renderer 拿來建 code → label 對照,給 UI 顯示分類中文名;不負責 prompt 組裝。
+     */
+    getTemplate: () => Promise<WorkTemplateDetail | null>
 }

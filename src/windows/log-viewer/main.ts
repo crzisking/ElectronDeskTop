@@ -1,12 +1,12 @@
 /**
  * 日誌查看器子視窗 Vue app 入口。
  *
- * 階段一原本是輕量單頁(只有 ElementPlus),階段二改造後承載多個管理員 tab,
- * 需要 pinia(configStore / workCollectStore)+ i18n(WorkCollectView 大量 t())。
- * 仍**沒有** router —— LogViewer 內部 tab 切換用 ref 狀態管即可,夠用。
+ * 目前只裝 LogViewerView(日誌頁)。工作採集已搬回主視窗的「個人功能」入口,
+ * 不再 piggyback 在 LogViewer 內。pinia / i18n 仍保留,未來新增子件需要時直接可用,
+ * 零成本。
  *
- * 三個窗口的 pinia 是各自獨立的 store instance(因為是不同 renderer process),
- * 在 LogViewer 內 useWorkCollectStore().bootstrap('viewer') 不會跟主窗口衝突。
+ * 三個窗口的 pinia 各自獨立 store instance(不同 renderer process),互不共享狀態 —
+ * 之後若要在此窗口用任何 store,呼叫對應 use*Store() 即可,跟主窗口完全隔離。
  */
 
 import {createApp} from 'vue'
@@ -19,10 +19,8 @@ import App from './App.vue'
 
 const app = createApp(App)
 
-// Pinia:configStore / workCollectStore 共用
+// Pinia / i18n:LogViewerView 目前用不到,但保留以便未來新增子件需要時直接可用
 app.use(createPinia())
-
-// i18n:WorkCollectView 用到大量 t('workCollect.*');先掛 i18n 再掛 ElementPlus
 app.use(i18n)
 app.use(ElementPlus)
 

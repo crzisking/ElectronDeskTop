@@ -133,7 +133,8 @@ app.whenReady().then(async () => {
       workTemplateCacheService = new WorkTemplateCacheService(dbManager)
     userProfileService = new UserProfileService(dbManager)
     savedCredentialsService = new SavedCredentialsService(dbManager)
-    accountChangeCleaner = new AccountChangeCleaner(dbManager)
+    // cleaner 拿 workRecordService 是為了清表後 invalidate 內部 unsynced counter
+    accountChangeCleaner = new AccountChangeCleaner(dbManager, workRecordService)
     // Agent feature 自管 schema(ensureTables in constructor),不影響 drizzle migration
     agentService = new AgentService(dbManager)
   } catch (err) {

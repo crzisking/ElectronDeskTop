@@ -11,7 +11,7 @@
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {Aim, Clock, Histogram, Refresh} from '@element-plus/icons-vue'
-import {getCategoryLabel} from '../category-colors'
+import {useWorkCollectStore} from '../store'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = defineProps<{
@@ -19,6 +19,7 @@ const props = defineProps<{
 }>()
 
 const {t} = useI18n()
+const workStore = useWorkCollectStore()
 
 /** 覆蓋的小時數(以採集時間的 hour 去重) */
 const coveredHours = computed(() => {
@@ -27,7 +28,7 @@ const coveredHours = computed(() => {
   return set.size
 })
 
-/** 最多類別 + 佔比 — 模板化後 category 是動態 code,直接用 getCategoryLabel 兜底 */
+/** 最多類別 + 佔比 — label 走 store(命中模板 cache 就顯示中文,沒命中走 legacy/code fallback) */
 const topCategory = computed<{label: string; ratio: number} | null>(() => {
   if (props.records.length === 0) return null
   const counts = new Map<WorkCategory, number>()
@@ -38,7 +39,7 @@ const topCategory = computed<{label: string; ratio: number} | null>(() => {
     if (c > topCount) { topCat = cat; topCount = c }
   }
   return {
-    label: getCategoryLabel(topCat),
+    label: workStore.labelOf(topCat),
     ratio: topCount / props.records.length,
   }
 })
@@ -99,6 +100,10 @@ const lastCapturedAt = computed(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  /* 自己當 container,讓內部 @container 規則看「我有多寬」而非 viewport。
+     主視窗縮窄 + sidebar 佔位時,viewport 還 > 720 但實際容器可能只 ~480,
+     viewport-media 不切欄會把 4 個卡片擠爛 — container query 才能正確響應 */
+  container-type: inline-size;
 }
 
 .stat-card {
@@ -147,9 +152,16 @@ const lastCapturedAt = computed(() => {
   margin-top: 2px;
 }
 
-@media (max-width: 720px) {
+/* 中等寬度切 2 欄;真的非常窄(< 360px)再變 1 欄,避免標籤文字硬塞單行折斷 */
+@container (max-width: 720px) {
   .stat-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container (max-width: 360px) {
+  .stat-cards {
+    grid-template-columns: 1fr;
   }
 }
 </style>

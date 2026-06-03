@@ -202,6 +202,12 @@ export function registerWorkCollectHandlers(
         scheduler.onRendererReady()
     })
 
+    // 讀本地模板 cache,給 renderer 建 code → label 對照表(UI 顯示用)
+    ipcMain.handle(IpcChannels.WORK_COLLECT_GET_TEMPLATE, (): CachedTemplateDetail | null => {
+        if (!templateCacheService) return null
+        return templateCacheService.read()
+    })
+
     // 採集健康狀態:service 計數 + 當前 unsynced 數
     ipcMain.handle(IpcChannels.WORK_COLLECT_HEALTH, () => {
         if (!recordService) {

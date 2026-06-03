@@ -78,6 +78,13 @@
       "when": 1780464200764,
       "tag": "0010_equal_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1780467696465,
+      "tag": "0011_youthful_blizzard",
+      "breakpoints": true
     }
   ]
 }

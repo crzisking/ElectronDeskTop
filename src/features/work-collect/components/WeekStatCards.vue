@@ -5,7 +5,7 @@
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {Calendar, Clock, Histogram, Trophy} from '@element-plus/icons-vue'
-import {getCategoryLabel} from '../category-colors'
+import {useWorkCollectStore} from '../store'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = defineProps<{
@@ -13,6 +13,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const workStore = useWorkCollectStore()
 
 /** 覆盖的天数 */
 const coveredDays = computed(() => {
@@ -37,7 +38,7 @@ const topCategory = computed<{ label: string; count: number } | null>(() => {
       topCount = count
     }
   }
-  return {label: getCategoryLabel(topCat), count: topCount}
+  return {label: workStore.labelOf(topCat), count: topCount}
 })
 
 /** 最高采集日 */
@@ -114,6 +115,8 @@ const topDay = computed<{ day: string; count: number } | null>(() => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  /* 同 StatCards 的邏輯 — container query 看自身寬度,避免 viewport-media 誤判 */
+  container-type: inline-size;
 }
 
 .stat-card {
@@ -162,9 +165,15 @@ const topDay = computed<{ day: string; count: number } | null>(() => {
   margin-top: 2px;
 }
 
-@media (max-width: 720px) {
+@container (max-width: 720px) {
   .week-stat-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container (max-width: 360px) {
+  .week-stat-cards {
+    grid-template-columns: 1fr;
   }
 }
 </style>

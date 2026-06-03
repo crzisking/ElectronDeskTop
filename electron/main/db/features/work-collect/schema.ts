@@ -73,6 +73,14 @@ export const workRecords = sqliteTable(
 
       /** sync-daily 撈未同步紀錄走這條;synced=0 的列稀疏,效率好 */
       idxSynced: index('idx_work_records_synced').on(table.synced, table.capturedAt),
+
+      /**
+       * listByRange 同時過濾 capturedAt 區間 + activityState != 'idle' —— 單欄
+       * idx_work_capturedAt 只能加速時間區間,activityState 的過濾走逐行檢查。
+       * 時間線檢視預設 30 天,記錄到 10K+ 後可感卡頓。複合索引讓兩個條件都走 index。
+       */
+      idxCapturedAtActivityState: index('idx_work_capturedAt_activityState')
+          .on(table.capturedAt, table.activityState),
   })
 )
 

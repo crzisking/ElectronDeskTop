@@ -18,7 +18,15 @@ import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/shared/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
 import {workCollectApi} from './api'
-import type {WorkCollectTickPayload, WorkRecord, WorkResultPayload, WorkSyncRecordItem,} from './types'
+import {getCategoryLabel as getCategoryLabelFallback} from './category-colors'
+import type {
+    WorkCollectTickPayload,
+    WorkRecord,
+    WorkResultPayload,
+    WorkSyncRecordItem,
+    WorkTemplateDetail,
+    WorkTemplateItem,
+} from './types'
 
 export const useWorkCollectStore = defineStore('workCollect', () => {
   const configStore = useConfigStore()
@@ -59,6 +67,54 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
   /** 當前查詢區間的紀錄(時間軸 UI 用) */
   const records = ref<WorkRecord[]>([])
   const loading = ref(false)
+
+    /**
+     * 模板分類 code → label 對照表(reactive)。
+     *
+     * 為什麼存在:work_records 表只記 category code(DB_OPS / CODING / ...),label 是模板配置
+     * 隨時可改,設計上不冗餘存進每筆紀錄。UI 要顯示「資料庫操作」這種中文,就靠這張對照表
+     * 即時 lookup。模板改名 → cache 更新 → UI 自動跟著變,歷史紀錄不需 migrate。
+     *
+     * 來源兩條路徑,都走 setCategoryLabelsFromTemplate():
+     *   1. bootstrap() 啟動時 IPC getTemplate() 拉一次(現有 cache)
+     *   2. onConfigRequest() 收到 /my-config 的 templateDetail 順手更新(最新模板)
+     *
+     * 走 reactive 不走純 plain object — 模板熱更新時所有 computed/template 自動 re-evaluate。
+     */
+    const categoryLabels = ref<Record<string, string>>({})
+
+    /**
+     * 取分類顯示 label:先查模板 cache → 沒命中走 category-colors.ts 的 legacy fallback chain。
+     * 所有 UI 元件、charts、export 都該用這個,不要直接呼叫 getCategoryLabelFallback。
+     */
+    function labelOf(code: string): string {
+        if (!code) return getCategoryLabelFallback(code)
+        return categoryLabels.value[code] ?? getCategoryLabelFallback(code)
+    }
+
+    /** 把模板 items 抽成 code → label 對照表,塞進 reactive state */
+    function setCategoryLabelsFromTemplate(detail: WorkTemplateDetail | null): void {
+        if (!detail || !Array.isArray(detail.items)) {
+            categoryLabels.value = {}
+            return
+        }
+        const next: Record<string, string> = {}
+        for (const item of detail.items as WorkTemplateItem[]) {
+            // 不過濾 isActive:UI 仍可能顯示已停用 code 的歷史紀錄,有 label 就該用 label
+            if (item?.code && item.label) next[item.code] = item.label
+        }
+        categoryLabels.value = next
+    }
+
+    /** bootstrap 內呼叫:IPC 從 main 拉一次現有 cache(沒拉到 server config 時會回 null) */
+    async function loadCategoryLabelsFromCache(): Promise<void> {
+        try {
+            const detail = await window.electronAPI.workCollect.getTemplate()
+            setCategoryLabelsFromTemplate(detail as WorkTemplateDetail | null)
+        } catch (err) {
+            logger.warn('讀取模板 cache 失敗(忽略,UI 走 code fallback)', 'WorkCollectStore', err)
+        }
+    }
 
   /** 切換採集開關 */
   async function toggle(next: boolean): Promise<void> {
@@ -183,6 +239,9 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 await useConfigStore().loadConfig()
                 logger.info(`已套用 server 配置 v${remote.version}`, 'WorkCollectStore')
             }
+            // 不管 config 有沒有「變」,template 都該以 server 最新值為準同步進 reactive map
+            // (例如管理員只改 label 沒動 enabled/interval,result.changed 會是 false 但 label 要更新)
+            setCategoryLabelsFromTemplate(remote.templateDetail ?? null)
         } catch (err) {
             logger.warn('拉取 server 配置失敗,等下次觸發', 'WorkCollectStore', err)
         }
@@ -318,10 +377,16 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
           .notifyReady()
           .catch((err) => logger.warn('notifyReady 失敗,等下次觸發', 'WorkCollectStore', err))
       }
+
+      // 模板 label 對照表:main 和 viewer 模式都要 — UI 不論在哪個窗口都該顯示中文 label,
+      // 而非 raw code。失敗就讓 categoryLabels 保持空,fallback 到 raw code,UI 不會崩。
+      // 不 await:bootstrap 完成優先,labels 慢一拍到也只是「短暫顯示 code」,不影響流程。
+      void loadCategoryLabelsFromCache()
   }
 
     return {
         enabled, intervalMinutes, workHours, records, loading,
+        categoryLabels, labelOf,
         toggle, refresh, bootstrap, syncDailyRecords,
     }
 })

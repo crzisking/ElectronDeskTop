@@ -100,10 +100,18 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: 'router.aiSop'
         }
-      }
+      },
 
-        // 工作自動採集已搬到 LogViewer 子視窗(密碼保護),主視窗不再暴露路由。
-        // 入口走「設定 → 日誌與診斷 → 開啟日誌視窗」,LogViewer 內以 tab 切換。
+      // 工作自動採集 — 個人功能入口開啟此頁
+      {
+        path: 'work-collect',
+        name: 'work-collect',
+        component: () => import('@/features/work-collect/WorkCollectView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'router.workCollect'
+        }
+      }
 
     ]
   },

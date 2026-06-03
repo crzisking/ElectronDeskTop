@@ -47,6 +47,11 @@ export const logs = sqliteTable(
     idxCreatedAt: index('idx_logs_createdAt').on(table.createdAt),
     /** 按 level 過濾(例如「只看 error」)用 */
     idxLevelCreated: index('idx_logs_level_createdAt').on(table.level, table.createdAt),
+      /**
+       * listModules() 走 WHERE module IS NOT NULL ... GROUP BY module — 沒索引就全表掃。
+       * 日誌累積到 ~10K+ 後 LogViewer 的 module 下拉變慢,加這條把它變成索引掃描。
+       */
+      idxModule: index('idx_logs_module').on(table.module),
   })
 )
 

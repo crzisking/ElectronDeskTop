@@ -16,9 +16,20 @@
 import {logger} from '../utils/logger'
 import {savedCredentials, userProfiles, workRecords} from './features'
 import type {DatabaseManager} from './database-manager'
+import type {WorkRecordService} from './features/work-collect/service'
 
 export class AccountChangeCleaner {
-  constructor(private readonly dbManager: DatabaseManager) {}
+  /**
+   * workRecordService 用於 invalidate in-memory unsynced counter — 我們繞過 service 直接
+   * `tx.delete(workRecords)`,service 內維護的 counter 會跟 DB 不一致,清完務必 invalidate。
+   * 可選注入:DB 初始化失敗時 workRecordService 為 null,cleaner 仍能跑,只是 counter 不重設
+   * (反正那條路徑下 service 自己也不可用)。
+   */
+  constructor(
+      private readonly dbManager: DatabaseManager,
+      private readonly workRecordService: WorkRecordService | null = null,
+  ) {
+  }
 
   /**
    * 清空所有 per-user 表。**走 transaction,任一表失敗都 rollback,不會留下半清空狀態**。
@@ -43,6 +54,8 @@ export class AccountChangeCleaner {
         // 未來新增 per-user 表:
         //   tx.delete(<新表>).run()
       })
+      // 跨表 delete 繞過 WorkRecordService,counter 失準 → 強制下次 countUnsynced() 重算
+      this.workRecordService?.invalidateUnsyncedCount()
       logger.info('AD 帳號變更,已清空所有 per-user 表(user_profiles + work_records + saved_credentials)', 'AccountChangeCleaner')
       return true
     } catch (err) {

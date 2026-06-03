@@ -28,6 +28,12 @@ export const WorkCollectChannels = {
   WORK_COLLECT_MARK_SYNCED: 'work:mark-synced',
     /** 套用 server 配置(invoke config → {changed}) */
   WORK_COLLECT_APPLY_REMOTE_CONFIG: 'work:apply-remote-config',
+    /**
+     * 讀本地模板 cache(invoke → CachedTemplateDetail | null)。
+     * renderer 拿來建 category code → label 對照表,給 UI 顯示分類中文名用。
+     * 沒拉到 server config(或被解綁)就 cache 為空 → 回 null,renderer 回退到 raw code。
+     */
+    WORK_COLLECT_GET_TEMPLATE: 'work:get-template',
     /** renderer bootstrap ack,main 重放 pending(invoke) */
     WORK_COLLECT_RENDERER_READY: 'work:renderer-ready',
     /** renderer sync 完成 ack,main 清 / 保留 pending(invoke {ok,synced,failed,error}) */

@@ -4,21 +4,26 @@
 
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {getCategoryColor, getCategoryLabel} from '../category-colors'
+import {getCategoryColor} from '../category-colors'
+import {useWorkCollectStore} from '../store'
 import type {WorkRecord} from '../types'
 import {countByCategory, type TooltipParam} from './_shared'
 
 export function useDonutOption(records: Ref<WorkRecord[]>) {
     const {t, locale} = useI18n()
+    // store 是 reactive,模板 cache 變了這層 computed 會自動 re-evaluate
+    const workStore = useWorkCollectStore()
     return computed(() => {
         void locale.value
+        // 引用 categoryLabels 觸發 reactive 依賴,模板熱更新時 ECharts option 跟著更新
+        void workStore.categoryLabels
         const counts = countByCategory(records.value)
         // 直接按 counts 出現順序展示,降序排好看
         const data = Object.entries(counts)
             .filter(([, v]) => v > 0)
             .sort((a, b) => b[1] - a[1])
             .map(([cat, v]) => ({
-                name: getCategoryLabel(cat),
+                name: workStore.labelOf(cat),
                 value: v,
                 itemStyle: {color: getCategoryColor(cat)},
             }))

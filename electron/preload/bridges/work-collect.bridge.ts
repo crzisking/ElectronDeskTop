@@ -18,6 +18,26 @@ export interface WorkCollectChannelMap {
     WORK_COLLECT_APPLY_REMOTE_CONFIG: string
     WORK_COLLECT_RENDERER_READY: string
     WORK_COLLECT_SYNC_DONE: string
+    WORK_COLLECT_GET_TEMPLATE: string
+}
+
+/**
+ * 模板項目最小投影 — 只暴露 UI 顯示需要的欄位,examples / promptSnippet 等
+ * 純 prompt 組裝用的細節留在主進程,renderer 拿不到、也拿不到誤用機會。
+ */
+interface MinimalTemplateItem {
+    code: string
+    label: string
+    isActive: boolean
+    color?: string | null
+    sortOrder: number
+}
+
+interface MinimalTemplateDetail {
+    templateId: number
+    version: number
+    name: string
+    items: MinimalTemplateItem[]
 }
 
 interface MinimalWorkRecord {
@@ -73,6 +93,13 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
       /** sync 完成 ack,main 據此清 / 保留 pending */
       syncDone: (result: { ok: boolean; synced?: number; failed?: number; error?: string }) =>
           ipc.invoke(ch.WORK_COLLECT_SYNC_DONE, result) as Promise<void>,
+
+      /**
+       * 取本地模板 cache(沒拉到 server config / 模板被解綁時回 null)。
+       * renderer 拿來建 code → label 對照,顯示分類中文名。
+       */
+      getTemplate: () =>
+          ipc.invoke(ch.WORK_COLLECT_GET_TEMPLATE) as Promise<MinimalTemplateDetail | null>,
       // 注意:健康狀態(getHealth)刻意不在主窗口暴露 —— 只在密碼保護的日誌查看器
       // (log-viewer.preload)可達,避免普通使用者看到「待同步 / 失敗」維運資訊。
   }

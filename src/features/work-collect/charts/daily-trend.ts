@@ -6,14 +6,17 @@
 
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {getCategoryColor, getCategoryLabel} from '../category-colors'
+import {getCategoryColor} from '../category-colors'
+import {useWorkCollectStore} from '../store'
 import type {WorkCategory, WorkRecord} from '../types'
 import {type CategoryCounts, deriveCategories} from './_shared'
 
 export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7) {
     const {locale} = useI18n()
+    const workStore = useWorkCollectStore()
     return computed(() => {
         void locale.value
+        void workStore.categoryLabels // 觸發 reactive 依賴,模板熱更新時 legend / series name 自動跟著變
         const cats = deriveCategories(records.value)
         const dateMap = new Map<string, CategoryCounts>()
         const now = new Date()
@@ -54,7 +57,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
                 order: 'valueDesc' as const,
             },
             legend: {
-                data: legendOrder.map((c) => getCategoryLabel(c)),
+                data: legendOrder.map((c) => workStore.labelOf(c)),
                 bottom: 0,
                 textStyle: {fontSize: 10},
             },
@@ -69,7 +72,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
                 minInterval: 1,
             },
             series: stackOrder.map((cat) => ({
-                name: getCategoryLabel(cat),
+                name: workStore.labelOf(cat),
                 type: 'line' as const,
                 stack: 'total',
                 areaStyle: {opacity: 0.15},

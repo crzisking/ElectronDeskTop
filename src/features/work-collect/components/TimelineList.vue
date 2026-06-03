@@ -13,7 +13,8 @@ import {computed, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {ElMessage} from 'element-plus'
 import {Download} from '@element-plus/icons-vue'
-import {CATEGORY_TAG_TYPE, getCategoryLabel} from '../category-colors'
+import {CATEGORY_TAG_TYPE} from '../category-colors'
+import {useWorkCollectStore} from '../store'
 import type {WorkCategory, WorkRecord} from '../types'
 
 const props = withDefaults(
@@ -25,6 +26,9 @@ const props = withDefaults(
 )
 
 const {t} = useI18n()
+
+// 模板 code → label 對照走 store(reactive),模板熱更新時 UI 自動跟著變
+const workStore = useWorkCollectStore()
 
 // ── 日期範圍 ────────────────────────────────────────────────────
 function defaultRange(): [Date, Date] {
@@ -147,7 +151,7 @@ function exportTxt() {
   const header = ['時間', '類別', '描述', '前台視窗'].join('\t')
   const lines = records.map((r) => {
     const time = formatTimestampForExport(r.capturedAt)
-    const cat = getCategoryLabel(r.category)
+    const cat = workStore.labelOf(r.category)
     const desc = (r.description ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
     const win = (r.activeWindowTitle ?? '').replace(/\t/g, ' ').replace(/\n/g, ' ')
     return [time, cat, desc, win].join('\t')
@@ -207,7 +211,7 @@ function exportTxt() {
           <el-option
               v-for="cat in availableCategories"
               :key="cat"
-              :label="getCategoryLabel(cat)"
+              :label="workStore.labelOf(cat)"
               :value="cat"
           />
         </el-select>
@@ -244,7 +248,7 @@ function exportTxt() {
         >
           <div class="record-row">
             <el-tag :type="CATEGORY_TAG_TYPE[rec.category]" size="small">
-              {{ getCategoryLabel(rec.category) }}
+              {{ workStore.labelOf(rec.category) }}
             </el-tag>
             <span class="record-desc">{{ rec.description }}</span>
           </div>

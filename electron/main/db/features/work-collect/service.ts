@@ -29,7 +29,35 @@ export class WorkRecordService {
         lastErrorAt: null,
     }
 
-  constructor(private readonly dbManager: DatabaseManager) {}
+    /**
+     * 未同步紀錄計數 in-memory cache。
+     *
+     * 為什麼維護:`countUnsynced()` 原本走 `SELECT count(*) WHERE synced=0`,
+     * 被 `sync-coordinator.maybeSafetyNetSync()` 在 5 分鐘 tick 內熱呼叫。記錄累積後
+     * 每次都掃 unsynced 列,惡性循環(網路差 → unsynced 越多 → count 越貴 → tick 越慢)。
+     *
+     * 維護規則:
+     *   - null = 尚未初始化 / 被 invalidate;下次 countUnsynced() 重算一次,之後維護
+     *   - insert 帶 synced=0(或省略,走預設 0)→ +1
+     *   - markSynced 用 result.changes 精確 -N(WHERE 已限制 synced=0,changes 即真實 0→1 列數)
+     *   - upsertFromServer 寫 synced=1,不動 counter
+     *   - 任何繞過 service 直接寫表的場景(AccountChangeCleaner 跨表 delete)必須呼叫
+     *     `invalidateUnsyncedCount()`,讓下次重算
+     *
+     * better-sqlite3 同步、單進程 → 無 race condition,不需鎖。
+     */
+    private unsyncedCount: number | null = null
+
+    constructor(private readonly dbManager: DatabaseManager) {
+    }
+
+    /**
+     * 讓下次 countUnsynced() 重新從 DB 撈一次真實值。
+     * 給 AccountChangeCleaner 等「繞過 service 直接動表」的場景呼叫。
+     */
+    invalidateUnsyncedCount(): void {
+        this.unsyncedCount = null
+    }
 
     getHealth(): WorkRecordHealth {
         return {...this.health}
@@ -40,13 +68,17 @@ export class WorkRecordService {
         if (!this.dbManager.isReady()) {
             return this.recordFailure('write', 'DB not ready')
         }
-    try {
-      this.dbManager.getDb().insert(workRecords).values(entry).run()
-        return {ok: true}
-    } catch (err) {
-        return this.recordFailure('write', errMsg(err))
+        try {
+            this.dbManager.getDb().insert(workRecords).values(entry).run()
+            // 維護 counter:沒帶 synced 或 synced=0 視為未同步;失敗路徑不會走到這裡,所以不必補償
+            if (this.unsyncedCount !== null && (entry.synced === undefined || entry.synced === 0)) {
+                this.unsyncedCount++
+            }
+            return {ok: true}
+        } catch (err) {
+            return this.recordFailure('write', errMsg(err))
+        }
     }
-  }
 
   /**
    * 列出某時間區間內的紀錄,按時間正序(早 → 晚),適合畫流水線。
@@ -89,13 +121,18 @@ export class WorkRecordService {
 
   countUnsynced(): number {
     if (!this.dbManager.isReady()) return 0
-    const row = this.dbManager
-        .getDb()
-        .select({n: sql<number>`count(*)`})
-        .from(workRecords)
-        .where(eq(workRecords.synced, 0))
-        .get()
-    return row?.n ?? 0
+      // 首次或被 invalidate 後重新從 DB 算一次,之後靠 insert/markSynced 維護;
+      // 不在 hot path 每次都 SELECT count(*) — 那是這個 optimization 的整個重點
+      if (this.unsyncedCount === null) {
+          const row = this.dbManager
+              .getDb()
+              .select({n: sql<number>`count(*)`})
+              .from(workRecords)
+              .where(eq(workRecords.synced, 0))
+              .get()
+          this.unsyncedCount = row?.n ?? 0
+      }
+      return this.unsyncedCount
   }
 
     /** 標記 localIds 為已同步。失敗回 OpResult,caller 可保留 unsynced 待重試。 */
@@ -103,11 +140,17 @@ export class WorkRecordService {
         if (!this.dbManager.isReady()) return this.recordFailure('mark', 'DB not ready')
       if (localIds.length === 0) return {ok: true}
         try {
-            this.dbManager.getDb()
+            // WHERE 加 eq(synced, 0):
+            //  1. 業務語義上本來就只想把「未同步」翻成「已同步」,不該動已 synced=1 的列
+            //  2. result.changes 才會等於真實 0→1 列數,counter 才能精確 -N(不會 underflow)
+            const result = this.dbManager.getDb()
                 .update(workRecords)
                 .set({synced: 1, syncedAt})
-                .where(inArray(workRecords.id, localIds))
+                .where(and(inArray(workRecords.id, localIds), eq(workRecords.synced, 0)))
                 .run()
+            if (this.unsyncedCount !== null) {
+                this.unsyncedCount = Math.max(0, this.unsyncedCount - result.changes)
+            }
             return {ok: true}
         } catch (err) {
             return this.recordFailure('mark', errMsg(err))

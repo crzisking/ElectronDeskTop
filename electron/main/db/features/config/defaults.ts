@@ -150,9 +150,17 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
     ],
   },
   personalFunctions: {
-      // 工作自動採集已移到 LogViewer 子視窗(密碼保護),不再從個人功能入口進入。
-      // 此處保留空陣列;之後新增個人工具直接加回來即可。
-      tools: [],
+      tools: [
+          {
+              id: 'workCollect',
+              name: '工作自動採集',
+              description: '本機截圖 → AI 分析 → 工作分類流水線與圖表',
+              icon: 'Aim',
+              enabled: true,
+              openMode: 'page',
+              routeName: 'work-collect',
+          },
+      ],
   },
   update: {
     // 公司強制策略:自動更新必開,使用者不可關

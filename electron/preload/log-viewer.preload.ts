@@ -29,6 +29,8 @@ const IPC = {
     CONFIG_READ: 'config:read',
     WORK_COLLECT_TOGGLE: 'work:toggle',
     WORK_COLLECT_LIST: 'work:list',
+    /** viewer 也要 — 內嵌工作採集 tab 顯示分類 label 需要 */
+    WORK_COLLECT_GET_TEMPLATE: 'work:get-template',
 
     // 白名單推送(viewer 模式只關心「有新紀錄寫入,要 refresh」)
     PUSH_WORK_RECORD_NEW: 'push:work-record-new',
@@ -81,6 +83,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.invoke(IPC.WORK_COLLECT_TOGGLE, enabled) as Promise<boolean>,
         list: (params: { since: number; until: number }) =>
             ipcRenderer.invoke(IPC.WORK_COLLECT_LIST, params),
+        getTemplate: () => ipcRenderer.invoke(IPC.WORK_COLLECT_GET_TEMPLATE),
     },
     on(channel: string, callback: (...args: unknown[]) => void) {
         if (!ALLOWED_PUSH_CHANNELS.includes(channel)) return
