@@ -15,6 +15,42 @@ import type {TrayManager} from './tray-manager'
 
 const TAG = 'UpdateManager'
 
+/**
+ * 把 "x.y.z" / "x.y.z-rc.1" 切成可比較的 tuple。
+ * 規則對齊 semver:pre-release 版本 < 同號正式版(2.0.0-rc.1 < 2.0.0)。
+ *
+ * 為什麼自己寫而不引 semver:電腦上的 semver 是 electron-updater 的 transitive dep,
+ * 我們沒在 package.json 直接宣告;直接 import 等於賭它永遠在依賴樹上,以後升 electron-updater
+ * 一旦它換掉就裂。這裡只需要「嚴格大於」就能擋 downgrade,自己寫一個夠用。
+ *
+ * @returns [major, minor, patch, hasPreRelease(0=正式, 1=pre)]
+ *   pre-release 內部細節不比,只用 0/1 區分 —— pre 永遠小於正式。
+ *   解析失敗回 null,呼叫端視同「無法判斷,保守拒絕」。
+ */
+function parseVersion(v: string): [number, number, number, number] | null {
+  const m = /^(\d+)\.(\d+)\.(\d+)(?:-.+)?$/.exec(v.trim())
+  if (!m) return null
+  const major = Number(m[1])
+  const minor = Number(m[2])
+  const patch = Number(m[3])
+  if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) return null
+  const hasPre = v.includes('-') ? 1 : 0
+  // 正式版 hasPre=0,pre 版 hasPre=1;比較時希望「正式 > pre」,所以最後那位用「-hasPre」反過來
+  return [major, minor, patch, -hasPre]
+}
+
+/** 嚴格大於:server > current 才算新版,平手或更舊都回 false */
+function isStrictlyNewer(serverVersion: string, currentVersion: string): boolean {
+  const s = parseVersion(serverVersion)
+  const c = parseVersion(currentVersion)
+  if (!s || !c) return false
+  for (let i = 0; i < 4; i++) {
+    if (s[i] > c[i]) return true
+    if (s[i] < c[i]) return false
+  }
+  return false
+}
+
 export class UpdateManager {
   /** 主窗口（用於 webContents.send 推事件給渲染層） */
   private mainWindow: BrowserWindow | null = null
@@ -71,11 +107,22 @@ export class UpdateManager {
     // dev 想真實檢查需打開以下行 + 在 dist/ 同層放 dev-app-update.yml
     // autoUpdater.forceDevUpdateConfig = !app.isPackaged
 
-    autoUpdater.autoDownload = cfg.autoDownload
+    // autoDownload 永遠交給我們自己的 update-available handler 把關;
+    // electron-updater 內建 autoDownload 一旦 fire 就無路可退,沒辦法在中間插驗證。
+    // 我們把它鎖在 false,handler 內 guard 通過後再呼叫 downloadUpdate()。
+    // 對外行為(config.autoDownload=true 時看見有新版自動下載)透過 handler 邏輯保持一致。
+    autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = cfg.autoInstallOnAppQuit
     // 服務端未提供 .blockmap，關閉差分下載避免每次先 404 fallback
     autoUpdater.disableDifferentialDownload = true
     autoUpdater.channel = cfg.channel
+    // ⚠ 重要:electron-updater 的 channel setter 會把 allowDowngrade 偷偷翻成 true
+    // (見 node_modules/electron-updater/out/AppUpdater.js channel setter)。
+    // 它的原意是「使用者切 channel 通常是想回穩定版」,但對我們這種 channel 固定 'latest'
+    // 的場景純屬副作用 —— 會導致 server 上的 latest.yml 寫了比 client 還舊的版本時,
+    // client 仍然把舊版本下載下來重裝(downgrade)。
+    // 必須在設完 channel 後**顯式**關掉,順序不能反。
+    autoUpdater.allowDowngrade = false
     autoUpdater.setFeedURL({
       provider: 'generic',
       url: cfg.feedUrl,
@@ -120,12 +167,37 @@ export class UpdateManager {
     })
 
     autoUpdater.on('update-available', (info: UpdateInfo) => {
-      logger.info(`發現新版本 ${info.version}`, TAG)
+      const current = app.getVersion()
+
+      // 第二道防線:即使 SDK 內部 allowDowngrade 行為又有變,我們自己再嚴格比一次。
+      // electron-updater 預設 allowDowngrade=false,加上 init 時已顯式關掉 channel
+      // setter 的副作用,理論上不會走到這個 guard,但保留可防未來 SDK 升級偷偷改行為。
+      if (!isStrictlyNewer(info.version, current)) {
+        logger.warn(
+            `收到 update-available 但 server 版本 ${info.version} 不嚴格大於當前 ${current},拒絕下載`,
+            TAG
+        )
+        // 對 UI 直接報「已是最新版」,別讓使用者看到「發現新版本」的誤導通知
+        this.send(IpcChannels.PUSH_UPDATE_NOT_AVAILABLE)
+        return
+      }
+
+      logger.info(`發現新版本 ${info.version}(當前 ${current})`, TAG)
       this.send(IpcChannels.PUSH_UPDATE_AVAILABLE, {
         version: info.version,
         releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
         releaseDate: info.releaseDate
       })
+
+      // autoDownload 被我們鎖在 false,所以這裡依 config 決定要不要自動啟動下載,
+      // 維持 UpdateConfig.autoDownload 的對外語義(true=發現新版立刻背景下載)。
+      const cfg = this.configManager.getUpdateConfig()
+      if (cfg.autoDownload) {
+        autoUpdater.downloadUpdate().catch((err) => {
+          // downloadUpdate 自己也會 emit 'error',這裡只 log,避免 UI 收到兩次錯誤通知
+          logger.error('downloadUpdate 失敗', TAG, err)
+        })
+      }
     })
 
     autoUpdater.on('update-not-available', () => {
