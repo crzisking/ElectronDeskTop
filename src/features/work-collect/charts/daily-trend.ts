@@ -6,7 +6,6 @@
 
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {getCategoryColor} from '../category-colors'
 import {useWorkCollectStore} from '../store'
 import type {WorkCategory, WorkRecord} from '../types'
 import {type CategoryCounts, deriveCategories} from './_shared'
@@ -16,7 +15,9 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
     const workStore = useWorkCollectStore()
     return computed(() => {
         void locale.value
-        void workStore.categoryLabels // 觸發 reactive 依賴,模板熱更新時 legend / series name 自動跟著變
+        // 觸發 reactive 依賴,模板熱更新時 legend / series name / 配色自動跟著變
+        void workStore.categoryLabels
+        void workStore.categoryColors
         const cats = deriveCategories(records.value)
         const dateMap = new Map<string, CategoryCounts>()
         const now = new Date()
@@ -77,7 +78,7 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
                 stack: 'total',
                 areaStyle: {opacity: 0.15},
                 data: dates.map((d) => dateMap.get(d)?.[cat] ?? 0),
-                color: getCategoryColor(cat),
+                color: workStore.colorOf(cat),
                 smooth: true,
                 symbol: 'circle' as const,
                 symbolSize: 4,

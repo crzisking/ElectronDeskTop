@@ -18,7 +18,10 @@ import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/shared/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
 import {workCollectApi} from './api'
-import {getCategoryLabel as getCategoryLabelFallback} from './category-colors'
+import {
+    getCategoryColor as getCategoryColorFallback,
+    getCategoryLabel as getCategoryLabelFallback,
+} from './category-colors'
 import type {
     WorkCollectTickPayload,
     WorkRecord,
@@ -69,19 +72,20 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
   const loading = ref(false)
 
     /**
-     * 模板分類 code → label 對照表(reactive)。
+     * 模板分類 code → label / color 對照表(reactive)。
      *
-     * 為什麼存在:work_records 表只記 category code(DB_OPS / CODING / ...),label 是模板配置
-     * 隨時可改,設計上不冗餘存進每筆紀錄。UI 要顯示「資料庫操作」這種中文,就靠這張對照表
-     * 即時 lookup。模板改名 → cache 更新 → UI 自動跟著變,歷史紀錄不需 migrate。
+     * 為什麼存在:work_records 表只記 category code(DB_OPS / CODING / ...),label 跟 color
+     * 都是模板配置隨時可改,設計上不冗餘存進每筆紀錄。UI 顯示中文名 + 配色,靠這兩張對照表
+     * 即時 lookup。模板改名 / 改色 → cache 更新 → UI 自動跟著變,歷史紀錄不需 migrate。
      *
-     * 來源兩條路徑,都走 setCategoryLabelsFromTemplate():
+     * 來源兩條路徑,都走 setCategoryMetaFromTemplate():
      *   1. bootstrap() 啟動時 IPC getTemplate() 拉一次(現有 cache)
      *   2. onConfigRequest() 收到 /my-config 的 templateDetail 順手更新(最新模板)
      *
      * 走 reactive 不走純 plain object — 模板熱更新時所有 computed/template 自動 re-evaluate。
      */
     const categoryLabels = ref<Record<string, string>>({})
+    const categoryColors = ref<Record<string, string>>({})
 
     /**
      * 取分類顯示 label:先查模板 cache → 沒命中走 category-colors.ts 的 legacy fallback chain。
@@ -92,27 +96,45 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
         return categoryLabels.value[code] ?? getCategoryLabelFallback(code)
     }
 
-    /** 把模板 items 抽成 code → label 對照表,塞進 reactive state */
-    function setCategoryLabelsFromTemplate(detail: WorkTemplateDetail | null): void {
+    /**
+     * 取分類顯示色:先查模板 cache(管理員可在 tmbomweb 配置 item.color)→
+     * 沒命中再走 legacy 字典 / hash palette fallback。
+     *
+     * 為什麼重要:沒這層 lookup 的話,模板自訂的 code(CODING / DOCS 等)只能走 hash palette,
+     * 不同 code 容易撞到相近色(例如兩個暖色),donut 圖肉眼難分辨。
+     */
+    function colorOf(code: string): string {
+        if (!code) return getCategoryColorFallback(code)
+        return categoryColors.value[code] ?? getCategoryColorFallback(code)
+    }
+
+    /** 把模板 items 抽成 code → {label, color} 對照表,塞進 reactive state */
+    function setCategoryMetaFromTemplate(detail: WorkTemplateDetail | null): void {
         if (!detail || !Array.isArray(detail.items)) {
             categoryLabels.value = {}
+            categoryColors.value = {}
             return
         }
-        const next: Record<string, string> = {}
+        const labels: Record<string, string> = {}
+        const colors: Record<string, string> = {}
         for (const item of detail.items as WorkTemplateItem[]) {
-            // 不過濾 isActive:UI 仍可能顯示已停用 code 的歷史紀錄,有 label 就該用 label
-            if (item?.code && item.label) next[item.code] = item.label
+            // 不過濾 isActive:UI 仍可能顯示已停用 code 的歷史紀錄,有 label / color 就該用
+            if (item?.code) {
+                if (item.label) labels[item.code] = item.label
+                if (item.color) colors[item.code] = item.color
+            }
         }
-        categoryLabels.value = next
+        categoryLabels.value = labels
+        categoryColors.value = colors
     }
 
     /** bootstrap 內呼叫:IPC 從 main 拉一次現有 cache(沒拉到 server config 時會回 null) */
-    async function loadCategoryLabelsFromCache(): Promise<void> {
+    async function loadCategoryMetaFromCache(): Promise<void> {
         try {
             const detail = await window.electronAPI.workCollect.getTemplate()
-            setCategoryLabelsFromTemplate(detail as WorkTemplateDetail | null)
+            setCategoryMetaFromTemplate(detail as WorkTemplateDetail | null)
         } catch (err) {
-            logger.warn('讀取模板 cache 失敗(忽略,UI 走 code fallback)', 'WorkCollectStore', err)
+            logger.warn('讀取模板 cache 失敗(忽略,UI 走 fallback)', 'WorkCollectStore', err)
         }
     }
 
@@ -240,8 +262,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 logger.info(`已套用 server 配置 v${remote.version}`, 'WorkCollectStore')
             }
             // 不管 config 有沒有「變」,template 都該以 server 最新值為準同步進 reactive map
-            // (例如管理員只改 label 沒動 enabled/interval,result.changed 會是 false 但 label 要更新)
-            setCategoryLabelsFromTemplate(remote.templateDetail ?? null)
+            // (例如管理員只改 label / color 沒動 enabled/interval,result.changed 會是 false 但要更新)
+            setCategoryMetaFromTemplate(remote.templateDetail ?? null)
         } catch (err) {
             logger.warn('拉取 server 配置失敗,等下次觸發', 'WorkCollectStore', err)
         }
@@ -378,15 +400,15 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
           .catch((err) => logger.warn('notifyReady 失敗,等下次觸發', 'WorkCollectStore', err))
       }
 
-      // 模板 label 對照表:main 和 viewer 模式都要 — UI 不論在哪個窗口都該顯示中文 label,
-      // 而非 raw code。失敗就讓 categoryLabels 保持空,fallback 到 raw code,UI 不會崩。
-      // 不 await:bootstrap 完成優先,labels 慢一拍到也只是「短暫顯示 code」,不影響流程。
-      void loadCategoryLabelsFromCache()
+      // 模板 label / color 對照表:main 和 viewer 模式都要 — UI 不論在哪個窗口都該顯示
+      // 中文 label + 模板配色,而非 raw code 跟 hash palette。失敗就讓兩張 map 保持空,
+      // fallback 到 raw code + hash 色,UI 不會崩。不 await,bootstrap 完成優先。
+      void loadCategoryMetaFromCache()
   }
 
     return {
         enabled, intervalMinutes, workHours, records, loading,
-        categoryLabels, labelOf,
+        categoryLabels, categoryColors, labelOf, colorOf,
         toggle, refresh, bootstrap, syncDailyRecords,
     }
 })

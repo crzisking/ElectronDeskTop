@@ -13,8 +13,9 @@
  */
 
 import {computed, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {Monitor, VideoCamera} from '@element-plus/icons-vue'
+import {ArrowLeft, Monitor, VideoCamera} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {useWorkCollectStore} from './store'
 import {filterTodayRecords, filterWeekRecords} from './composables/useChartOptions'
@@ -38,7 +39,21 @@ import WeekDailyStacked from './components/WeekDailyStacked.vue'
 const props = defineProps<{ embedded?: boolean }>()
 
 const store = useWorkCollectStore()
+const router = useRouter()
 const { t } = useI18n()
+
+/**
+ * 返回按鈕:優先走 router.back() 還原使用者來時路徑;
+ * 若是直接 URL 進來(history.length=1)沒處可退 → fallback 到個人功能入口。
+ * embedded 模式(舊 LogViewer 容器)沒 router 概念,按鈕直接隱藏。
+ */
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push({name: 'personal-functions'}).catch(() => undefined)
+  }
+}
 
 /** 時間視圖模式 */
 const viewMode = ref<'day' | 'week'>('day')
@@ -87,6 +102,17 @@ onMounted(async () => {
   <div :class="['work-collect-view', { 'work-collect-view--embedded': props.embedded }]">
     <!-- ── 頂部 ──────────────────────────────────────────── -->
     <div class="header">
+      <!-- 返回按鈕:embedded 模式(LogViewer 等無 router 場景)隱藏 -->
+      <el-button
+          v-if="!props.embedded"
+          :icon="ArrowLeft"
+          class="back-btn"
+          plain
+          size="small"
+          @click="goBack"
+      >
+        {{ t('workCollect.back') }}
+      </el-button>
       <h2 v-if="!props.embedded" class="title">
         <el-icon><VideoCamera /></el-icon>
         {{ t('workCollect.title') }}
@@ -250,6 +276,10 @@ onMounted(async () => {
 
 .header__spacer {
   flex: 1;
+}
+
+.back-btn {
+  flex-shrink: 0;
 }
 
 .title {

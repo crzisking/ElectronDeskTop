@@ -4,7 +4,6 @@
 
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {getCategoryColor} from '../category-colors'
 import {useWorkCollectStore} from '../store'
 import type {WorkRecord} from '../types'
 import {buildWeekDayLabels, deriveCategories} from './_shared'
@@ -14,7 +13,9 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
     const workStore = useWorkCollectStore()
     return computed(() => {
         void locale.value
-        void workStore.categoryLabels // reactive 依賴,模板熱更新時 legend / series name 跟著變
+        // reactive 依賴,模板熱更新時 legend / series name / 配色跟著變
+        void workStore.categoryLabels
+        void workStore.categoryColors
         const days = buildWeekDayLabels()
         const cats = deriveCategories(records.value)
         const matrix: Record<string, number[]> = {}
@@ -53,7 +54,7 @@ export function useWeekDailyStackedOption(records: Ref<WorkRecord[]>) {
                 type: 'bar' as const,
                 stack: 'total',
                 data: matrix[cat],
-                color: getCategoryColor(cat),
+                color: workStore.colorOf(cat),
                 emphasis: {focus: 'series' as const},
                 itemStyle: {borderRadius: [2, 2, 0, 0]},
             })),

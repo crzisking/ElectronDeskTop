@@ -4,7 +4,6 @@
 
 import {computed, type Ref} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {getCategoryColor} from '../category-colors'
 import {useWorkCollectStore} from '../store'
 import type {WorkRecord} from '../types'
 import {countByCategory, type TooltipParam} from './_shared'
@@ -15,8 +14,9 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
     const workStore = useWorkCollectStore()
     return computed(() => {
         void locale.value
-        // 引用 categoryLabels 觸發 reactive 依賴,模板熱更新時 ECharts option 跟著更新
+        // 引用兩張 map 觸發 reactive 依賴,模板熱更新時 ECharts option 跟著更新
         void workStore.categoryLabels
+        void workStore.categoryColors
         const counts = countByCategory(records.value)
         // 直接按 counts 出現順序展示,降序排好看
         const data = Object.entries(counts)
@@ -25,7 +25,7 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
             .map(([cat, v]) => ({
                 name: workStore.labelOf(cat),
                 value: v,
-                itemStyle: {color: getCategoryColor(cat)},
+                itemStyle: {color: workStore.colorOf(cat)},
             }))
 
         return {
@@ -57,11 +57,14 @@ export function useDonutOption(records: Ref<WorkRecord[]>) {
             }],
             graphic: [{
                 type: 'text' as const,
-                left: '30%',
+                // left 必須對齊 series.center[0](pie 中心 X),搭配 textAlign:'center'
+                // 文字才會掉進 donut hole 正中。之前寫 30% 跟 38% 差 8%,文字被甩到 hole 左邊緣
+                left: '38%',
                 top: 'center',
                 style: {
                     text: `${records.value.length}\n${t('workCollect.chartTotalRecords')}`,
                     textAlign: 'center' as const,
+                    textVerticalAlign: 'middle' as const,
                     fill: '#303133',
                     fontSize: 14,
                     lineHeight: 20,
