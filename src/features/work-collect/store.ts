@@ -99,10 +99,19 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
    *  3. DB 寫完 main 會推 PUSH_WORK_RECORD_NEW,onRecordNew 接住自動 refresh
    *
    * 整個流程不阻塞 UI;失敗只記 log,不彈 toast(採集是背景行為,不該打擾使用者)。
+   *
+   * 重入保護:HTTP 卡 / 後端慢時前一輪 analyze 還沒結束又收到新 tick,
+   * 直接丟掉本輪。截圖在 main 端產生時已是當下狀態,延後再分析意義不大。
    */
   async function onTick(...args: unknown[]) {
     const payload = args[0] as WorkCollectTickPayload | undefined
     if (!payload) return
+
+      if (analyzingInflight) {
+          logger.debug('前一輪 analyze 還在跑,跳過本輪 tick', 'WorkCollectStore')
+          return
+      }
+      analyzingInflight = true
 
     try {
       const result = await workCollectApi.analyze(
@@ -131,6 +140,8 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
       logger.debug(`tick 已分析完成 category=${result.category}`, 'WorkCollectStore')
     } catch (err) {
       logger.warn('AI 分析失敗,此次 tick 丟棄', 'WorkCollectStore', err)
+    } finally {
+        analyzingInflight = false
     }
   }
 
@@ -178,9 +189,11 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     }
 
     /**
-     * 批次同步本地 unsynced 到 server,最多 5 批(每批 200)。
-     * 只標 success + duplicate 為 synced,failed 留下次重試。
-     * 結束後 ack main(syncDone),讓 main 清 / 保留 pending。
+     * 批次同步本地 unsynced 到 server。
+     * 只標 success + duplicate 為 synced,failed 留下次重試;結束後 ack main(syncDone)。
+     *
+     * 上限:每批 200 條,最多 SYNC_MAX_ROUNDS 輪 = 10k 條/次。
+     * 達上限後本次結束,log 提醒;下次 sync trigger 來時繼續上傳剩下的,不會丟資料。
      */
     async function syncDailyRecords(): Promise<void> {
         const userName = currentUserName()
@@ -194,13 +207,15 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
         let totalFailed = 0
         let ok = true
         let error: string | undefined
+        let hitLimit = false
 
-        for (let round = 0; round < 5; round++) {
+        let round = 0
+        for (; round < SYNC_MAX_ROUNDS; round++) {
             let chunk: WorkRecord[]
             try {
                 chunk = (await window.electronAPI.workCollect.listUnsynced(200)) as WorkRecord[]
             } catch (err) {
-                ok = false;
+                ok = false
                 error = '撈 unsynced 失敗'
                 logger.warn(error, 'WorkCollectStore', err)
                 break
@@ -225,27 +240,40 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
                 // success(真插入)+ duplicate(server 已有)才標 synced;failed 留下次
                 const toMark = [...(resp.successLocalIds ?? []), ...(resp.duplicateLocalIds ?? [])]
                 if (toMark.length > 0) {
-                    const mark = await window.electronAPI.workCollect.markSynced(toMark, resp.syncedAt ?? Date.now())
-                    if (!mark.ok) {
-                        ok = false;
-                        error = `markSynced 失敗:${mark.reason}`
+                    const markOk = await markSyncedWithRetry(toMark, resp.syncedAt ?? Date.now())
+                    if (!markOk.ok) {
+                        ok = false
+                        error = `markSynced 重試耗盡:${markOk.reason}`
                         logger.warn(error, 'WorkCollectStore')
-                        break // 本地沒標到,別繼續撈(會撈到同一批)
+                        // 退出但不視為災難:這批 server 已收下,下次 sync 會被 server UNIQUE 擋,
+                        // 走 duplicate 分支再嘗試 mark 一次,自然收斂。
+                        break
                     }
                 }
                 totalSynced += toMark.length
                 totalFailed += (resp.failedLocalIds ?? []).length
                 if (chunk.length < 200) break // 已撈乾淨
             } catch (err) {
-                ok = false;
+                ok = false
                 error = 'sync-daily HTTP 失敗'
                 logger.warn(error, 'WorkCollectStore', err)
                 break
             }
         }
 
-        if (totalFailed > 0) ok = false
-        logger.info(`sync 完成 synced=${totalSynced} failed=${totalFailed} ok=${ok}`, 'WorkCollectStore')
+        if (round >= SYNC_MAX_ROUNDS) {
+            hitLimit = true
+            logger.warn(
+                `sync 達單次輪數上限 ${SYNC_MAX_ROUNDS}(約 ${SYNC_MAX_ROUNDS * 200} 條),剩餘留下次 trigger`,
+                'WorkCollectStore',
+            )
+        }
+
+        if (totalFailed > 0 || hitLimit) ok = false
+        logger.info(
+            `sync 完成 synced=${totalSynced} failed=${totalFailed} hitLimit=${hitLimit} ok=${ok}`,
+            'WorkCollectStore',
+        )
         // ack main:成功清 pending,失敗保留待重試。
         // 失敗計數 / 待同步數透過 health 暴露,僅日誌查看器(需密碼)可見,主窗口不顯示。
         window.electronAPI.workCollect
@@ -304,6 +332,33 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
  * 監聽器不會跟著清,所以用模組級 flag 守住「整個 renderer 生命週期只訂一次」。
  */
 let subscribed = false
+
+/**
+ * analyze 重入鎖。一次 tick 一個 HTTP,模組級才能跨 store re-instantiation 共用,
+ * 不會在 HMR 重建後突然能並行(Electron 內 renderer 重啟 = 整個進程重建,自然清空)。
+ */
+let analyzingInflight = false
+
+/** sync 單次最多輪數,200/輪 × 50 = 10k/次;超過走下次 trigger,不丟資料 */
+const SYNC_MAX_ROUNDS = 50
+
+/**
+ * markSynced 失敗時短暫重試。server 已落庫,本地沒標 → 下次 sync 會把這批當 unsynced
+ * 重新上傳,server 會回 duplicate(冪等),只是浪費一次 HTTP。重試幾次大概率能避掉。
+ */
+async function markSyncedWithRetry(
+    localIds: number[],
+    syncedAt: number,
+): Promise<{ ok: boolean; reason?: string }> {
+    let last: { ok: boolean; reason?: string } = {ok: false, reason: 'never tried'}
+    for (let i = 0; i < 3; i++) {
+        last = await window.electronAPI.workCollect.markSynced(localIds, syncedAt)
+        if (last.ok) return last
+        // 30ms / 90ms / 270ms 短回退,通常是 SQLite busy
+        await new Promise<void>(r => setTimeout(r, 30 * Math.pow(3, i)))
+    }
+    return last
+}
 
 /** N 天前 00:00:00 的 Unix ms */
 function startOfDaysAgo(days: number): number {

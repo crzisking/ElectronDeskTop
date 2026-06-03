@@ -7,6 +7,18 @@
  *  - 簽名收進一個 `IpcHandlerContext` 物件,新增 feature 不需要動本函式的位置參數
  *  - 所有具體 handler 邏輯都委派給 child handler 檔(./*.handlers.ts)
  *  - 本檔只剩編排:把 context 拆解後分發給各 register* 函式
+ *
+ * ── Payload 校驗慣例 ────────────────────────────────────────────────
+ * IPC 邊界 payload 是 `unknown`,必須 runtime 校驗。本專案兩種風格按 payload 複雜度選:
+ *
+ *   1. 複雜巢狀 / discriminated union / streaming chunk
+ *      → 用 zod schema(範例:agent.handlers.ts)
+ *
+ *   2. 單一 primitive / 淺層 ≤ 3 欄物件
+ *      → 用 utils/runtime-guards 的共用 guard(範例:work-collect.handlers.ts)
+ *
+ * 不要在新 handler 裡再造輪子寫一份 isPositiveInt;發現需要新 primitive guard
+ * 就加到 utils/runtime-guards 共用。
  */
 
 import {logger} from '../utils/logger'
@@ -30,7 +42,7 @@ import type {WorkTemplateCacheService} from '../db/features/work-collect/templat
 import type {UserProfileService} from '../db/features/user-profile/service'
 import type {AgentService} from '../db/features/agent/service'
 import type {AgentToolService} from '../services/agent-tool.service'
-import type {WorkCollectorScheduler} from '../work-collector'
+import type {WorkCollectorScheduler} from '../work-collect'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
 /**

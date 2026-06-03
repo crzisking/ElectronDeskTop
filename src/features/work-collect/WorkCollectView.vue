@@ -84,7 +84,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="work-collect-view">
+  <div :class="['work-collect-view', { 'work-collect-view--embedded': props.embedded }]">
     <!-- ── 頂部 ──────────────────────────────────────────── -->
     <div class="header">
       <h2 v-if="!props.embedded" class="title">
@@ -225,12 +225,27 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* 用 container query 取代 viewport media — 嵌在 log-viewer 裡時,可用寬度比 viewport 小了 160px sidebar,
+     viewport-based breakpoint 會在還很寬的視窗下就誤判單欄,donut 卡被拉成全寬空盪 */
+  container-type: inline-size;
+}
+
+/* embedded(嵌在 log-viewer)時,padding 收小、不再 center;沒有外層標題,占用空間少 */
+.work-collect-view--embedded {
+  padding: 16px 20px;
+  max-width: none;
 }
 
 .header {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+/* embedded 沒有 H2 標題,header 只剩右側切換鈕 — 把它推到右側即可,
+   不再用 spacer 在中間留一大塊空白 */
+.work-collect-view--embedded .header {
+  justify-content: flex-end;
 }
 
 .header__spacer {
@@ -301,8 +316,10 @@ onMounted(async () => {
   /* 熱力圖 + 應用排名 同一行 */
 }
 
-/* 視窗較窄時切成單欄堆疊。1100 比之前的 880 大,讓 donut 在主視窗 + sidebar 場景下提早讓位 */
-@media (max-width: 1100px) {
+/* 用 container query — 依 .work-collect-view 自身寬度判斷,而非 viewport。
+   嵌在 log-viewer (有 sidebar) 還是獨立主窗,都能正確響應自己的可用寬度。
+   880 是 donut 卡 (1fr) 縮到約 290px 還能放下基本標籤的下限 */
+@container (max-width: 880px) {
   .charts-row {
     grid-template-columns: minmax(0, 1fr);
   }

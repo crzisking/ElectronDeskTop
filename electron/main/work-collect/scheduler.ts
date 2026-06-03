@@ -29,6 +29,12 @@ export class WorkCollectorScheduler {
     private startupTimer: NodeJS.Timeout | null = null
     private isScreenLocked = false
     private lastInsideWorkHours = false
+    /**
+     * tick 重入鎖:setInterval 不會等 async callback 完成才排下一輪,
+     * 若一次 capture/dHash/IPC 用了超過 interval,沒鎖會多開一條;
+     * 採集間隔通常 5 分鐘,但 interval 可被管理員改小,加鎖才穩。
+     */
+    private ticking = false
 
     private readonly capture = new CaptureService()
     private readonly idle = new IdleDetector()
@@ -118,13 +124,23 @@ export class WorkCollectorScheduler {
     }
 
     private async tick(): Promise<void> {
-        try {
-            this.sync.maybeRequestConfigPull()
-            const insideNow = this.isInWorkHours()
-            if (this.lastInsideWorkHours && !insideNow) this.sync.requestSync('work-end')  // 跨工時結束邊界
-            this.lastInsideWorkHours = insideNow
+        // ── 輕量檢查放在重入鎖之外 ──
+        // 這些只是 push IPC 給 coordinator,本身 O(微秒),不卡 tick;
+        // 放鎖內的話,上一輪 tick 卡住 → 本輪整個跳過 → 工時邊界推送被吃掉,直到上一輪結束才補。
+        this.sync.maybeRequestConfigPull()
+        const insideNow = this.isInWorkHours()
+        if (this.lastInsideWorkHours && !insideNow) this.sync.requestSync('work-end')  // 跨工時結束邊界
+        this.lastInsideWorkHours = insideNow
 
-            if (this.isScreenLocked || !insideNow) return
+        if (this.isScreenLocked || !insideNow) return
+
+        // ── 重入保護(只保護 capture / IPC 那段重活) ──
+        if (this.ticking) {
+            logger.debug('前一個 tick 還在跑,跳過本輪重活', 'WorkCollector')
+            return
+        }
+        this.ticking = true
+        try {
             this.sync.maybeSafetyNetSync()
 
             const win = this.winMgr.getMainWindow()
@@ -163,6 +179,8 @@ export class WorkCollectorScheduler {
             this.idle.rememberState(hash, activeTitle)
         } catch (err) {
             logger.warn('採集 tick 失敗', 'WorkCollector', err)
+        } finally {
+            this.ticking = false
         }
     }
 

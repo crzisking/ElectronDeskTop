@@ -63,70 +63,93 @@ function onMenuNavigate(...args: unknown[]) {
 
 // ── 生命週期 ──────────────────────────────────────────
 
+/**
+ * 啟動流程分兩階段:
+ *   critical    阻塞全屏 loading — 配置 + AD 登入 + 路由(沒這些頁面無法渲染)
+ *   background  fire-and-forget — IPC 訂閱、自動更新、使用者資料同步(失敗只 log,
+ *               不該卡白屏。例如 AD / update fetch 卡住或 throw,使用者也應該能進主畫面)
+ *
+ * 任一階段內部各步都包了 try-catch,單點失敗不會擴散,hideGlobalLoading 永遠會跑。
+ */
 onMounted(async () => {
-  // 啟動期目標路由
   const initialTarget = router.currentRoute.value.fullPath
+  try {
+    await initCritical(initialTarget)
+  } catch (err) {
+    logger.error('App critical init 異常', 'App.Vue', err)
+  } finally {
+    // critical 不管成功失敗都要收 loading,讓使用者至少看到 login / 錯誤頁,不卡白屏
+    uiStore.hideGlobalLoading()
+  }
+  initBackground()
+})
 
-  // 1. 加載配置（Token 不持久化，無需恢復會話）
+/** 必須完成才能 hideLoading 的步驟 */
+async function initCritical(initialTarget: string): Promise<void> {
+  // 1. 配置 + i18n locale 矯正(配置決定 sidebar / 路由 meta,必先就緒)
   try {
     await configStore.loadConfig()
-
-    // 配置就緒後立刻矯正 i18n locale —— main.ts 啟動時用 'zh-TW' 兜底，
-    // 真實語言偏好存在 config.app.language，這裡讀出來同步到 i18n
     const lang = configStore.appConfig?.app.language
-    if (isSupportedLocale(lang)) {
-      setLocale(lang)
-    }
+    if (isSupportedLocale(lang)) setLocale(lang)
   } catch (err) {
-    // 應用配置加載失敗，部分功能可能不可用
     logger.error(t('app.configLoadFailed'), 'App.Vue', err)
     ElMessage.error(t('app.configLoadFailed'))
+    // 配置失敗仍繼續走,讓使用者進得了 /login,不徹底卡死
   }
 
-  // 步驟 2-6 用 try/finally 包住:任一步同步 throw(bootstrap / update / 訂閱)
-  // 都不能讓 hideGlobalLoading 漏掉,否則卡在全屏 loading 白屏。
+  // 2. AD 自動登入(失敗不拋 — 守衛會導去 /login 手動登入,寧可手動也別卡)
+  if (!authStore.isAuthenticated) {
+    await authStore.loginByAd().catch((err) => {
+      logger.warn('AD 自動登入流程異常', 'App.Vue', err)
+      return false
+    })
+  }
+
+  // 3. 依 auth 狀態決定最終路由
+  if (!authStore.isAuthenticated) {
+    await router.replace({name: 'login'}).catch(() => undefined)
+  } else {
+    await router.replace(initialTarget).catch(() => undefined)
+  }
+}
+
+/**
+ * 非關鍵步驟:背景跑,失敗只 log。
+ * 不 await — 呼叫端不需等這裡完成;每段獨立 try,單一拋出不影響其他段。
+ */
+function initBackground(): void {
+  // 4. 註冊主進程推送事件監聽
   try {
-    // 2. 嘗試 AD 自動登入（Windows 本機帳號 → 後端換 JWT → 寫入 store）。
-    //    失敗:authStore 未認證,守衛導去 /login 手動登入。不阻塞,寧可手動也別卡白屏。
-    if (!authStore.isAuthenticated) {
-      await authStore.loginByAd().catch((err) => {
-        logger.warn('AD 自動登入流程異常', 'App.Vue', err)
-        return false
-      })
-    }
-
-    // 3. 依 auth 狀態決定最終路由(沒登入 replace 去 /login,guard 會跑)
-    if (!authStore.isAuthenticated) {
-      await router.replace({name: 'login'}).catch(() => undefined)
-    } else {
-      // AD 登入成功 → 同步使用者身份(不 await,store 內已 catch);表單登入由 LoginView 自己同步
-      void useUserProfileStore().syncAfterLogin()
-      await router.replace(initialTarget).catch(() => undefined)
-    }
-
-    // 4. 注冊主進程推送事件監聽
     window.electronAPI.on(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
     window.electronAPI.on(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
     window.electronAPI.on(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
+  } catch (err) {
+    logger.warn('註冊 IPC 監聽異常', 'App.Vue', err)
+  }
 
-    // 4.1 訂閱工作採集事件。必須在 App level 訂,否則 scheduler tick 推來時沒人接。
+  // 5. 工作採集訂閱(scheduler tick 推來時要有人接;只是註冊監聽不打網路)
+  try {
     useWorkCollectStore().bootstrap()
+  } catch (err) {
+    logger.warn('work-collect bootstrap 異常', 'App.Vue', err)
+  }
 
-    // 5. 啟動自動更新監聽（訂閱 push:update-* 事件）
+  // 6. 自動更新監聽 + AD 免密登入後的補一次靜默檢查
+  try {
     const update = useUpdate()
     update.bootstrap()
-
-    // 5.1 AD 免密登入繞過 LoginView,在此補一次靜默檢查更新(須在 bootstrap 之後)
     if (authStore.isAuthenticated) {
-      void update.loginCheck()
+      void update.loginCheck().catch((err) => logger.warn('update.loginCheck 異常', 'App.Vue', err))
     }
   } catch (err) {
-    logger.error('App 初始化異常', 'App.Vue', err)
-  } finally {
-    // 6. 無論成功 / 異常都要關掉全屏 loading
-    uiStore.hideGlobalLoading()
+    logger.warn('update bootstrap 異常', 'App.Vue', err)
   }
-})
+
+  // 7. 已登入者非同步同步 user profile(LoginView 走表單登入會自己同步,這裡兜 AD / token 還在的場景)
+  if (authStore.isAuthenticated) {
+    void useUserProfileStore().syncAfterLogin()
+  }
+}
 
 onUnmounted(() => {
   // 清理事件監聽，避免 HMR 熱更新時重複注冊

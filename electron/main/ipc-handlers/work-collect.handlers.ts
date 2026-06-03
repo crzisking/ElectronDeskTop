@@ -2,12 +2,17 @@
  * 工作採集 IPC handler。協議翻譯 + runtime 校驗,業務在 scheduler / recordService。
  *
  * 所有 handler 對 renderer payload 做 runtime 校驗 —— IPC 雖是 sandbox 內邊界,
- * 仍防 renderer bug / 注入污染 DB / config。不引入 zod,手寫 guard 足夠。
+ * 仍防 renderer bug / 注入污染 DB / config。
+ *
+ * 校驗風格:本檔走「primitive guard 組合」(複雜度低、不值得拉 zod 整套 schema)。
+ * 共用 primitive 在 utils/runtime-guards;本檔只放結構性 validator(WorkResultPayload 等)。
+ * agent.handlers.ts 因為 payload 巢狀深(tool call / streaming chunk)走 zod,兩種風格按複雜度選。
  */
 
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
+import {isArrayOf, isHex16, isIntInRange, isNonNegativeNumber, isPositiveInt} from '../utils/runtime-guards'
 import type {ConfigManager} from '../config-manager'
 import type {WindowManager} from '../window-manager'
 import type {WorkCollectorScheduler} from '../work-collect'
@@ -15,51 +20,43 @@ import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {CachedTemplateDetail, WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
 import type {RemoteConfigPayload, WorkResultPayload} from '@shared/types/work-collect.types'
 
-// ─── Runtime guards ──────────────────────────────────────────────────
-
-function isPositiveInt(v: unknown): v is number {
-    return typeof v === 'number' && Number.isInteger(v) && v > 0
-}
-
-function isNonNegativeNumber(v: unknown): v is number {
-    return typeof v === 'number' && Number.isFinite(v) && v >= 0
-}
+// ─── 本檔結構性 validators(primitive 走共用 runtime-guards) ─────────
 
 function validateWorkResult(p: any): p is WorkResultPayload {
     if (!p || typeof p !== 'object') return false
     if (!isPositiveInt(p.capturedAt)) return false
     // 模板化後 category 是動態 code(BOM_MAINT 等),不再固定列舉。
-    // 只校驗「非空字串 + 合理長度 + 大寫英數底線」 — 跟模板 Code 規範對齊
+    // 只校驗「非空字串 + 合理長度」 — 跟模板 Code 規範對齊
     if (typeof p.category !== 'string' || p.category.length === 0 || p.category.length > 50) return false
     if (typeof p.description !== 'string') return false
     if (typeof p.confidence !== 'number' || p.confidence < 0 || p.confidence > 1) return false
     if (p.activeApp != null && typeof p.activeApp !== 'string') return false
     if (p.activeWindowTitle != null && typeof p.activeWindowTitle !== 'string') return false
-    if (p.screenshotHash != null && (typeof p.screenshotHash !== 'string' || !/^[0-9a-fA-F]{16}$/.test(p.screenshotHash))) return false
+    if (p.screenshotHash != null && !isHex16(p.screenshotHash)) return false
     return !(p.reason != null && typeof p.reason !== 'string')
 }
 
 function validateMarkSyncedPayload(p: any): p is { localIds: number[]; syncedAt: number } {
     if (!p || typeof p !== 'object') return false
-    if (!Array.isArray(p.localIds) || !p.localIds.every(isPositiveInt)) return false
+    if (!isArrayOf(p.localIds, isPositiveInt)) return false
     return isNonNegativeNumber(p.syncedAt)
 }
 
 function validateRemoteConfig(p: any): p is RemoteConfigPayload {
     if (!p || typeof p !== 'object') return false
     if (typeof p.enabled !== 'boolean') return false
-    if (!Number.isInteger(p.intervalMinutes) || p.intervalMinutes < 1 || p.intervalMinutes > 60) return false
-    if (!Number.isInteger(p.workStartHour) || p.workStartHour < 0 || p.workStartHour > 23) return false
-    if (!Number.isInteger(p.workEndHour) || p.workEndHour < 1 || p.workEndHour > 24) return false
+    if (!isIntInRange(p.intervalMinutes, 1, 60)) return false
+    if (!isIntInRange(p.workStartHour, 0, 23)) return false
+    if (!isIntInRange(p.workEndHour, 1, 24)) return false
     if (p.workEndHour <= p.workStartHour) return false
-    // categoryTemplateId / templateName 為選填,只校驗型別(null / number / string)
+    // categoryTemplateId / templateName 為選填,只校驗型別(null / 正整數)
     if (p.categoryTemplateId !== undefined && p.categoryTemplateId !== null
-        && !(Number.isInteger(p.categoryTemplateId) && p.categoryTemplateId > 0)) return false
+        && !isPositiveInt(p.categoryTemplateId)) return false
     // templateDetail 只校驗最關鍵結構(templateId + version + items array),內部 items 結構放寬
     if (p.templateDetail !== undefined && p.templateDetail !== null) {
         const td = p.templateDetail
         if (typeof td !== 'object') return false
-        if (!Number.isInteger(td.templateId) || td.templateId <= 0) return false
+        if (!isPositiveInt(td.templateId)) return false
         if (!Number.isInteger(td.version) || td.version < 1) return false
         if (!Array.isArray(td.items)) return false
     }
@@ -145,7 +142,7 @@ export function registerWorkCollectHandlers(
             || (current.templateName ?? null) !== (remote.templateName ?? null)
 
         // ── 模板 cache 寫入(獨立於 KV config 變更判斷;templateDetail 隨 my-config 一起來) ──
-        // 有 detail → upsert(覆寫單行 id=1);無 detail(管理員解綁) → 清空 cache
+        // 有 detail → upsert(覆寫單行 id=1);無 detail(管理員解綁 / 模板被刪 / 被停用) → 清空 cache
         //
         // RemoteConfigPayload.templateDetail 是 unknown(shared 型別不耦合 main 的 CachedTemplateDetail),
         // validateRemoteConfig 已確保 templateId / version / items 三個關鍵欄位存在,這裡安全 cast 即可。
@@ -153,6 +150,11 @@ export function registerWorkCollectHandlers(
             if (remote.templateDetail) templateCacheService.upsert(remote.templateDetail as CachedTemplateDetail)
             else templateCacheService.clear()
         }
+
+        // 「模板綁了但 detail 拿不到」= server 端模板被刪 / 停用,但 config row 還指著它。
+        // 這種狀態下啟 scheduler 也是白搭(tick 送空 prompt → server fallback DB → 撞「模板不可用」),
+        // 視為「等同未綁模板」,本地當沒設 templateId 處理,等管理員重新指派。
+        const templateUsable = newTemplateId != null && remote.templateDetail != null
 
         if (!changed) {
             scheduler.markConfigSynced()
@@ -169,11 +171,17 @@ export function registerWorkCollectHandlers(
             },
         })
         scheduler.stop()
-        // 啟用 + 已綁模板才真的起 scheduler;沒模板等同設定不完整
-        if (remote.enabled && newTemplateId) scheduler.start()
+        if (remote.enabled && templateUsable) {
+            scheduler.start()
+        } else if (remote.enabled && newTemplateId && !templateUsable) {
+            logger.warn(
+                `綁定模板 ${newTemplateId} 不可用(server 未返 detail),scheduler 不啟動,等管理員重新指派`,
+                'IPC:work',
+            )
+        }
         scheduler.markConfigSynced()
         logger.info(
-            `server 配置已套用 interval=${remote.intervalMinutes} template=${newTemplateId ?? 'null'} v=${remote.version}`,
+            `server 配置已套用 interval=${remote.intervalMinutes} template=${newTemplateId ?? 'null'} usable=${templateUsable} v=${remote.version}`,
             'IPC:work',
         )
         return {changed: true}

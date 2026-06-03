@@ -102,17 +102,20 @@ export function createHttpClient(baseURL: string, timeout = 15000): ApiClient {
     // UI 行為走 Element Plus(§1.8 解耦後,攔截器自身不再依賴 Element Plus)
     setupAuthInterceptor(instance, elementPlusUiHooks)
 
-    // 返回類型安全的包裝，攔截器已返回 data，所以直接 as Promise<T>
+    // axios 方法的完整泛型簽名是 <T, R = AxiosResponse<T>, D = any>,預設 R = AxiosResponse<T>。
+    // 我們的攔截器已剝掉外層只返 data,實際 runtime 行為就是 R = T。
+    // 把 R 顯式指定為 T,TypeScript 自然推導出 Promise<T>,不需 `as unknown as Promise<T>` 雙重 cast,
+    // 也讓編譯期型別跟 runtime 對齊(以前 cast 是把錯誤型別硬鋸成對,使用方拿到的 .data / .headers 等都會誤導 IDE)。
     return {
         get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
-            instance.get(url, config) as unknown as Promise<T>,
+            instance.get<T, T>(url, config),
         post: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-            instance.post(url, data, config) as unknown as Promise<T>,
+            instance.post<T, T>(url, data, config),
         put: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-            instance.put(url, data, config) as unknown as Promise<T>,
+            instance.put<T, T>(url, data, config),
         patch: <T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
-            instance.patch(url, data, config) as unknown as Promise<T>,
+            instance.patch<T, T>(url, data, config),
         delete: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
-            instance.delete(url, config) as unknown as Promise<T>,
+            instance.delete<T, T>(url, config),
     }
 }
