@@ -1,6 +1,6 @@
 {
   "name": "ichiaDesktop",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "ichiaDesktop",
   "main": "out/main/index.js",
   "scripts": {
@@ -18,6 +18,7 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "~0.3.162",
     "@element-plus/icons-vue": "^2.3.0",
     "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.6.0",

@@ -7,10 +7,10 @@
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
-import { toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { WorkRecord } from '../types'
-import { useDailyTrendOption } from '../composables/useChartOptions'
+import {toRef} from 'vue'
+import {useI18n} from 'vue-i18n'
+import type {WorkRecord} from '../types'
+import {useDailyTrendOption} from '../composables/useChartOptions'
 
 const props = withDefaults(
   defineProps<{
@@ -53,6 +53,7 @@ const option = useDailyTrendOption(recordsRef, props.days)
 
 .trend-line__chart {
   width: 100%;
-  height: 240px;
+  /* lg 階高度 — 趨勢線需要最多垂直空間才看得出形狀 + 容納 legend 分頁 */
+  height: var(--chart-h-lg, clamp(18rem, 42vh, 30rem));
 }
 </style>

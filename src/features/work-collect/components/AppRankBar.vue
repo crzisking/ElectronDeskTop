@@ -52,6 +52,6 @@ const option = useAppRankOption(recordsRef, props.topN)
 
 .app-rank__chart {
   width: 100%;
-  height: 220px;
+  height: var(--chart-h-sm, clamp(13rem, 26vh, 20rem));
 }
 </style>

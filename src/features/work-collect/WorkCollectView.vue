@@ -254,6 +254,26 @@ onMounted(async () => {
   /* 用 container query 取代 viewport media — 嵌在 log-viewer 裡時,可用寬度比 viewport 小了 160px sidebar,
      viewport-based breakpoint 會在還很寬的視窗下就誤判單欄,donut 卡被拉成全寬空盪 */
   container-type: inline-size;
+
+  /* ────────────────────────────────────────────────────────
+   * 圖表高度三階變數 — 子件(donut / bar / heatmap / line)直接 var() 取用。
+   *
+   * 設計:`clamp(下界, 視窗百分比, 上界)`
+   *   - 下界 rem  → 13~14 吋筆電(視窗高度可能只 600px)不會被壓到看不見
+   *   - 中段 vh   → 大多數視窗下隨高度等比例縮放,真正的「響應式」
+   *   - 上界 rem  → 4K 螢幕(2160px 高)不會把單一圖表撐到 800px 把整頁吃掉
+   *
+   * 為什麼用 rem 不用 px:rem 跟著根字級走,使用者調系統字級時整套圖表跟著縮放,
+   * 比寫死 px 更貼近「響應式」的精神。CSS 變數又集中在這裡,要調幅度只動一處。
+   *
+   * 三階對應:
+   *   --chart-h-sm:小圖(類別佔比 donut、應用排名 bar)
+   *   --chart-h-md:中圖(每小時柱狀、週堆疊、熱力圖)
+   *   --chart-h-lg:大圖(每日趨勢線 — 需要垂直空間看出形狀)
+   */
+  --chart-h-sm: clamp(13rem, 26vh, 20rem);
+  --chart-h-md: clamp(15rem, 32vh, 24rem);
+  --chart-h-lg: clamp(18rem, 42vh, 30rem);
 }
 
 /* embedded(嵌在 log-viewer)時,padding 收小、不再 center;沒有外層標題,占用空間少 */

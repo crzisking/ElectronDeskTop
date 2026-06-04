@@ -16,6 +16,23 @@ import type {TrayManager} from './tray-manager'
 const TAG = 'UpdateManager'
 
 /**
+ * 安裝階段時序常數 —— 兩條 setTimeout 一起看才有意義,放這裡讓變更時不會漏改一邊。
+ *
+ * SHUTDOWN_TO_INSTALL_DELAY_MS
+ *   gracefulShutdown 同步跑完後,Windows 還需要一小段時間才會真的釋放檔案 handle
+ *   (DB WAL flush、子視窗 GPU 進程退出、tray 圖示銷毀等)。立刻呼叫 autoUpdater.quitAndInstall
+ *   會讓 NSIS installer 跟仍持有 .exe / .node 的舊 process 搶檔案,Windows 拒絕寫入 →
+ *   NSIS 中止 → 使用者看到「fail」彈窗。
+ *   1500ms 是經驗值,800ms 實測偶發失敗,1500ms 穩。
+ *
+ * FORCE_EXIT_FALLBACK_MS
+ *   萬一 autoUpdater 內部 app.quit() 卡住的最後兜底。必須在 SHUTDOWN_TO_INSTALL_DELAY_MS
+ *   之後足夠久,讓 NSIS spawn 已經完成才強制 exit,否則反而打斷 installer 啟動。
+ */
+const SHUTDOWN_TO_INSTALL_DELAY_MS = 1_500
+const FORCE_EXIT_FALLBACK_MS = 8_000
+
+/**
  * 把 "x.y.z" / "x.y.z-rc.1" 切成可比較的 tuple。
  * 規則對齊 semver:pre-release 版本 < 同號正式版(2.0.0-rc.1 < 2.0.0)。
  *
@@ -307,14 +324,21 @@ export class UpdateManager {
   }
 
   /**
-   * 立即退出並安裝新版本（NSIS oneClick 無交互）。
-   * 流程：gracefulShutdown（統一清理）→ 5s 保險強制 exit → quitAndInstall。
-   * 主動清理是必須的，否則 hidden 主窗口 + 殘留 timer 會卡住 app.quit()。
+   * 立即退出並安裝新版本(NSIS oneClick 無交互)。
+   *
+   * 流程分三段,時序故意拉開:
+   *   ① 同步清理(gracefulShutdown):DB close / 視窗 destroy / 子模組 dispose
+   *   ② 排定強制退出兜底(FORCE_EXIT_FALLBACK_MS):極端情況下確保 app 一定退
+   *   ③ 延遲呼叫 autoUpdater.quitAndInstall(SHUTDOWN_TO_INSTALL_DELAY_MS):
+   *      讓 Windows 真正釋放 .exe / .node 等檔案 handle,NSIS 才能成功替換
+   *
+   * 早期版本是「①+②+立即③」,實測會出現「NSIS 安裝失敗 → 使用者看到 fail 彈窗 →
+   * 重新打開又下載一次才裝成功」的競態。詳見 SHUTDOWN_TO_INSTALL_DELAY_MS 常數註解。
    */
   quitAndInstall(): void {
     logger.info('用戶確認重啟安裝新版本', TAG)
 
-    // 呼叫統一的退出清理函數，避免重複退出邏輯
+    // ① 同步清理 — 主路徑走注入的 gracefulShutdown,回退路徑只 dispose 三個關鍵 manager
     if (this.quitCallback) {
       try {
         this.quitCallback()
@@ -322,7 +346,6 @@ export class UpdateManager {
         logger.error('quitAndInstall 清理階段出錯', TAG, err)
       }
     } else {
-      // 回退：如果未注入回調，直接執行基本退出流程
       this.windowManager.setQuitting(true)
       try {
         this.floatingBallMgr.dispose()
@@ -333,14 +356,27 @@ export class UpdateManager {
       }
     }
 
-    // 5 秒保險：autoUpdater 內部 app.quit() 卡住時強制 exit
+    // ② 強制退出兜底:autoUpdater.quitAndInstall 內部理論上會呼 app.quit(),
+    //    但若卡住(殘留 timer / 監聽器),這條保險踢 app.exit(0)。
+    //    時序在 ③ 之後 ~6.5 秒,確保 NSIS spawn 完成才生效。
     setTimeout(() => {
-      logger.warn('quitAndInstall 5 秒內未退出，強制 app.exit(0)', TAG)
+      logger.warn(`quitAndInstall ${FORCE_EXIT_FALLBACK_MS}ms 內未退出,強制 app.exit(0)`, TAG)
       app.exit(0)
-    }, 5_000)
+    }, FORCE_EXIT_FALLBACK_MS)
 
-    // 參數：isSilent（不顯示 NSIS 進度框）、isForceRunAfter（裝完自動拉起）
-    autoUpdater.quitAndInstall(true, true)
+    // ③ 延遲呼叫 autoUpdater.quitAndInstall —— Windows 需要時間真正釋放檔案 handle,
+    //    否則 NSIS 跟舊 process 搶檔案會被擋。
+    //    參數:isSilent(不顯示 NSIS 進度框)、isForceRunAfter(裝完自動拉起)
+    setTimeout(() => {
+      try {
+        logger.info('開始呼叫 autoUpdater.quitAndInstall(silent=true, runAfter=true)', TAG)
+        autoUpdater.quitAndInstall(true, true)
+      } catch (err) {
+        // SDK 同步拋出極罕見,但要兜住 —— 否則使用者看到「fail」彈窗時,我們完全沒紀錄。
+        // 此時 DB 已 close,logger.error 走 .txt 檔(<userData>/logs/main-YYYY-MM-DD.log)。
+        logger.error('autoUpdater.quitAndInstall 同步異常', TAG, err)
+      }
+    }, SHUTDOWN_TO_INSTALL_DELAY_MS)
   }
 
   /** 推事件到主窗口；窗口已銷毀則靜默忽略 */

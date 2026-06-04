@@ -4,10 +4,10 @@
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
-import { toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { WorkRecord } from '../types'
-import { useDonutOption } from '../composables/useChartOptions'
+import {toRef} from 'vue'
+import {useI18n} from 'vue-i18n'
+import type {WorkRecord} from '../types'
+import {useDonutOption} from '../composables/useChartOptions'
 
 const props = defineProps<{
   records: WorkRecord[]
@@ -48,6 +48,7 @@ const option = useDonutOption(recordsRef)
 
 .donut-card__chart {
   width: 100%;
-  height: 240px;
+  /* 三階高度變數由 WorkCollectView 統一定義;fallback 給獨立使用時的合理預設 */
+  height: var(--chart-h-sm, clamp(13rem, 26vh, 20rem));
 }
 </style>

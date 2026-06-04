@@ -4,10 +4,10 @@
  */
 import '@/features/work-collect/echarts-setup'
 import VChart from 'vue-echarts'
-import { toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
-import type { WorkRecord } from '../types'
-import { useWeekDailyStackedOption } from '../composables/useChartOptions'
+import {toRef} from 'vue'
+import {useI18n} from 'vue-i18n'
+import type {WorkRecord} from '../types'
+import {useWeekDailyStackedOption} from '../composables/useChartOptions'
 
 const props = defineProps<{
   records: WorkRecord[]
@@ -46,6 +46,6 @@ const option = useWeekDailyStackedOption(recordsRef)
 
 .week-daily-stacked__chart {
   width: 100%;
-  height: 260px;
+  height: var(--chart-h-md, clamp(15rem, 32vh, 24rem));
 }
 </style>

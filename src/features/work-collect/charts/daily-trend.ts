@@ -59,10 +59,21 @@ export function useDailyTrendOption(records: Ref<WorkRecord[]>, days: number = 7
             },
             legend: {
                 data: legendOrder.map((c) => workStore.labelOf(c)),
-                bottom: 0,
-                textStyle: {fontSize: 10},
+                // scroll 模式:項目多到一行放不下時自動分頁(右側出現 < > 按鈕),
+                // 不再被擠成一坨。橫向標準排版,看得清楚。
+                type: 'scroll' as const,
+                bottom: 4,
+                // 左右各留 20px,給 scroll 按鈕跟首尾標籤呼吸空間,免得按鈕貼邊難點
+                left: 20,
+                right: 20,
+                textStyle: {fontSize: 11},
+                // 預設 itemGap=10 偏緊;14+ 個類別時需要更明確的間隔才看得出邊界
+                itemGap: 16,
+                itemWidth: 14,
+                itemHeight: 10,
             },
-            grid: {top: 12, bottom: 36, left: 40, right: 12},
+            // bottom 50 給 legend 約一行高度 + 8px 邊距;繪圖區仍有 ~260px 高度
+            grid: {top: 16, bottom: 50, left: 44, right: 16},
             xAxis: {
                 type: 'category' as const,
                 data: dates,
