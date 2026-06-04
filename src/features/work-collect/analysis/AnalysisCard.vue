@@ -16,8 +16,9 @@
 import {computed, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {ArrowDown, ArrowUp, Document, Star} from '@element-plus/icons-vue'
+import {ArrowDown, ArrowUp, Document} from '@element-plus/icons-vue'
 import {useWorkAnalysisStore} from './store'
+import ReportContent from './ReportContent.vue'
 import type {AnalysisReport, AnalysisReportRow} from '@/types/electron/work-analysis'
 
 const {t, locale} = useI18n()
@@ -43,12 +44,6 @@ const parsedReport = computed<AnalysisReport | null>(() => {
 })
 
 const isUnstructured = computed(() => store.latest !== null && parsedReport.value === null)
-
-const verdictI18nKey = computed(() => {
-  const v = parsedReport.value?.timeAllocation.verdict
-  if (!v) return ''
-  return `workAnalysis.verdict.${v}`
-})
 
 function formatTimeRange(row: AnalysisReportRow): string {
   const from = new Date(row.rangeStart)
@@ -141,75 +136,8 @@ void locale
     />
     <pre v-if="isUnstructured" class="analysis-card__raw">{{ store.latest.reportJson }}</pre>
 
-    <!-- ── 正常結構化渲染 ─────────────────────────────────────── -->
-    <template v-else-if="parsedReport">
-      <!-- Summary -->
-      <section class="report-section">
-        <p class="report-section__summary">{{ parsedReport.summary }}</p>
-      </section>
-
-      <!-- Time Allocation -->
-      <section class="report-section">
-        <h3 class="report-section__title">
-          {{ t('workAnalysis.timeAllocation') }}
-          <el-tag
-              :type="parsedReport.timeAllocation.verdict === 'balanced' ? 'success' : 'warning'"
-              effect="plain"
-              size="small"
-          >
-            {{ t(verdictI18nKey) }}
-          </el-tag>
-        </h3>
-        <p class="report-section__text">{{ parsedReport.timeAllocation.comment }}</p>
-      </section>
-
-      <!-- Highlights -->
-      <section v-if="parsedReport.highlights.length > 0" class="report-section">
-        <h3 class="report-section__title">
-          <el-icon class="report-section__icon report-section__icon--good">
-            <Star/>
-          </el-icon>
-          {{ t('workAnalysis.highlights') }}
-        </h3>
-        <ul class="report-section__list">
-          <li v-for="(item, idx) in parsedReport.highlights" :key="idx" class="report-item">
-            <div class="report-item__title">{{ item.title }}</div>
-            <div class="report-item__detail">{{ item.detail }}</div>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Opportunities -->
-      <section v-if="parsedReport.opportunities.length > 0" class="report-section">
-        <h3 class="report-section__title">
-          <el-icon class="report-section__icon report-section__icon--opp">
-            <ArrowUp/>
-          </el-icon>
-          {{ t('workAnalysis.opportunities') }}
-        </h3>
-        <ul class="report-section__list">
-          <li v-for="(item, idx) in parsedReport.opportunities" :key="idx" class="report-item">
-            <div class="report-item__title">{{ item.title }}</div>
-            <div class="report-item__detail"><strong>{{ t('workAnalysis.opp.current') }}</strong>{{
-                item.currentBehavior
-              }}
-            </div>
-            <div class="report-item__detail"><strong>{{ t('workAnalysis.opp.why') }}</strong>{{ item.whyItMatters }}
-            </div>
-            <div class="report-item__detail"><strong>{{ t('workAnalysis.opp.suggestion') }}</strong>{{
-                item.suggestion
-              }}
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Tomorrow suggestion -->
-      <section class="report-section report-section--tomorrow">
-        <h3 class="report-section__title">{{ t('workAnalysis.tomorrowSuggestion') }}</h3>
-        <p class="report-section__text">{{ parsedReport.tomorrowSuggestion }}</p>
-      </section>
-    </template>
+    <!-- ── 正常結構化渲染 — 走共用 ReportContent(內含 reasoning / leverage 新區塊) ── -->
+    <ReportContent v-else-if="parsedReport" :report="parsedReport"/>
 
     <!-- ── 歷史摺疊 ───────────────────────────────────────────── -->
     <div v-if="store.history.length > 1" class="analysis-card__footer">

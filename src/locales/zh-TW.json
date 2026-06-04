@@ -397,12 +397,30 @@
     "verdict": {
       "balanced": "分配合理",
       "skewed-high": "佔比偏高",
-      "skewed-low": "佔比偏低"
+      "skewed-low": "佔比偏低",
+      "unclear": "資料不足"
     },
     "opp": {
       "current": "現象:",
       "why": "成本:",
       "suggestion": "建議:"
+    },
+    "reasoning": "判斷依據",
+    "reasoningHint": "AI 的觀點與證據,可協助你判斷是否合理",
+    "evidence": "依據:",
+    "confidence": {
+      "high": "高信心",
+      "medium": "中等",
+      "low": "低信心",
+      "unclear": "需補充上下文"
+    },
+    "leverage": "工作槓桿率",
+    "leverageLevel": {
+      "L1": "自己執行",
+      "L2": "協同處理",
+      "L3": "建立流程",
+      "L4": "建立系統",
+      "L5": "建立組織能力"
     }
   },
 

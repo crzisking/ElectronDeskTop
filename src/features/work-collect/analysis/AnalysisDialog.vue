@@ -23,6 +23,7 @@ import {ArrowLeft, MagicStick, Setting, VideoPause} from '@element-plus/icons-vu
 import {useUiStore} from '@/stores/ui.store'
 import {useWorkAnalysisStore} from './store'
 import {type StreamEndEvent, StreamingController} from './streaming-controller'
+import ReportContent from './ReportContent.vue'
 import type {AnalysisReport, AnalysisReportRow} from '@/types/electron/work-analysis'
 import type {LlmProviderConfig} from '@shared/types/llm.types'
 
@@ -99,10 +100,6 @@ const parsedReport = computed<AnalysisReport | null>(() => {
     return null
   }
 })
-
-const verdictKey = computed(() =>
-    parsedReport.value ? `workAnalysis.verdict.${parsedReport.value.timeAllocation.verdict}` : ''
-)
 
 // ── 載入 ─────────────────────────────────────────────────────────
 
@@ -465,59 +462,8 @@ function startOfToday(): Date {
         <pre class="result-raw">{{ finalReport.reportJson }}</pre>
       </template>
 
-      <!-- structured -->
-      <template v-else-if="parsedReport">
-        <section class="report-section">
-          <p class="report-section__summary">{{ parsedReport.summary }}</p>
-        </section>
-
-        <section class="report-section">
-          <h3 class="report-section__title">
-            {{ t('workAnalysis.timeAllocation') }}
-            <el-tag
-                :type="parsedReport.timeAllocation.verdict === 'balanced' ? 'success' : 'warning'"
-                effect="plain"
-                size="small"
-            >
-              {{ t(verdictKey) }}
-            </el-tag>
-          </h3>
-          <p class="report-section__text">{{ parsedReport.timeAllocation.comment }}</p>
-        </section>
-
-        <section v-if="parsedReport.highlights.length > 0" class="report-section">
-          <h3 class="report-section__title">{{ t('workAnalysis.highlights') }}</h3>
-          <ul class="report-section__list">
-            <li v-for="(item, idx) in parsedReport.highlights" :key="idx" class="report-item">
-              <div class="report-item__title">{{ item.title }}</div>
-              <div class="report-item__detail">{{ item.detail }}</div>
-            </li>
-          </ul>
-        </section>
-
-        <section v-if="parsedReport.opportunities.length > 0" class="report-section">
-          <h3 class="report-section__title">{{ t('workAnalysis.opportunities') }}</h3>
-          <ul class="report-section__list">
-            <li v-for="(item, idx) in parsedReport.opportunities" :key="idx" class="report-item">
-              <div class="report-item__title">{{ item.title }}</div>
-              <div class="report-item__detail">
-                <strong>{{ t('workAnalysis.opp.current') }}</strong>{{ item.currentBehavior }}
-              </div>
-              <div class="report-item__detail">
-                <strong>{{ t('workAnalysis.opp.why') }}</strong>{{ item.whyItMatters }}
-              </div>
-              <div class="report-item__detail">
-                <strong>{{ t('workAnalysis.opp.suggestion') }}</strong>{{ item.suggestion }}
-              </div>
-            </li>
-          </ul>
-        </section>
-
-        <section class="report-section report-section--tomorrow">
-          <h3 class="report-section__title">{{ t('workAnalysis.tomorrowSuggestion') }}</h3>
-          <p class="report-section__text">{{ parsedReport.tomorrowSuggestion }}</p>
-        </section>
-      </template>
+      <!-- structured — 走共用 ReportContent 元件,內含 reasoning / leverage 等所有新區塊 -->
+      <ReportContent v-else-if="parsedReport" :report="parsedReport"/>
     </div>
 
     <!-- ════════════════════════ footer ════════════════════════ -->

@@ -10,20 +10,43 @@
 
 import type {LlmConfig} from '@shared/types/llm.types'
 
+/** 工作槓桿層級 — 對應 prompt 內 L1-L5 */
+export type LeverageLevel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5'
+
+/** model 對「判斷信心」的自評 */
+export type Confidence = 'high' | 'medium' | 'low' | 'unclear'
+
 /** AI 報告結構(對應 main 端 AnalysisReportPayload) */
 export interface AnalysisReport {
     summary: string
+
+    /** 判斷依據陣列 — model 顯式給出每條觀點 + 證據 + 信心 */
+    reasoning: Array<{
+        point: string
+        evidence: string
+        confidence: Confidence
+    }>
+
     timeAllocation: {
-        verdict: 'balanced' | 'skewed-high' | 'skewed-low'
+        verdict: 'balanced' | 'skewed-high' | 'skewed-low' | 'unclear'
         comment: string
     }
+
     highlights: Array<{ title: string; detail: string }>
+
     opportunities: Array<{
         title: string
         currentBehavior: string
         whyItMatters: string
         suggestion: string
     }>
+
+    /** 槓桿率評估;model 無法判斷時可能為 null */
+    leverage: {
+        currentLevel: LeverageLevel
+        comment: string
+    } | null
+
     tomorrowSuggestion: string
 }
 

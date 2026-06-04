@@ -395,12 +395,30 @@
     "verdict": {
       "balanced": "Balanced",
       "skewed-high": "Skewed high",
-      "skewed-low": "Skewed low"
+      "skewed-low": "Skewed low",
+      "unclear": "Insufficient data"
     },
     "opp": {
       "current": "Behavior: ",
       "why": "Cost: ",
       "suggestion": "Suggestion: "
+    },
+    "reasoning": "Reasoning",
+    "reasoningHint": "AI's claims and evidence — to help you judge soundness",
+    "evidence": "Evidence: ",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium",
+      "low": "Low confidence",
+      "unclear": "Needs more context"
+    },
+    "leverage": "Work leverage",
+    "leverageLevel": {
+      "L1": "Execute",
+      "L2": "Collaborate",
+      "L3": "Build process",
+      "L4": "Build system",
+      "L5": "Build org capability"
     }
   },
 
