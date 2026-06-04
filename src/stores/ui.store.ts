@@ -7,6 +7,9 @@
 import {defineStore} from 'pinia'
 import {ref} from 'vue'
 
+/** SettingsDialog 內的 section key,呼叫 openSettings 時可指定要焦點哪個分區 */
+export type SettingsSection = 'update' | 'language' | 'log' | 'llm'
+
 export const useUiStore = defineStore('ui', () => {
 
   // ─── State ────────────────────────────────────────────────
@@ -23,6 +26,19 @@ export const useUiStore = defineStore('ui', () => {
 
   /** 全局加載遮罩：應用啟動初始化期間顯示，初始化完成後設為 false */
   const globalLoading = ref<boolean>(true)
+
+  /**
+   * 設置 dialog 顯示狀態 + 預設展開的 section。
+   *
+   * 為何放 ui.store 而非各 component 自管:
+   *   SettingsDialog 原本 ref 在 SidebarUserCorner 內,跨組件呼叫(例:工作分析的
+   *   「沒配 provider 請打開設定」toast)沒法觸發。集中到 ui.store,任何頁面都能
+   *   `useUiStore().openSettings('llm')` 直接打開到對應 section。
+   *
+   * 沒有「目前焦點 section」概念時設 null —— SettingsDialog 不會做特殊滾動定位。
+   */
+  const settingsVisible = ref<boolean>(false)
+  const settingsFocusSection = ref<SettingsSection | null>(null)
 
   // ─── Actions ──────────────────────────────────────────────
 
@@ -54,15 +70,34 @@ export const useUiStore = defineStore('ui', () => {
     globalLoading.value = false
   }
 
+  /**
+   * 打開設置 dialog,可選擇要焦點的 section。
+   * @param section 未指定 = 預設展開全部(不滾動定位)
+   */
+  function openSettings(section?: SettingsSection): void {
+    settingsFocusSection.value = section ?? null
+    settingsVisible.value = true
+  }
+
+  /** 關閉設置 dialog,順手清掉焦點 section 狀態 */
+  function closeSettings(): void {
+    settingsVisible.value = false
+    settingsFocusSection.value = null
+  }
+
   return {
     // State
     sidebarCollapsed,
     isWindowMaximized,
     globalLoading,
+    settingsVisible,
+    settingsFocusSection,
     // Actions
     toggleSidebar,
     setSidebarCollapsed,
     setWindowMaximized,
-    hideGlobalLoading
+    hideGlobalLoading,
+    openSettings,
+    closeSettings,
   }
 })

@@ -25,6 +25,7 @@ import {useI18n} from 'vue-i18n'
 import UpdateSection from './sections/UpdateSection.vue'
 import LanguageSection from './sections/LanguageSection.vue'
 import LogSection from './sections/LogSection.vue'
+import LlmSection from './sections/LlmSection.vue'
 import {Setting} from '@element-plus/icons-vue'
 
 const {t} = useI18n()
@@ -68,19 +69,25 @@ function close() {
     </template>
 
     <div class="settings-dialog__body">
-      <!-- 軟體更新分區（原文：軟體更新）-->
+      <!-- AI 服務商分區(LlmSection)— provider 列表 + active 切換 + 測試連線 -->
+      <section class="settings-category">
+        <div class="settings-category__title">{{ t('settings.sections.llm') }}</div>
+        <LlmSection/>
+      </section>
+
+      <!-- 軟體更新分區(原文:軟體更新) -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.update') }}</div>
         <UpdateSection />
       </section>
 
-      <!-- 語言分區（原文：語言）-->
+      <!-- 語言分區(原文:語言) -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.language') }}</div>
         <LanguageSection />
       </section>
 
-      <!-- 日誌與診斷分區（原文：日誌與診斷）-->
+      <!-- 日誌與診斷分區(原文:日誌與診斷) -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.log') }}</div>
         <LogSection />

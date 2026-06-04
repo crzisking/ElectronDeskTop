@@ -15,9 +15,13 @@
 import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {ArrowLeft, Monitor, VideoCamera} from '@element-plus/icons-vue'
+import {ArrowLeft, MagicStick, Monitor, VideoCamera} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {useWorkCollectStore} from './store'
+// ElMessage 留給 onToggleChange 用 — 採集開關失敗時提示
+import {useWorkAnalysisStore} from './analysis/store'
+import AnalysisCard from './analysis/AnalysisCard.vue'
+import AnalysisDialog from './analysis/AnalysisDialog.vue'
 import {filterTodayRecords, filterWeekRecords} from './composables/useChartOptions'
 import StatCards from './components/StatCards.vue'
 import WeekStatCards from './components/WeekStatCards.vue'
@@ -39,8 +43,12 @@ import WeekDailyStacked from './components/WeekDailyStacked.vue'
 const props = defineProps<{ embedded?: boolean }>()
 
 const store = useWorkCollectStore()
+const analysisStore = useWorkAnalysisStore()
 const router = useRouter()
 const { t } = useI18n()
+
+/** AnalysisDialog 開關 — 點「分析工作」按鈕觸發 */
+const analysisDialogVisible = ref(false)
 
 /**
  * 返回按鈕:優先走 router.back() 還原使用者來時路徑;
@@ -94,8 +102,31 @@ const workHoursLabel = computed(() => {
 const trendDays = computed(() => (viewMode.value === 'day' ? 7 : 14))
 
 onMounted(async () => {
-  await store.refresh()
+  // 工作採集流水線 + 分析報告平行載入 — 兩者無依賴關係
+  await Promise.all([
+    store.refresh(),
+    analysisStore.bootstrap(),
+  ])
 })
+
+/**
+ * 點「分析工作」按鈕 — 開 AnalysisDialog,內部三階段(配置 → 流式 → 報告)。
+ * 所有提示詞 / model / 時間範圍編輯都在 dialog 內,使用者按完 dialog 才真正消耗配額。
+ */
+function openAnalysisDialog(): void {
+  analysisDialogVisible.value = true
+}
+
+/** 配額用完時 disabled + tooltip(B2 設計)— 但 dialog 也擋一次,雙保險 */
+const analyzeDisabled = computed(() =>
+    analysisStore.quota.used >= analysisStore.quota.limit
+)
+const quotaTooltip = computed(() =>
+    analysisStore.quota.used >= analysisStore.quota.limit
+        ? t('workAnalysis.quotaTooltip', {limit: analysisStore.quota.limit})
+        : '',
+)
+
 </script>
 
 <template>
@@ -118,11 +149,42 @@ onMounted(async () => {
         {{ t('workCollect.title') }}
       </h2>
       <div class="header__spacer" />
+
+      <!-- 配額提示 — 點分析按鈕前讓使用者知道用了幾次 -->
+      <span class="header__quota">
+        {{ t('workAnalysis.quotaLabel', {used: analysisStore.quota.used, limit: analysisStore.quota.limit}) }}
+      </span>
+
+      <!-- 分析按鈕:配額用完 disabled + tooltip(對應 B2)。
+           點下去開 dialog,真正觸發分析在 dialog 內 -->
+      <el-tooltip
+          :content="quotaTooltip"
+          :disabled="!quotaTooltip"
+          placement="top"
+      >
+        <el-button
+            :disabled="analyzeDisabled"
+            :icon="MagicStick"
+            size="small"
+            type="primary"
+            @click="openAnalysisDialog"
+        >
+          {{ t('workAnalysis.analyzeButton') }}
+        </el-button>
+      </el-tooltip>
+
       <el-radio-group v-model="viewMode" size="small">
         <el-radio-button value="day">{{ t('workCollect.viewDay') }}</el-radio-button>
         <el-radio-button value="week">{{ t('workCollect.viewWeek') }}</el-radio-button>
       </el-radio-group>
     </div>
+
+    <!-- 分析報告卡(有報告才顯示) -->
+    <AnalysisCard/>
+
+    <!-- 分析 Dialog(三階段:配置 → 流式 → 報告)。掛在 view 內,點按鈕才開 -->
+    <AnalysisDialog v-model="analysisDialogVisible"/>
+
 
     <!-- ── 設定卡 ──────────────────────────────────────────── -->
     <el-card class="settings-card" shadow="never">
@@ -296,6 +358,11 @@ onMounted(async () => {
 
 .header__spacer {
   flex: 1;
+}
+
+.header__quota {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .back-btn {

@@ -55,14 +55,6 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
             action: {type: 'navigate', routeName: 'unified-platform'}
         },
       {id: 'menu-go-internal', label: '內部功能',   icon: 'Grid',         enabled: true, separator: false, action: {type: 'navigate', routeName: 'internal-functions'}},
-      {
-        id: 'menu-open-agent',
-        label: 'AI Agent',
-        icon: 'ChatDotRound',
-        enabled: true,
-        separator: false,
-        action: {type: 'open-agent'}
-      },
       {id: 'menu-sep-2',       label: '',                                  enabled: true, separator: true,  action: {type: 'show-main-window'}},
       {id: 'menu-quit',        label: '退出應用',   icon: 'SwitchButton', enabled: true, separator: false, action: {type: 'quit-app'}},
     ],

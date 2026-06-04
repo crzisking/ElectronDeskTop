@@ -6,7 +6,7 @@
  *
  * 校驗風格:本檔走「primitive guard 組合」(複雜度低、不值得拉 zod 整套 schema)。
  * 共用 primitive 在 utils/runtime-guards;本檔只放結構性 validator(WorkResultPayload 等)。
- * agent.handlers.ts 因為 payload 巢狀深(tool call / streaming chunk)走 zod,兩種風格按複雜度選。
+ * 真要遇到 payload 巢狀深(tool call / streaming chunk 之類)的場景再拉 zod,兩種風格按複雜度選。
  */
 
 import {ipcMain} from 'electron'

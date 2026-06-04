@@ -2,13 +2,16 @@
 /**
  * 側邊欄底部用戶卡片 — 頭像 + 姓名 + 語言切換 + 設置按鈕。
  *
- * 自帶 settingsVisible 狀態,內嵌 SettingsDialog;父層只負責給 collapsed flag。
+ * 設置 dialog 的 visible state 走 ui.store(原本本檔自管 ref,但跨頁觸發
+ * 像「工作分析 toast 打開設定」場景需要全域控制,所以集中)。
+ * SettingsDialog 仍掛在這個元件內,因為它是「最常駐」的容器(主視窗常駐)。
  */
-import {computed, ref} from 'vue'
+import {computed} from 'vue'
 import {Check, Setting} from '@element-plus/icons-vue'
 import {useI18n} from 'vue-i18n'
 import {ElMessage} from 'element-plus'
 import {useAuthStore} from '@/stores/auth.store'
+import {useUiStore} from '@/stores/ui.store'
 import {LANGUAGE_OPTIONS, useLanguage} from '@/shared/composables/useLanguage'
 import SettingsDialog from '@/views/Settings/SettingsDialog.vue'
 import type {SupportedLocale} from '@/locales'
@@ -19,12 +22,11 @@ defineProps<{
 
 const {t} = useI18n()
 const authStore = useAuthStore()
+const uiStore = useUiStore()
 const {currentLocale, switching, switchLanguage} = useLanguage()
 
 const userName = computed(() => authStore.user?.name ?? '')
 const userInitial = computed(() => userName.value.charAt(0))
-
-const settingsVisible = ref(false)
 
 async function handleLanguageSelect(target: SupportedLocale) {
   const ok = await switchLanguage(target)
@@ -77,7 +79,7 @@ async function handleLanguageSelect(target: SupportedLocale) {
         :title="t('sidebar.settings')"
         class="settings-btn"
         type="button"
-        @click="settingsVisible = true"
+        @click="uiStore.openSettings()"
     >
       <el-icon :size="16">
         <Setting/>
@@ -85,7 +87,11 @@ async function handleLanguageSelect(target: SupportedLocale) {
     </button>
 
     <!-- 設置彈窗(Teleport 到 body,不受側邊欄裁剪) -->
-    <SettingsDialog v-model="settingsVisible"/>
+    <!-- v-model 綁 ui.store.settingsVisible,任何頁面 call openSettings 都能觸發 -->
+    <SettingsDialog
+        :model-value="uiStore.settingsVisible"
+        @update:model-value="(v: boolean) => v ? uiStore.openSettings(uiStore.settingsFocusSection ?? undefined) : uiStore.closeSettings()"
+    />
   </div>
 </template>
 

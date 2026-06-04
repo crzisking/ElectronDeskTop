@@ -2,12 +2,12 @@
  * IPC payload 共用 runtime guards。
  *
  * 為什麼存在:
- *   IPC 邊界跨進程,payload 是 `unknown`。zod 適合複雜巢狀(見 agent.handlers),
+ *   IPC 邊界跨進程,payload 是 `unknown`。zod 適合複雜巢狀(例:tool-call streaming chunk),
  *   但「拿一個 number 是不是正整數」這種事不該要求 schema。本檔提供 primitive 級
  *   guards,給「shape 簡單、不值得拉 zod schema」的 handler 用,避免每個檔重寫一份。
  *
  * 慣例:
- *   - 巢狀 / 多欄位 / discriminated union → 用 zod(像 agent.handlers.ts)
+ *   - 巢狀 / 多欄位 / discriminated union → 用 zod
  *   - 單一 primitive / 淺層 ≤ 2 欄物件     → 用本檔的 guards
  *
  * 函式都是型別守衛(`v is T`),caller 可在 if 後直接享受 narrow,不必再 cast。

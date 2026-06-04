@@ -21,7 +21,8 @@ import {WorkTemplateCacheService} from './db/features/work-collect/template-cach
 import {UserProfileService} from './db/features/user-profile/service'
 import {SavedCredentialsService} from './db/features/saved-credentials/service'
 import {AgentService} from './db/features/agent/service'
-import {AgentToolService} from './services/agent-tool.service'
+import {WorkAnalysisService} from './db/features/work-analysis/service'
+import {LlmClient} from './services/llm'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler} from './work-collect'
 
@@ -38,9 +39,16 @@ let workTemplateCacheService: WorkTemplateCacheService | null = null
 let userProfileService: UserProfileService | null = null
 let savedCredentialsService: SavedCredentialsService | null = null
 let accountChangeCleaner: AccountChangeCleaner | null = null
+// AgentService 沿用 — agent feature UI 已移除,但 agent_configs 表保留作為
+// LLM provider 配置儲存(work analysis / 未來 Claude SDK Agent v2 都讀這張表)
 let agentService: AgentService | null = null
-// AgentToolService 不依賴 DB,單純包系統 API 的 wrapper,無 null state
-const agentToolService = new AgentToolService()
+/**
+ * LlmClient 共用層:任何 main process 要呼 LLM 的 feature 都注入這個實例,
+ * 不要各自 new OpenAI。null = AgentService 未就緒(DB 沒起來)。
+ */
+let llmClient: LlmClient | null = null
+/** 工作分析報告儲存 */
+let workAnalysisService: WorkAnalysisService | null = null
 let workCollector: WorkCollectorScheduler
 
 /**
@@ -135,8 +143,10 @@ app.whenReady().then(async () => {
     savedCredentialsService = new SavedCredentialsService(dbManager)
     // cleaner 拿 workRecordService 是為了清表後 invalidate 內部 unsynced counter
     accountChangeCleaner = new AccountChangeCleaner(dbManager, workRecordService)
-    // Agent feature 自管 schema(ensureTables in constructor),不影響 drizzle migration
     agentService = new AgentService(dbManager)
+    // LlmClient 依賴 agentService 拿 provider 配置;一起建,出問題一起 null
+    llmClient = new LlmClient(agentService)
+    workAnalysisService = new WorkAnalysisService(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
@@ -147,6 +157,8 @@ app.whenReady().then(async () => {
     savedCredentialsService = null
     accountChangeCleaner = null
     agentService = null
+    llmClient = null
+    workAnalysisService = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -228,7 +240,8 @@ app.whenReady().then(async () => {
     savedCredentialsService,
     accountChangeCleaner,
     agentService,
-    agentToolService,
+    llmClient,
+    workAnalysisService,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)

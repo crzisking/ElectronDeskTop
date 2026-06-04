@@ -54,8 +54,6 @@ function rowToAction(r: QuickMenuItemRow): QuickMenuAction {
             }
         case 'quit-app':
             return {type: 'quit-app'}
-        case 'open-agent':
-            return {type: 'open-agent'}
         default:
             // 未知 actionType 兜底成「顯示主視窗」,避免 UI 直接炸
             return {type: 'show-main-window'}

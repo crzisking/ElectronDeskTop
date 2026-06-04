@@ -80,9 +80,7 @@ export default defineConfig({
           // 浮球窗口預加載腳本 → out/preload/floatingBall.js
           floatingBall: resolve('electron/preload/floating-ball.preload.ts'),
           // 日誌查看器子視窗預加載腳本 → out/preload/log-viewer.preload.js
-          'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts'),
-          // Agent 獨立窗口預加載腳本 → out/preload/agent.preload.js
-          'agent.preload': resolve('electron/preload/agent.preload.ts')
+          'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts')
         }
       }
     }
@@ -110,8 +108,7 @@ export default defineConfig({
           // main 進程 loadFile 對應這個輸出路徑。
           index: resolve('src/windows/main/index.html'),
           floatingBall: resolve('src/windows/floating-ball/index.html'),
-          logViewer: resolve('src/windows/log-viewer/index.html'),
-          agent: resolve('src/windows/agent/index.html')
+          logViewer: resolve('src/windows/log-viewer/index.html')
         }
       }
     },

@@ -28,6 +28,7 @@ import {createLogViewerBridge} from './bridges/log-viewer.bridge'
 import {createWorkCollectBridge} from './bridges/work-collect.bridge'
 import {createUserProfileBridge} from './bridges/user-profile.bridge'
 import {createSavedCredentialsBridge} from './bridges/saved-credentials.bridge'
+import {createWorkAnalysisBridge} from './bridges/work-analysis.bridge'
 
 // ── 推送事件白名單(渲染端 on/off 用)─────────────────────────────
 // 字串直接從 IpcChannels 取,避免兩份手動同步。
@@ -49,6 +50,9 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
   // 工作採集集中化(docs/20):main 觸發 renderer 拉 config / 上傳 sync
   IpcChannels.PUSH_WORK_COLLECT_SYNC_REQUEST,
   IpcChannels.PUSH_WORK_COLLECT_CONFIG_REQUEST,
+  // 工作分析 streaming:per-runId 的文字增量 + 結束事件
+  IpcChannels.PUSH_WORK_ANALYSIS_STREAM,
+  IpcChannels.PUSH_WORK_ANALYSIS_END,
 ]
 
 /**
@@ -72,6 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   workCollect: createWorkCollectBridge(ipcRenderer, IpcChannels),
   userProfile: createUserProfileBridge(ipcRenderer, IpcChannels),
   savedCredentials: createSavedCredentialsBridge(ipcRenderer, IpcChannels),
+  workAnalysis: createWorkAnalysisBridge(ipcRenderer, IpcChannels),
 
   /**
    * 訂閱主進程推送事件,走白名單。

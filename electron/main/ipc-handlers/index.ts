@@ -12,7 +12,7 @@
  * IPC 邊界 payload 是 `unknown`,必須 runtime 校驗。本專案兩種風格按 payload 複雜度選:
  *
  *   1. 複雜巢狀 / discriminated union / streaming chunk
- *      → 用 zod schema(範例:agent.handlers.ts)
+ *      → 用 zod schema(例:streaming tool-call payload 之類)
  *
  *   2. 單一 primitive / 淺層 ≤ 3 欄物件
  *      → 用 utils/runtime-guards 的共用 guard(範例:work-collect.handlers.ts)
@@ -32,7 +32,7 @@ import {registerWorkCollectHandlers} from './work-collect.handlers'
 import {registerFloatingBallHandlers} from './floating-ball.handlers'
 import {registerUserProfileHandlers} from './user-profile.handlers'
 import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
-import {registerAgentHandlers} from './agent.handlers'
+import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -43,7 +43,8 @@ import type {WorkTemplateCacheService} from '../db/features/work-collect/templat
 import type {UserProfileService} from '../db/features/user-profile/service'
 import type {SavedCredentialsService} from '../db/features/saved-credentials/service'
 import type {AgentService} from '../db/features/agent/service'
-import type {AgentToolService} from '../services/agent-tool.service'
+import type {LlmClient} from '../services/llm'
+import type {WorkAnalysisService} from '../db/features/work-analysis/service'
 import type {WorkCollectorScheduler} from '../work-collect'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
@@ -67,8 +68,19 @@ export interface IpcHandlerContext {
   userProfileService: UserProfileService | null
   savedCredentialsService: SavedCredentialsService | null
   accountChangeCleaner: AccountChangeCleaner | null
+  /**
+   * agent_configs / agent_messages 表的 service。Agent UI v1 已移除,
+   * 此 service 現在作為「LLM provider 配置儲存」共用層,給 work-analysis 等功能讀
+   * (透過 LlmClient 包裝);未來 Claude SDK Agent v2 也會復用同一份。
+   */
   agentService: AgentService | null
-  agentToolService: AgentToolService
+  /**
+   * LLM 共用呼叫層 — 後續 work-analysis 等需要打 OpenAI 兼容 API 的 handler 注入這個。
+   * null = AgentService 未就緒(DB 沒起來),那時對應 handler 自己決定怎麼降級。
+   */
+  llmClient: LlmClient | null
+  /** 工作分析報告儲存 */
+  workAnalysisService: WorkAnalysisService | null
 }
 
 /**
@@ -89,7 +101,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     savedCredentialsService,
     accountChangeCleaner,
     agentService,
-    agentToolService,
+    llmClient,
+    workAnalysisService,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -102,7 +115,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
   registerSavedCredentialsHandlers(savedCredentialsService)
-  registerAgentHandlers(windowManager, agentService, agentToolService)
+  registerWorkAnalysisHandlers(workAnalysisService, workRecordService, workTemplateCacheService, llmClient, configManager, agentService, windowManager)
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

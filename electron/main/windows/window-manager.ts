@@ -1,10 +1,14 @@
 /**
- * WindowManager — 4 種窗口的統一外觀(thin shell)。
+ * WindowManager — 3 種窗口的統一外觀(thin shell)。
  *
- * 內部委派給 main / floating-ball / log-viewer / agent / child 五個 class / factory,
+ * 內部委派給 main / floating-ball / log-viewer / child 四個 class / factory,
  * 對外 API 保持跟舊版一致,讓 IPC handler / TrayManager / UpdateManager 不用改 import。
  *
  * 狀態機:主窗顯示 ←→ 主窗隱藏 + 浮球顯示。
+ *
+ * 設計變更紀錄:
+ *   原本有 AgentWindow,Agent 功能整套移除後(改規劃由 Claude Agent SDK 重寫,
+ *   見 docs/19),這層也跟著拿掉。Agent v2 上線時會再加回來。
  */
 
 import {BrowserWindow} from 'electron'
@@ -12,14 +16,12 @@ import {logger} from '../utils/logger'
 import {MainWindow} from './main-window'
 import {FloatingBallWindow} from './floating-ball-window'
 import {LogViewerWindow} from './log-viewer-window'
-import {AgentWindow} from './agent-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
     private main = new MainWindow()
     private floatingBall = new FloatingBallWindow()
     private logViewer = new LogViewerWindow()
-    private agent = new AgentWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -38,10 +40,6 @@ export class WindowManager {
     // ── 按需建構(IPC / 浮球菜單觸發)───────────────────────────────
     createLogViewerWindow(): BrowserWindow {
         return this.logViewer.open(this.main.instance)
-    }
-
-    createAgentWindow(): BrowserWindow {
-        return this.agent.open()
     }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
@@ -72,10 +70,6 @@ export class WindowManager {
 
     getFloatingBallWindow(): BrowserWindow | null {
         return this.floatingBall.instance
-    }
-
-    getAgentWindow(): BrowserWindow | null {
-        return this.agent.instance
     }
 
     /**
@@ -120,7 +114,6 @@ export class WindowManager {
 
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
-        this.agent.destroy()
         this.logViewer.destroy()
         this.floatingBall.destroy()
         this.main.destroy()
