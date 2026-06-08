@@ -11,6 +11,7 @@
  * 改設定 = 改這個檔 + 改 @shared/types/config/* 對應型別;不再有 JSON 雙來源同步問題。
  */
 
+import {app} from 'electron'
 import type {AppConfig} from '@shared/types/config'
 
 /**
@@ -174,10 +175,13 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
       templateName: null,
   },
   notification: {
-    // 遠程通知(docs/18):啟用後 desktop 主動連 tmbom WebSocket,IT 端可推訊息 / 派發腳本
+    // 遠程通知(docs/18):啟用後 desktop 主動連 tmbom SignalR Hub,IT 端可推訊息 / 派發腳本
     enabled: true,
-    // prod 走 9004(tmbom 主機端口);dev 環境 desktop 沒走這個 — dev 跑 desktop 不會連線測這條
-    wsUrl: 'ws://192.168.120.79:9004',
+    // dev / prod 自動切:對齊 .env.* 的 VITE_WORK_COLLECT_API_URL 規則。
+    //   - dev (electron-vite dev) :app.isPackaged=false → ws://localhost:5247
+    //   - prod (electron-builder 打包後):app.isPackaged=true → ws://192.168.120.79:9004
+    // 標記為 dev-owned,resync 啟動時會強制覆寫成這個值(改值改這裡 + 重啟即可,不會被 user 鎖死)
+    wsUrl: app.isPackaged ? 'ws://192.168.120.79:9004' : 'ws://localhost:5247',
     pingIntervalMs: 30_000,
     reconnectMaxMs: 30_000,
   },
