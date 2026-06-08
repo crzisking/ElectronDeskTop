@@ -58,6 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = token
     user.value = userInfo
     isAuthenticated.value = true
+      startNotificationClient(userInfo.userName)
   }
 
   /**
@@ -124,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = profile
     isAuthenticated.value = true
     logger.info(`AD 自動登入成功,使用者=${profile.userName}`, 'Auth')
+      startNotificationClient(profile.userName)
     return true
   }
 
@@ -158,6 +160,7 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = userInfo
           isAuthenticated.value = true
           logger.info(`記住密碼自動登入成功,使用者=${entry.userId}`, 'Auth')
+          startNotificationClient(userInfo.userName)
           return true
       } catch (err) {
           // 密碼可能被後端改了 / 帳號鎖了 — 清掉憑證,讓使用者下次手動重來
@@ -182,11 +185,29 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     isAuthenticated.value = false
     adLoginDisabledThisSession.value = true
+        // 主動斷開 NotificationClient(送 unregister + close);失敗不擴散
+        window.electronAPI.notification.stop().catch((err) => {
+            logger.warn('登出時關閉 NotificationClient 失敗', 'Auth', err as Error)
+        })
         // 清除本機憑證 — IPC 失敗不擴散,登出狀態本身仍然完成
         await window.electronAPI.savedCredentials.clear().catch((err) => {
             logger.warn('登出時清除已記住密碼失敗', 'Auth', err as Error)
         })
   }
+
+    /**
+     * 三條登入路徑共用 — 啟動遠程通知 WebSocket(docs/18)。
+     * 失敗只 log,不擴散:遠程通知掛了不該阻擋登入流程,使用者該進主畫面還是進。
+     */
+    function startNotificationClient(userName: string): void {
+        window.electronAPI.notification.start(userName).then((res) => {
+            if (!res.ok && res.reason && res.reason !== 'disabled in config') {
+                logger.warn(`啟動 NotificationClient 未成功 reason=${res.reason}`, 'Auth')
+            }
+        }).catch((err) => {
+            logger.warn('啟動 NotificationClient 異常', 'Auth', err as Error)
+        })
+    }
 
   return {
     // State

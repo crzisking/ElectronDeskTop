@@ -173,4 +173,12 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
       categoryTemplateId: null,
       templateName: null,
   },
+  notification: {
+    // 遠程通知(docs/18):啟用後 desktop 主動連 tmbom WebSocket,IT 端可推訊息 / 派發腳本
+    enabled: true,
+    // prod 走 9004(tmbom 主機端口);dev 環境 desktop 沒走這個 — dev 跑 desktop 不會連線測這條
+    wsUrl: 'ws://192.168.120.79:9004',
+    pingIntervalMs: 30_000,
+    reconnectMaxMs: 30_000,
+  },
 }

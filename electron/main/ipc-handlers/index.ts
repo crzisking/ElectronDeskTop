@@ -33,6 +33,7 @@ import {registerFloatingBallHandlers} from './floating-ball.handlers'
 import {registerUserProfileHandlers} from './user-profile.handlers'
 import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
 import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
+import {registerNotificationHandlers} from './notification.handlers'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -46,6 +47,7 @@ import type {AgentService} from '../db/features/agent/service'
 import type {LlmClient} from '../services/llm'
 import type {WorkAnalysisService} from '../db/features/work-analysis/service'
 import type {WorkCollectorScheduler, WorkCollectSyncService} from '../work-collect'
+import type {NotificationClient} from '../services/notification-client'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
 /**
@@ -83,6 +85,8 @@ export interface IpcHandlerContext {
   llmClient: LlmClient | null
   /** 工作分析報告儲存 */
   workAnalysisService: WorkAnalysisService | null
+  /** 遠程通知 WebSocket 客戶端(docs/18) */
+  notificationClient: NotificationClient
 }
 
 /**
@@ -106,6 +110,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     agentService,
     llmClient,
     workAnalysisService,
+    notificationClient,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -119,6 +124,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
   registerSavedCredentialsHandlers(savedCredentialsService)
   registerWorkAnalysisHandlers(workAnalysisService, workRecordService, workTemplateCacheService, llmClient, configManager, agentService, windowManager)
+  registerNotificationHandlers(notificationClient, configManager)
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

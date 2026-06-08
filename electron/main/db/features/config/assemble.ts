@@ -114,5 +114,11 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
             categoryTemplateId: getKv(kv, 'workCollect.categoryTemplateId', null),
             templateName: getKv(kv, 'workCollect.templateName', null),
         },
+        notification: {
+            enabled: getKv(kv, 'notification.enabled', DEFAULT_CONFIG.notification.enabled),
+            wsUrl: getKv(kv, 'notification.wsUrl', DEFAULT_CONFIG.notification.wsUrl),
+            pingIntervalMs: getKv(kv, 'notification.pingIntervalMs', DEFAULT_CONFIG.notification.pingIntervalMs),
+            reconnectMaxMs: getKv(kv, 'notification.reconnectMaxMs', DEFAULT_CONFIG.notification.reconnectMaxMs),
+        },
     }
 }

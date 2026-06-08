@@ -170,5 +170,10 @@ export function allSingletons(c: typeof DEFAULT_CONFIG): Array<[string, unknown]
         ['workCollect.workEndHour', c.workCollect.workEndHour],
         ['workCollect.categoryTemplateId', c.workCollect.categoryTemplateId ?? null],
         ['workCollect.templateName', c.workCollect.templateName ?? null],
+        // notification(dev-owned:wsUrl 等基礎建設值,使用者不該改;每次升級強制覆蓋)
+        ['notification.enabled', c.notification.enabled],
+        ['notification.wsUrl', c.notification.wsUrl],
+        ['notification.pingIntervalMs', c.notification.pingIntervalMs],
+        ['notification.reconnectMaxMs', c.notification.reconnectMaxMs],
     ]
 }

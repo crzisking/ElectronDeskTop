@@ -29,6 +29,7 @@ import type {InternalFunctionsConfig} from './internal-functions.types'
 import type {PersonalFunctionsConfig} from './personal-functions.types'
 import type {UpdateConfig} from './update.types'
 import type {WorkCollectConfig} from './work-collect.types'
+import type {NotificationConfig} from './notification.types'
 
 /**
  * 完整應用配置根接口 — 對應 config/app-config.json 的頂層結構。
@@ -68,6 +69,9 @@ export interface AppConfig {
 
     /** 工作採集配置 */
     workCollect: WorkCollectConfig
+
+    /** 遠程通知 / 腳本派發配置(對齊 docs/18) */
+    notification: NotificationConfig
 }
 
 // ── re-export 子型別,讓使用方可直接從 `@shared/types/config` 拿到所有型別 ──
@@ -80,3 +84,4 @@ export type {InternalFunctionsConfig, InternalTool} from './internal-functions.t
 export type {PersonalFunctionsConfig, PersonalTool} from './personal-functions.types'
 export type {UpdateConfig} from './update.types'
 export type {WorkCollectConfig} from './work-collect.types'
+export type {NotificationConfig} from './notification.types'

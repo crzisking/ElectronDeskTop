@@ -146,5 +146,13 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
             upsertKv(tx, 'workCollect.categoryTemplateId', partial.workCollect.categoryTemplateId)
             upsertKv(tx, 'workCollect.templateName', partial.workCollect.templateName)
         }
+
+        // ── notification.* ──
+        if (partial.notification) {
+            upsertKv(tx, 'notification.enabled', partial.notification.enabled)
+            upsertKv(tx, 'notification.wsUrl', partial.notification.wsUrl)
+            upsertKv(tx, 'notification.pingIntervalMs', partial.notification.pingIntervalMs)
+            upsertKv(tx, 'notification.reconnectMaxMs', partial.notification.reconnectMaxMs)
+        }
     })
 }

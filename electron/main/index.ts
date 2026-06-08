@@ -25,6 +25,9 @@ import {WorkAnalysisService} from './db/features/work-analysis/service'
 import {LlmClient} from './services/llm'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler, WorkCollectSyncService} from './work-collect'
+import {NotificationClient} from './services/notification-client'
+import {ScriptRunner} from './services/script-runner'
+import {registerBuiltinScripts} from './services/scripts'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -50,6 +53,10 @@ let llmClient: LlmClient | null = null
 /** 工作分析報告儲存 */
 let workAnalysisService: WorkAnalysisService | null = null
 let workCollector: WorkCollectorScheduler
+/** 遠程通知 WebSocket 客戶端(docs/18)。登入後由 renderer IPC NOTIFICATION_START 觸發實際連線 */
+let notificationClient: NotificationClient
+/** 內建腳本派發器,由 NotificationClient 在收到 server task 時調用 */
+let scriptRunner: ScriptRunner
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -100,6 +107,8 @@ function gracefulShutdown(): void {
   floatingBallMgr?.dispose()
   updateMgr?.dispose()
   workCollector?.dispose()
+    // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
+    notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
   // 用 try/catch 防止 close 拋出阻礙退出流程
   try {
@@ -231,6 +240,14 @@ app.whenReady().then(async () => {
   // renderer 不需 50× IPC 來回。DB 沒就緒(workRecordService=null)時為 null,handler 自降級。
   const workCollectSyncService = workRecordService ? new WorkCollectSyncService(workRecordService) : null
 
+    // 遠程通知(docs/18):
+    //   ScriptRunner 註冊 6 個內建腳本(show-message / clear-cache / restart-app / ...)。
+    //   NotificationClient 持有 runner 引用,收到 server task 時 dispatch 給對應 handler。
+    //   實際 WebSocket 連線在使用者登入後由 renderer IPC NOTIFICATION_START 觸發,未登入時 idle。
+    scriptRunner = new ScriptRunner()
+    registerBuiltinScripts(scriptRunner, {configManager, windowManager, logService})
+    notificationClient = new NotificationClient(scriptRunner)
+
   registerAllHandlers({
     windowManager,
     configManager,
@@ -247,6 +264,7 @@ app.whenReady().then(async () => {
     agentService,
     llmClient,
     workAnalysisService,
+      notificationClient,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
