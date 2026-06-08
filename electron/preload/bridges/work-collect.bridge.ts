@@ -19,6 +19,23 @@ export interface WorkCollectChannelMap {
     WORK_COLLECT_RENDERER_READY: string
     WORK_COLLECT_SYNC_DONE: string
     WORK_COLLECT_GET_TEMPLATE: string
+    WORK_COLLECT_RUN_SYNC: string
+}
+
+/** sync 啟動 payload(對齊 @shared/types/work-collect.types#WorkSyncRunPayload) */
+interface SyncRunPayload {
+    userName: string
+    token: string
+    baseUrl: string
+}
+
+/** sync 結果(對齊 @shared/types/work-collect.types#WorkSyncRunResult) */
+interface SyncRunResult {
+    ok: boolean
+    synced: number
+    failed: number
+    hitLimit: boolean
+    error?: string
 }
 
 /**
@@ -100,6 +117,13 @@ export function createWorkCollectBridge(ipc: IpcRenderer, ch: WorkCollectChannel
        */
       getTemplate: () =>
           ipc.invoke(ch.WORK_COLLECT_GET_TEMPLATE) as Promise<MinimalTemplateDetail | null>,
+
+      /**
+       * 主進程跑 sync 主流程(集中化:取代 50× IPC 來回)。
+       * payload 帶 userName + token + baseUrl,token 僅活在 process 記憶體不寫盤。
+       */
+      runSync: (payload: SyncRunPayload) =>
+          ipc.invoke(ch.WORK_COLLECT_RUN_SYNC, payload) as Promise<SyncRunResult>,
       // 注意:健康狀態(getHealth)刻意不在主窗口暴露 —— 只在密碼保護的日誌查看器
       // (log-viewer.preload)可達,避免普通使用者看到「待同步 / 失敗」維運資訊。
   }

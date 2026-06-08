@@ -12,7 +12,12 @@
  *   work-collect.types.ts       ─ WorkCollectConfig
  *
  * 為什麼拆檔:單檔 685 行太肥,每個 feature 自己一份小檔好維護;
- * 統一從 '@/types/config' import,解析到此 index.ts。
+ * 統一從 '@shared/types/config' import(主進程 + 渲染進程共用),解析到此 index.ts。
+ *
+ * 為什麼放 electron/shared/types/(不是 src/types/):
+ *   ConfigManager / repository 等主進程模組需要 import AppConfig 型別,
+ *   主進程不該反向依賴 src/(渲染端)。@shared 是跨進程型別的官方歸屬,
+ *   見 docs/05-開發規範 §跨進程型別契約。
  */
 
 import type {AppSettings} from './app.types'
@@ -29,43 +34,43 @@ import type {WorkCollectConfig} from './work-collect.types'
  * 完整應用配置根接口 — 對應 config/app-config.json 的頂層結構。
  */
 export interface AppConfig {
-  /**
-   * 應用版本號(只讀)。
-   * 由主進程 ConfigManager.getConfig() 從 app.getVersion()(package.json 的 version)動態注入,
-   * 不寫入 app-config.json,也不可透過 CONFIG_WRITE 修改。
-   * 唯一真實源:package.json,這樣 electron-updater 比對版本和 UI 顯示版本永遠一致。
-   */
-  version: string
+    /**
+     * 應用版本號(只讀)。
+     * 由主進程 ConfigManager.getConfig() 從 app.getVersion()(package.json 的 version)動態注入,
+     * 不寫入 app-config.json,也不可透過 CONFIG_WRITE 修改。
+     * 唯一真實源:package.json,這樣 electron-updater 比對版本和 UI 顯示版本永遠一致。
+     */
+    version: string
 
-  /** 全局應用設置 */
-  app: AppSettings
+    /** 全局應用設置 */
+    app: AppSettings
 
-  /** 左側邊欄菜單配置 */
-  sidebar: SidebarConfig
+    /** 左側邊欄菜單配置 */
+    sidebar: SidebarConfig
 
-  /** 側邊欄『系統』分組外部連結配置 */
-  systemLinks: SystemLinksConfig
+    /** 側邊欄『系統』分組外部連結配置 */
+    systemLinks: SystemLinksConfig
 
-  /** 浮動小球配置 */
-  floatingBall: FloatingBallConfig
+    /** 浮動小球配置 */
+    floatingBall: FloatingBallConfig
 
-  /** 統一平台頁面配置 */
-  unifiedPlatform: UnifiedPlatformConfig
+    /** 統一平台頁面配置 */
+    unifiedPlatform: UnifiedPlatformConfig
 
-  /** 內部功能配置 */
-  internalFunctions: InternalFunctionsConfig
+    /** 內部功能配置 */
+    internalFunctions: InternalFunctionsConfig
 
-  /** 個人功能配置(sidebar 第三個主功能入口,跟內部功能 / 統一平台同層級) */
-  personalFunctions: PersonalFunctionsConfig
+    /** 個人功能配置(sidebar 第三個主功能入口,跟內部功能 / 統一平台同層級) */
+    personalFunctions: PersonalFunctionsConfig
 
-  /** 自動更新配置 */
-  update: UpdateConfig
+    /** 自動更新配置 */
+    update: UpdateConfig
 
-  /** 工作採集配置 */
-  workCollect: WorkCollectConfig
+    /** 工作採集配置 */
+    workCollect: WorkCollectConfig
 }
 
-// ── re-export 子型別,讓使用方可直接從 `@/types/config` 拿到所有型別 ──
+// ── re-export 子型別,讓使用方可直接從 `@shared/types/config` 拿到所有型別 ──
 export type {AppSettings} from './app.types'
 export type {SidebarConfig, SidebarItem} from './sidebar.types'
 export type {SystemLinksConfig, SystemLinkItem} from './system-links.types'

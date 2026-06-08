@@ -9,8 +9,8 @@
  *  - quickMenuToRow / rowToQuickMenu:特殊的 discriminated union(action.type)轉換
  */
 
-import type {QuickMenuAction, QuickMenuItem} from '../../../../../../src/types/config'
-import type {QuickMenuItemRow} from '../schema'
+import type {QuickMenuAction, QuickMenuItem} from '@shared/types/config'
+import type {QuickMenuItemRow} from './schema'
 import type {Db} from './kv-helpers'
 
 /** 整批 DELETE + 重 INSERT defaults。reseed / partial write 共用 */

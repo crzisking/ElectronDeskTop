@@ -94,33 +94,6 @@ export interface WorkTemplateExample {
   sortOrder: number
 }
 
-/** sync-daily 單筆紀錄 payload */
-export interface WorkSyncRecordItem {
-  /** desktop 本地 SQLite work_records.id;server 端用於 (UserId, LocalId) 冪等 */
-  localId: number
-  capturedAt: number
-  activeApp: string | null
-  activeWindowTitle: string | null
-  category: WorkCategory
-  description: string
-  confidence: number | null
-  screenshotHash: string | null
-  reason: string | null
-    /** 'active' / 'idle';舊版 desktop 沒帶時 server 預設 'active' */
-    activityState: ActivityState
-}
-
-/**
- * sync-daily 後端回應(對齊 docs/20 §4.1.1 修訂後)。
- *
- * 三組 id 互斥,desktop 只標 success + duplicate 為 synced;
- * failed 留待下次觸發補傳。inserted/duplicates 數字只供 log。
- */
-export interface WorkSyncDailyResponse {
-  inserted: number
-  duplicates: number
-  syncedAt: number
-  successLocalIds: number[]
-  duplicateLocalIds: number[]
-  failedLocalIds: number[]
-}
+// WorkSyncRecordItem / WorkSyncDailyResponse 隨 sync 邏輯搬到主進程,
+// 對應結構現在內聯於 electron/main/work-collect/sync-service.ts。
+// renderer 端不再需要這些型別 — 整段 sync HTTP 已不在 renderer 跑。

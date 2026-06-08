@@ -14,12 +14,14 @@
 
 import {createHttpClient} from '@/api/http-client'
 import {scheduleRequest} from './request-scheduler'
-import type {WorkAnalyzeResponse, WorkConfigResponse, WorkSyncDailyResponse, WorkSyncRecordItem,} from './types'
+import type {WorkAnalyzeResponse, WorkConfigResponse} from './types'
 
 // 走 VITE_WORK_COLLECT_API_URL,跟 repair 解耦(雖然當前指向同一個 tmbom 後端,
 // 但語義上 work-collect 應該有自己的環境變數,日後拆服務不必動代碼)。
-const WORK_BASE_URL: string =
+// export:集中化 sync 後 store 要把 base URL 透過 IPC 帶給 main(main 沒讀 vite env)
+export const WORK_COLLECT_BASE_URL: string =
   (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
+const WORK_BASE_URL = WORK_COLLECT_BASE_URL
 
 let _client: ReturnType<typeof createHttpClient> | null = null
 function getClient() {
@@ -87,19 +89,6 @@ export const workCollectApi = {
     )
   },
 
-  /**
-   * 批次上傳未同步的採集紀錄。後端冪等(UNIQUE on UserId+LocalId)。
-   * 單請求最多 200 條,呼叫方自行分批。
-   */
-  async syncDaily(records: WorkSyncRecordItem[], userName: string): Promise<WorkSyncDailyResponse> {
-    // sync-daily 集中在 17:00 工時結束爆發,走 25s 散佈窗口削峰
-      // 工號放 body,後端落庫時當 Work_Records.UserId(AllowAnonymous 取不到 CurrentUser)
-    return await scheduleRequest(
-        () => getClient().post<WorkSyncDailyResponse>(
-            '/api/WorkCollect/sync-daily',
-            {userName, records},
-        ),
-        {profile: 'sync-daily', label: 'syncDaily'},
-    )
-  },
+  // syncDaily 已搬至主進程(electron/main/work-collect/sync-service.ts)。
+  // renderer 不再直接打 /sync-daily HTTP — 走 electronAPI.workCollect.runSync 即可。
 }

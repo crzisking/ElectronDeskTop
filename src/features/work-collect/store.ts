@@ -17,7 +17,7 @@ import {useConfigStore} from '@/stores/config.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/shared/utils/logger'
 import {IpcChannels} from '@shared/ipc-channels'
-import {workCollectApi} from './api'
+import {WORK_COLLECT_BASE_URL, workCollectApi} from './api'
 import {
     getCategoryColor as getCategoryColorFallback,
     getCategoryLabel as getCategoryLabelFallback,
@@ -26,7 +26,6 @@ import type {
     WorkCollectTickPayload,
     WorkRecord,
     WorkResultPayload,
-    WorkSyncRecordItem,
     WorkTemplateDetail,
     WorkTemplateItem,
 } from './types'
@@ -271,10 +270,10 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
 
     /**
      * 批次同步本地 unsynced 到 server。
-     * 只標 success + duplicate 為 synced,failed 留下次重試;結束後 ack main(syncDone)。
      *
-     * 上限:每批 200 條,最多 SYNC_MAX_ROUNDS 輪 = 10k 條/次。
-     * 達上限後本次結束,log 提醒;下次 sync trigger 來時繼續上傳剩下的,不會丟資料。
+     * 集中化 v1.4.x:整個 50× listUnsynced/HTTP/markSynced 循環已搬到主進程
+     * (electron/main/work-collect/sync-service.ts),renderer 只負責把 auth 資訊
+     * 帶過去 + 觸發。token / userName / baseUrl 不寫盤,單次 invoke 在 main 結束時隨之消失。
      */
     async function syncDailyRecords(): Promise<void> {
         const userName = currentUserName()
@@ -283,83 +282,24 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
             logger.warn('未登入(無工號),跳過 sync,等登入後下次觸發', 'WorkCollectStore')
             return
         }
-
-        let totalSynced = 0
-        let totalFailed = 0
-        let ok = true
-        let error: string | undefined
-        let hitLimit = false
-
-        let round = 0
-        for (; round < SYNC_MAX_ROUNDS; round++) {
-            let chunk: WorkRecord[]
-            try {
-                chunk = (await window.electronAPI.workCollect.listUnsynced(200)) as WorkRecord[]
-            } catch (err) {
-                ok = false
-                error = '撈 unsynced 失敗'
-                logger.warn(error, 'WorkCollectStore', err)
-                break
-            }
-            if (!chunk || chunk.length === 0) break
-
-            const records: WorkSyncRecordItem[] = chunk.map((r) => ({
-                localId: r.id,
-                capturedAt: r.capturedAt,
-                activeApp: r.activeApp,
-                activeWindowTitle: r.activeWindowTitle,
-                category: r.category,
-                description: r.description,
-                confidence: r.confidence,
-                screenshotHash: r.screenshotHash,
-                reason: r.reason,
-                activityState: r.activityState,
-            }))
-
-            try {
-                const resp = await workCollectApi.syncDaily(records, userName)
-                // success(真插入)+ duplicate(server 已有)才標 synced;failed 留下次
-                const toMark = [...(resp.successLocalIds ?? []), ...(resp.duplicateLocalIds ?? [])]
-                if (toMark.length > 0) {
-                    const markOk = await markSyncedWithRetry(toMark, resp.syncedAt ?? Date.now())
-                    if (!markOk.ok) {
-                        ok = false
-                        error = `markSynced 重試耗盡:${markOk.reason}`
-                        logger.warn(error, 'WorkCollectStore')
-                        // 退出但不視為災難:這批 server 已收下,下次 sync 會被 server UNIQUE 擋,
-                        // 走 duplicate 分支再嘗試 mark 一次,自然收斂。
-                        break
-                    }
-                }
-                totalSynced += toMark.length
-                totalFailed += (resp.failedLocalIds ?? []).length
-                if (chunk.length < 200) break // 已撈乾淨
-            } catch (err) {
-                ok = false
-                error = 'sync-daily HTTP 失敗'
-                logger.warn(error, 'WorkCollectStore', err)
-                break
-            }
+        const token = authStore.accessToken
+        if (!token) {
+            logger.warn('無 access token,跳過 sync', 'WorkCollectStore')
+            return
         }
-
-        if (round >= SYNC_MAX_ROUNDS) {
-            hitLimit = true
-            logger.warn(
-                `sync 達單次輪數上限 ${SYNC_MAX_ROUNDS}(約 ${SYNC_MAX_ROUNDS * 200} 條),剩餘留下次 trigger`,
+        try {
+            const result = await window.electronAPI.workCollect.runSync({
+                userName,
+                token,
+                baseUrl: WORK_COLLECT_BASE_URL,
+            })
+            logger.info(
+                `sync 完成 synced=${result.synced} failed=${result.failed} hitLimit=${result.hitLimit} ok=${result.ok}`,
                 'WorkCollectStore',
             )
+        } catch (err) {
+            logger.warn('runSync IPC 異常', 'WorkCollectStore', err)
         }
-
-        if (totalFailed > 0 || hitLimit) ok = false
-        logger.info(
-            `sync 完成 synced=${totalSynced} failed=${totalFailed} hitLimit=${hitLimit} ok=${ok}`,
-            'WorkCollectStore',
-        )
-        // ack main:成功清 pending,失敗保留待重試。
-        // 失敗計數 / 待同步數透過 health 暴露,僅日誌查看器(需密碼)可見,主窗口不顯示。
-        window.electronAPI.workCollect
-            .syncDone({ok, synced: totalSynced, failed: totalFailed, error})
-            .catch(() => undefined)
     }
 
     function onSyncRequest(...args: unknown[]) {
@@ -425,27 +365,6 @@ let subscribed = false
  * 不會在 HMR 重建後突然能並行(Electron 內 renderer 重啟 = 整個進程重建,自然清空)。
  */
 let analyzingInflight = false
-
-/** sync 單次最多輪數,200/輪 × 50 = 10k/次;超過走下次 trigger,不丟資料 */
-const SYNC_MAX_ROUNDS = 50
-
-/**
- * markSynced 失敗時短暫重試。server 已落庫,本地沒標 → 下次 sync 會把這批當 unsynced
- * 重新上傳,server 會回 duplicate(冪等),只是浪費一次 HTTP。重試幾次大概率能避掉。
- */
-async function markSyncedWithRetry(
-    localIds: number[],
-    syncedAt: number,
-): Promise<{ ok: boolean; reason?: string }> {
-    let last: { ok: boolean; reason?: string } = {ok: false, reason: 'never tried'}
-    for (let i = 0; i < 3; i++) {
-        last = await window.electronAPI.workCollect.markSynced(localIds, syncedAt)
-        if (last.ok) return last
-        // 30ms / 90ms / 270ms 短回退,通常是 SQLite busy
-        await new Promise<void>(r => setTimeout(r, 30 * Math.pow(3, i)))
-    }
-    return last
-}
 
 /** N 天前 00:00:00 的 Unix ms */
 function startOfDaysAgo(days: number): number {

@@ -8,7 +8,7 @@
  *  - kv-helpers.ts        KV 表低階存取
  *  - collection-helpers.ts Collection 表 整批替換 + QuickMenu 特殊處理
  *
- * 既有 `import ... from '.../config/repository'` 自動解析到本檔。
+ * `import ... from '.../config'` 自動解析到本檔(扁平化後沒有 repository/ 子目錄)。
  */
 
 export {assembleAppConfig} from './assemble'

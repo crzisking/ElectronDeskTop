@@ -10,7 +10,7 @@
 import {BrowserWindow, screen} from 'electron'
 import {join} from 'path'
 import {logger} from '../utils/logger'
-import {resolveRendererEntry} from './_shared'
+import {resolveRendererEntry} from './internal'
 
 export class FloatingBallWindow {
     private window: BrowserWindow | null = null

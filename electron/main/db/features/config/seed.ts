@@ -23,7 +23,7 @@ import {join} from 'path'
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
 import {logger} from '../../../utils/logger'
 import {DEFAULT_CONFIG} from './defaults'
-import {allSingletons} from './repository'
+import {allSingletons} from '.'
 import {
   appSettingsKv,
   internalTools,

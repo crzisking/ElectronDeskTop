@@ -34,10 +34,10 @@
 
 import {app} from 'electron'
 import {logger} from './utils/logger'
-import type {AppConfig} from '../../src/types/config'
+import type {AppConfig} from '@shared/types/config'
 import type {DatabaseManager} from './db/database-manager'
 import {DEFAULT_CONFIG} from './db/features/config/defaults'
-import {applyPartial, assembleAppConfig, resyncDevOwnedConfig} from './db/features/config/repository'
+import {applyPartial, assembleAppConfig, resyncDevOwnedConfig} from './db/features/config'
 import {seedOrMigrate} from './db/features/config/seed'
 
 export class ConfigManager {

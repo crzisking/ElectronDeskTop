@@ -23,6 +23,32 @@ export interface WorkResultPayload {
 }
 
 /**
+ * sync 啟動 payload(renderer → main)。
+ *
+ * 為什麼帶 token / baseUrl:HTTP client + auth 原本只在 renderer(token 政策上不持久化到磁盤),
+ * 集中化 sync 後 main 自己發 HTTP,token 仍只活在 main process 記憶體內(跟 renderer 同等待遇),
+ * 不寫 DB / 不寫 disk。app 結束即丟。
+ */
+export interface WorkSyncRunPayload {
+    userName: string
+    /** JWT access token,僅 in-memory 用於本次 sync 的 Authorization header */
+    token: string
+    /** 後端 base URL(對齊渲染端 VITE_WORK_COLLECT_API_URL,由 renderer 注入避免 main 讀 vite env) */
+    baseUrl: string
+}
+
+/** sync 結束 main 回給 renderer 的總結;主要供 log + UI 提示 */
+export interface WorkSyncRunResult {
+    ok: boolean
+    synced: number
+    failed: number
+    /** 觸發單次輪數上限即 true;此時 ok 也會被設 false */
+    hitLimit: boolean
+    /** 失敗原因(僅 ok=false 時可能有值) */
+    error?: string
+}
+
+/**
  * server my-config 拉回來的 config + 模板詳情 → main(IpcChannels.WORK_COLLECT_APPLY_REMOTE_CONFIG)。
  * main 端落 KV + work_template_cache,並視變更重啟 scheduler。
  *

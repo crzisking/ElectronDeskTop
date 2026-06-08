@@ -172,7 +172,31 @@ onUnmounted(() => {
   <!-- el-config-provider 把 Element Plus 內建組件文案綁到響應式 locale，
        語言切換後 ElDatePicker / ElPagination 等自動跟著變 -->
   <el-config-provider :locale="elementLocale">
+    <!-- 配置載入失敗的常駐橫幅:loadConfig 失敗時 appConfig 為 null,應用會走 fallback 預設值,
+         使用者應該知道「目前看到的不是正式配置」。ElMessage 只閃 3 秒,這裡用 ElAlert 留著直到下次成功重載 -->
+    <el-alert
+        v-if="configStore.loadError"
+        :closable="false"
+        :description="configStore.loadError"
+        :title="t('app.configLoadFailed')"
+        class="config-load-error-banner"
+        show-icon
+        type="error"
+    />
     <!-- 佈局由路由配置 AppLayout 渲染，這裡只是 router-view 出口 -->
     <router-view/>
   </el-config-provider>
 </template>
+
+<style scoped>
+.config-load-error-banner {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  max-width: 640px;
+  width: calc(100% - 32px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+</style>

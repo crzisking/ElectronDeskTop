@@ -157,33 +157,47 @@ export class WorkRecordService {
         }
   }
 
-    /** server backfill:寫入本地,以 (capturedAt, screenshotHash) 粗略去重,一律標 synced=1 */
+    /**
+     * server backfill:寫入本地,以 (capturedAt, screenshotHash) 粗略去重,一律標 synced=1。
+     *
+     * 整批走一個 transaction —— 大規模首次同步(10K 列)從「N 次獨立 commit」收斂為單次 commit,
+     * better-sqlite3 同步寫盤的瓶頸是 fsync,單 commit 比 10K commits 快 100× 以上。
+     * SELECT 仍逐列做(idx_work_capturedAt 已索引,單筆 sub-ms),但全部在記憶體中累積,
+     * 寫盤只在 transaction 結束時 fsync 一次。
+     *
+     * 失敗策略:單列 SELECT/INSERT 拋出 → recordFailure 累計失敗計數但**不**回滾整批
+     * (drizzle 內 .transaction 內 throw 才會 rollback;我們手動捕獲就是讓壞列跳過、好列照寫,
+     * 這跟原本逐列獨立 transaction 的語義保持一致)。
+     */
   upsertFromServer(rows: Omit<NewWorkRecord, 'id'>[]): number {
     if (!this.dbManager.isReady() || rows.length === 0) return 0
     let inserted = 0
     const db = this.dbManager.getDb()
-    for (const r of rows) {
-      try {
-        const exists = db
-            .select({id: workRecords.id})
-            .from(workRecords)
-            .where(
-                and(
-                    eq(workRecords.capturedAt, r.capturedAt as number),
-                    r.screenshotHash
-                        ? eq(workRecords.screenshotHash, r.screenshotHash as string)
-                        : sql`${workRecords.screenshotHash}
-                            IS NULL`,
-                ),
-            )
-            .get()
-        if (exists) continue
-        db.insert(workRecords).values({...r, synced: 1, syncedAt: Date.now()}).run()
-        inserted++
-      } catch (err) {
-          this.recordFailure('write', errMsg(err))
-      }
-    }
+        const now = Date.now()
+        db.transaction((tx) => {
+            for (const r of rows) {
+                try {
+                    const exists = tx
+                        .select({id: workRecords.id})
+                        .from(workRecords)
+                        .where(
+                            and(
+                                eq(workRecords.capturedAt, r.capturedAt as number),
+                                r.screenshotHash
+                                    ? eq(workRecords.screenshotHash, r.screenshotHash as string)
+                                    : sql`${workRecords.screenshotHash}
+                                        IS NULL`,
+                            ),
+                        )
+                        .get()
+                    if (exists) continue
+                    tx.insert(workRecords).values({...r, synced: 1, syncedAt: now}).run()
+                    inserted++
+                } catch (err) {
+                    this.recordFailure('write', errMsg(err))
+                }
+            }
+        })
     return inserted
   }
 

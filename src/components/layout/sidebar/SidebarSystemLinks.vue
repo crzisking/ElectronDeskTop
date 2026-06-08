@@ -8,7 +8,7 @@
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import {useI18n} from 'vue-i18n'
 import {useConfigText} from '@/shared/composables/useConfigText'
-import type {SystemLinkItem} from '@/types/config'
+import type {SystemLinkItem} from '@shared/types/config'
 
 defineProps<{
   links: SystemLinkItem[]

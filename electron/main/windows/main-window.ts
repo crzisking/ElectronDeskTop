@@ -11,7 +11,7 @@ import {BrowserWindow} from 'electron'
 import {join} from 'path'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
-import {appIconPath, isDev, resolveRendererEntry} from './_shared'
+import {appIconPath, isDev, resolveRendererEntry} from './internal'
 
 export class MainWindow {
     private window: BrowserWindow | null = null

@@ -6,7 +6,7 @@
  */
 
 import type {BetterSQLite3Database} from 'drizzle-orm/better-sqlite3'
-import {appSettingsKv} from '../schema'
+import {appSettingsKv} from './schema'
 
 export type Db = BetterSQLite3Database<any>
 

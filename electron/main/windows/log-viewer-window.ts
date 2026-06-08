@@ -12,7 +12,7 @@
 import {BrowserWindow} from 'electron'
 import {join} from 'path'
 import {logger} from '../utils/logger'
-import {appIconPath, isDev, resolveRendererEntry} from './_shared'
+import {appIconPath, isDev, resolveRendererEntry} from './internal'
 
 export class LogViewerWindow {
     private window: BrowserWindow | null = null

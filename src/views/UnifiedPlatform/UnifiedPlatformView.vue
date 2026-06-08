@@ -16,7 +16,7 @@ import {useConfigStore} from '@/stores/config.store'
 import {useConfigText} from '@/shared/composables/useConfigText'
 import SystemCard from './SystemCard.vue'
 import SystemLauncher from './SystemLauncher.vue'
-import type {SystemLink} from '@/types/config'
+import type {SystemLink} from '@shared/types/config'
 import {Search} from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()

@@ -4,8 +4,8 @@
  * 不含 `version`,version 由 ConfigManager.getConfig() 從 app.getVersion() runtime 注入。
  */
 
-import type {AppConfig} from '../../../../../../src/types/config'
-import {DEFAULT_CONFIG} from '../defaults'
+import type {AppConfig} from '@shared/types/config'
+import {DEFAULT_CONFIG} from './defaults'
 import {
     appSettingsKv,
     internalTools,
@@ -14,7 +14,7 @@ import {
     sidebarItems,
     systemLinks,
     unifiedPlatformSystems,
-} from '../schema'
+} from './schema'
 import {type Db, getKv, parseValue} from './kv-helpers'
 import {rowToQuickMenu} from './collection-helpers'
 

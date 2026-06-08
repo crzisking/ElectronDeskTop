@@ -8,10 +8,10 @@
  *
  * Runtime 不直接讀此檔(runtime 永遠讀 DB);只有 seed.ts / repository.ts 內部使用。
  *
- * 改設定 = 改這個檔 + 改 src/types/config/* 對應型別;不再有 JSON 雙來源同步問題。
+ * 改設定 = 改這個檔 + 改 @shared/types/config/* 對應型別;不再有 JSON 雙來源同步問題。
  */
 
-import type {AppConfig} from '../../../../../src/types/config'
+import type {AppConfig} from '@shared/types/config'
 
 /**
  * 程式碼預設 config(不含 version)。version 永遠由 `app.getVersion()` runtime 注入。

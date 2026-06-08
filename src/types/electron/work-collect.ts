@@ -73,4 +73,19 @@ export interface WorkCollectAPI {
      * renderer 拿來建 code → label 對照,給 UI 顯示分類中文名;不負責 prompt 組裝。
      */
     getTemplate: () => Promise<WorkTemplateDetail | null>
+
+    /**
+     * 主進程跑 sync 主流程(集中化 v1.4.x):
+     * renderer 一次 invoke → main 端 listUnsynced + HTTP + markSynced 全包,
+     * 取代過往 50 輪 × 2 IPC 來回。
+     *
+     * token 僅活在 main process 記憶體,不寫盤(對齊 renderer auth token 政策)。
+     */
+    runSync: (payload: { userName: string; token: string; baseUrl: string }) => Promise<{
+        ok: boolean
+        synced: number
+        failed: number
+        hitLimit: boolean
+        error?: string
+    }>
 }

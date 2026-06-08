@@ -17,7 +17,7 @@ import {computed} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import {useConfigText} from '@/shared/composables/useConfigText'
-import type {SidebarItem} from '@/types/config'
+import type {SidebarItem} from '@shared/types/config'
 
 const props = defineProps<{
   item: SidebarItem

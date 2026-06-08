@@ -19,7 +19,7 @@
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useConfigText} from '@/shared/composables/useConfigText'
-import type {SystemLink} from '@/types/config'
+import type {SystemLink} from '@shared/types/config'
 import {ArrowRight} from "@element-plus/icons-vue";
 
 const props = defineProps<{

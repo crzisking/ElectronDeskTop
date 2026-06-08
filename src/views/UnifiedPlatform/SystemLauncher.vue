@@ -15,7 +15,7 @@ import {ArrowLeft, ChromeFilled} from '@element-plus/icons-vue'
 import {useAuthStore} from '@/stores/auth.store'
 import {useConfigText} from '@/shared/composables/useConfigText'
 import IframeContainer from '@/components/common/IframeContainer.vue'
-import type {SystemLink} from '@/types/config'
+import type {SystemLink} from '@shared/types/config'
 
 const props = defineProps<{
   /** 當前打開的系統配置 */

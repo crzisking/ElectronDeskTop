@@ -12,7 +12,7 @@
 import {BrowserWindow} from 'electron'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
-import {appIconPath} from './_shared'
+import {appIconPath} from './internal'
 
 /**
  * @param url            要加載的系統 URL

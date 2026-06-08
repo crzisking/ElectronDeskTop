@@ -3,7 +3,7 @@
  * 配置讀寫(實作在 electron/main/ipc-handlers/config.handlers.ts)。
  */
 
-import type {AppConfig} from '../config'
+import type {AppConfig} from '@shared/types/config'
 
 export interface ConfigAPI {
     /**

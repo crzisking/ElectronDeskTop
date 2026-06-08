@@ -27,12 +27,9 @@ import type {LlmConfig} from '../../shared/types/llm.types'
 import type {LlmClient} from '../services/llm'
 import {LlmCallError, LlmConfigError} from '../services/llm'
 import {
-    aggregate,
-    type AggregatorTemplate,
     buildMessagesFromText,
-    buildUserContent,
-    getSystemPrompt,
     parseAndValidate,
+    prepareAnalysis,
     type ReportLocale,
     workAnalysisRunContext,
 } from '../work-analysis'
@@ -121,6 +118,7 @@ export function registerWorkAnalysisHandlers(
     )
 
     // ── 配置階段:拿預設 system + user prompt 給 Dialog 顯示 ────────
+    // handler 只做 IPC 協議翻譯:校驗 payload → 委派 work-analysis/preparation → 直接回傳
     ipcMain.handle(
         IpcChannels.WORK_ANALYSIS_PREPARE,
         (_e, payload: unknown): PrepareResult => {
@@ -128,38 +126,14 @@ export function registerWorkAnalysisHandlers(
                 logger.warn('PREPARE payload 校驗失敗', TAG)
                 return {ok: false, kind: 'bad-payload'}
             }
-            if (!workRecordService) return {ok: false, kind: 'db'}
-
-            const records = workRecordService.listByRange(payload.rangeStart, payload.rangeEnd)
-            if (records.length === 0) return {ok: false, kind: 'no-records'}
-
-            const tplDetail = templateCacheService?.read()
-            const template: AggregatorTemplate = {
-                name: tplDetail?.name ?? null,
-                description: tplDetail?.description ?? null,
-                labelByCode: (tplDetail?.items ?? []).reduce<Record<string, string>>(
-                    (acc, it) => {
-                        if (it.code && it.label) acc[it.code] = it.label
-                        return acc
-                    },
-                    {},
-                ),
-            }
-            const intervalMinutes = configManager.getConfig().workCollect?.intervalMinutes ?? 5
-
-            const inputPayload = aggregate(records, template, {
-                intervalMinutes,
-                rangeStart: payload.rangeStart,
-                rangeEnd: payload.rangeEnd,
-            })
-
-            const locale: ReportLocale = payload.locale ?? 'zh-TW'
-            return {
-                ok: true,
-                systemPrompt: getSystemPrompt(locale),
-                userContent: buildUserContent(inputPayload, locale),
-                recordCount: records.length,
-            }
+            return prepareAnalysis(
+                {workRecordService, templateCacheService, configManager},
+                {
+                    rangeStart: payload.rangeStart,
+                    rangeEnd: payload.rangeEnd,
+                    locale: (payload.locale ?? 'zh-TW') as ReportLocale,
+                },
+            )
         },
     )
 

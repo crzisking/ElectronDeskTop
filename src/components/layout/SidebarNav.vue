@@ -21,7 +21,7 @@ import SidebarNavItem from './SidebarNavItem.vue'
 import SidebarSystemLinks from './sidebar/SidebarSystemLinks.vue'
 import SidebarUserCorner from './sidebar/SidebarUserCorner.vue'
 import SidebarCollapseHandle from './sidebar/SidebarCollapseHandle.vue'
-import type {SidebarItem} from '@/types/config'
+import type {SidebarItem} from '@shared/types/config'
 
 const configStore = useConfigStore()
 const uiStore = useUiStore()

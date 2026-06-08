@@ -27,9 +27,6 @@ export const useAuthStore = defineStore('auth', () => {
    */
   const accessToken = ref<string | null>(null)
 
-  /** 會話恢復標記（已棄用，保留兼容性） */
-  const isRestoringSession = ref(false)
-
   /**
    * 本次 App 進程內是否禁用 AD 自動登入。
    *
@@ -196,7 +193,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     user,
     accessToken,
-    isRestoringSession,
     adLoginDisabledThisSession,
     // Getters
     displayName,

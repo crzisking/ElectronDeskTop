@@ -10,8 +10,8 @@
  *   - 卡片入口只走 router.push(`openMode: 'page'`)
  */
 export interface PersonalFunctionsConfig {
-  /** 功能入口列表 */
-  tools: PersonalTool[]
+    /** 功能入口列表 */
+    tools: PersonalTool[]
 }
 
 /**
@@ -22,24 +22,24 @@ export interface PersonalFunctionsConfig {
  *     "icon": "Aim", "enabled": true, "openMode": "page", "routeName": "work-collect" }
  */
 export interface PersonalTool {
-  /** 唯一標識符(列表 key) */
-  id: string
+    /** 唯一標識符(列表 key) */
+    id: string
 
-  /** 卡片顯示名稱 */
-  name: string
+    /** 卡片顯示名稱 */
+    name: string
 
-  /** 卡片副標題描述 */
-  description: string
+    /** 卡片副標題描述 */
+    description: string
 
-  /** Element Plus 圖標名稱 */
-  icon: string
+    /** Element Plus 圖標名稱 */
+    icon: string
 
-  /** 是否啟用(false 不顯示) */
-  enabled: boolean
+    /** 是否啟用(false 不顯示) */
+    enabled: boolean
 
-  /** 打開方式 —— 'page' 模式走 router.push({ name: routeName }) */
-  openMode: 'page'
+    /** 打開方式 —— 'page' 模式走 router.push({ name: routeName }) */
+    openMode: 'page'
 
-  /** 路由名(對應 router/index.ts 內路由的 name 字段) */
-  routeName?: string
+    /** 路由名(對應 router/index.ts 內路由的 name 字段) */
+    routeName?: string
 }

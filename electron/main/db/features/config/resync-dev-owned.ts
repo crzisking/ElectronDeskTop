@@ -17,7 +17,7 @@
  * 在 ConfigManager.load() 內 seed 完之後執行。
  */
 
-import {DEFAULT_CONFIG} from '../defaults'
+import {DEFAULT_CONFIG} from './defaults'
 import {
     internalTools,
     personalTools,
@@ -25,7 +25,7 @@ import {
     sidebarItems,
     systemLinks,
     unifiedPlatformSystems,
-} from '../schema'
+} from './schema'
 import {type Db, upsertKv} from './kv-helpers'
 import {quickMenuToRow, resyncCollection} from './collection-helpers'
 

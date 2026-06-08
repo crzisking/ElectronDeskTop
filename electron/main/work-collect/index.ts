@@ -6,3 +6,4 @@
  */
 
 export {WorkCollectorScheduler} from './scheduler'
+export {WorkCollectSyncService} from './sync-service'

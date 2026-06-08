@@ -45,7 +45,7 @@ import type {SavedCredentialsService} from '../db/features/saved-credentials/ser
 import type {AgentService} from '../db/features/agent/service'
 import type {LlmClient} from '../services/llm'
 import type {WorkAnalysisService} from '../db/features/work-analysis/service'
-import type {WorkCollectorScheduler} from '../work-collect'
+import type {WorkCollectorScheduler, WorkCollectSyncService} from '../work-collect'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
 
 /**
@@ -65,6 +65,8 @@ export interface IpcHandlerContext {
   workCollector: WorkCollectorScheduler
   workRecordService: WorkRecordService | null
   workTemplateCacheService: WorkTemplateCacheService | null
+  /** 集中化 sync 服務(取代渲染端的 syncDailyRecords 循環) */
+  workCollectSyncService: WorkCollectSyncService | null
   userProfileService: UserProfileService | null
   savedCredentialsService: SavedCredentialsService | null
   accountChangeCleaner: AccountChangeCleaner | null
@@ -97,6 +99,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     workCollector,
     workRecordService,
     workTemplateCacheService,
+    workCollectSyncService,
     userProfileService,
     savedCredentialsService,
     accountChangeCleaner,
@@ -111,7 +114,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerLogHandlers()
   registerAuthHandlers()
   registerLogViewerHandlers(logService, windowManager)
-  registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService)
+  registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService, workCollectSyncService)
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
   registerSavedCredentialsHandlers(savedCredentialsService)

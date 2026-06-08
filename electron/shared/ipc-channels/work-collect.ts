@@ -22,10 +22,17 @@ export const WorkCollectChannels = {
   PUSH_WORK_COLLECT_SYNC_REQUEST: 'push:work-collect-sync-request',
     /** 推 renderer 拉 /my-config(send) */
   PUSH_WORK_COLLECT_CONFIG_REQUEST: 'push:work-collect-config-request',
-    /** 撈 synced=0(invoke limit → WorkRecord[]) */
+  /** 撈 synced=0(invoke limit → WorkRecord[])— v1.4.x 集中化 sync 後保留作 debug / 健康查詢用 */
   WORK_COLLECT_LIST_UNSYNCED: 'work:list-unsynced',
-    /** 標記已同步(invoke {localIds,syncedAt} → OpResult) */
+  /** 標記已同步(invoke {localIds,syncedAt} → OpResult)— 同上,保留作低階介面 */
   WORK_COLLECT_MARK_SYNCED: 'work:mark-synced',
+  /**
+   * 主進程跑 sync 主流程(invoke WorkSyncRunPayload → WorkSyncRunResult)。
+   * 原本 listUnsynced + HTTP + markSynced 在 renderer 跑,每批 2 次 IPC,
+   * 50 批 ~ 100 次 IPC。集中化後整段邏輯在 main(直接 DB 操作),renderer 只發一次 IPC。
+   * 帶 token / baseUrl 是因為 main 缺 auth 環境,renderer 在發起時即時注入。
+   */
+  WORK_COLLECT_RUN_SYNC: 'work:run-sync',
     /** 套用 server 配置(invoke config → {changed}) */
   WORK_COLLECT_APPLY_REMOTE_CONFIG: 'work:apply-remote-config',
     /**

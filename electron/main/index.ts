@@ -24,7 +24,7 @@ import {AgentService} from './db/features/agent/service'
 import {WorkAnalysisService} from './db/features/work-analysis/service'
 import {LlmClient} from './services/llm'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
-import {WorkCollectorScheduler} from './work-collect'
+import {WorkCollectorScheduler, WorkCollectSyncService} from './work-collect'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -227,6 +227,10 @@ app.whenReady().then(async () => {
   // scheduler 負責 timer + capture + 推 IPC;命中閒置時直接走 recordService 寫 DB 跳過 AI。
     workCollector = new WorkCollectorScheduler(configManager, windowManager, workRecordService, workTemplateCacheService)
 
+  // 集中化 sync(docs/20):main 直接跑 listUnsynced + HTTP + markSynced 全流程,
+  // renderer 不需 50× IPC 來回。DB 沒就緒(workRecordService=null)時為 null,handler 自降級。
+  const workCollectSyncService = workRecordService ? new WorkCollectSyncService(workRecordService) : null
+
   registerAllHandlers({
     windowManager,
     configManager,
@@ -236,6 +240,7 @@ app.whenReady().then(async () => {
     workCollector,
     workRecordService,
       workTemplateCacheService,
+    workCollectSyncService,
     userProfileService,
     savedCredentialsService,
     accountChangeCleaner,

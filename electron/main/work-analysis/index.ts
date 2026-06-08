@@ -30,3 +30,6 @@ export type {AnalysisReportPayload} from './report-schema'
 
 export {workAnalysisRunContext} from './run-context'
 export type {RunHandle} from './run-context'
+
+export {prepareAnalysis} from './preparation'
+export type {PrepareInput, PrepareOutcome} from './preparation'

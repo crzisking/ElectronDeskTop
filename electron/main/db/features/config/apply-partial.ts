@@ -5,7 +5,7 @@
  * Collection 採「整批替換」(DELETE 全表 + INSERT 新陣列);某 collection 缺少 = 不動該表。
  */
 
-import type {AppConfig} from '../../../../../../src/types/config'
+import type {AppConfig} from '@shared/types/config'
 import {
     internalTools,
     personalTools,
@@ -13,7 +13,7 @@ import {
     sidebarItems,
     systemLinks,
     unifiedPlatformSystems,
-} from '../schema'
+} from './schema'
 import {type Db, upsertKv} from './kv-helpers'
 import {quickMenuToRow} from './collection-helpers'
 

@@ -222,9 +222,12 @@ const quotaTooltip = computed(() =>
       </div>
     </el-card>
 
-    <!-- ── 日檢視 ──────────────────────────────────────────── -->
+    <!-- ── 視圖特有區塊 ────────────────────────────────────────
+         日/週兩個分支差別僅在頂部三塊(stat cards、主圖左半、中段第三圖);
+         右半 CategoryDonut 雖外觀一致但跟著左半圖一起在「主圖區」這個語意 group 內,
+         保留在 v-if 內,避免抽出後反而把 charts-row 的左右配對拆散。
+         共用尾段(熱力圖+應用排名、TimelineList)拉到 v-if 外只渲染一次。 -->
     <template v-if="viewMode === 'day'">
-      <!-- 統計卡片 -->
       <StatCards :records="filteredRecords" />
 
       <!-- 主圖區:每小時柱狀 + 類別佔比 -->
@@ -246,29 +249,9 @@ const quotaTooltip = computed(() =>
         :records="store.records"
         :days="trendDays"
       />
-
-      <!-- 熱力圖 + 應用排名 -->
-      <div class="charts-row charts-row--bottom">
-        <div class="charts-row__hourly">
-          <WeeklyHeatmap
-              :records="weeklyHeatmapRecords"
-            :start-hour="store.workHours.start"
-            :end-hour="store.workHours.end"
-          />
-        </div>
-        <div class="charts-row__donut">
-          <AppRankBar :records="filteredRecords" :top-n="5" />
-        </div>
-      </div>
-
-      <!-- 詳細列表 -->
-      <!-- TimelineList 接全部 records,內部按日期選擇器自行 filter,跟外層的 day/week 模式解耦 -->
-      <TimelineList :loading="store.loading" :records="store.records"/>
     </template>
 
-    <!-- ── 週檢視 ──────────────────────────────────────────── -->
     <template v-else>
-      <!-- 統計卡片 -->
       <WeekStatCards :records="filteredRecords" />
 
       <!-- 主圖區:每日採集 + 類別佔比 -->
@@ -283,25 +266,27 @@ const quotaTooltip = computed(() =>
 
       <!-- 每日類別分佈 -->
       <WeekDailyStacked :records="filteredRecords" />
+    </template>
 
-      <!-- 熱力圖 + 應用排名 -->
-      <div class="charts-row charts-row--bottom">
-        <div class="charts-row__hourly">
-          <WeeklyHeatmap
-              :records="weeklyHeatmapRecords"
+    <!-- ── 共用尾段(日/週都一樣) ──────────────────────────────
+         熱力圖固定吃週紀錄(本來就跨日);應用排名跟著 filteredRecords 自動切日/週。
+         新增/刪除此段的圖只需動一處,不會 day / week 模板漏改一邊。 -->
+    <div class="charts-row charts-row--bottom">
+      <div class="charts-row__hourly">
+        <WeeklyHeatmap
+            :records="weeklyHeatmapRecords"
             :start-hour="store.workHours.start"
             :end-hour="store.workHours.end"
-          />
-        </div>
-        <div class="charts-row__donut">
-          <AppRankBar :records="filteredRecords" :top-n="5" />
-        </div>
+        />
       </div>
+      <div class="charts-row__donut">
+        <AppRankBar :records="filteredRecords" :top-n="5"/>
+      </div>
+    </div>
 
-      <!-- 詳細列表 -->
-      <!-- TimelineList 接全部 records,內部按日期選擇器自行 filter,跟外層的 day/week 模式解耦 -->
-      <TimelineList :loading="store.loading" :records="store.records"/>
-    </template>
+    <!-- 詳細列表 -->
+    <!-- TimelineList 接全部 records,內部按日期選擇器自行 filter,跟外層的 day/week 模式解耦 -->
+    <TimelineList :loading="store.loading" :records="store.records"/>
   </div>
 </template>
 

@@ -15,10 +15,15 @@ import {logger} from '../utils/logger'
 import {isArrayOf, isHex16, isIntInRange, isNonNegativeNumber, isPositiveInt} from '../utils/runtime-guards'
 import type {ConfigManager} from '../config-manager'
 import type {WindowManager} from '../window-manager'
-import type {WorkCollectorScheduler} from '../work-collect'
+import type {WorkCollectorScheduler, WorkCollectSyncService} from '../work-collect'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {CachedTemplateDetail, WorkTemplateCacheService} from '../db/features/work-collect/template-cache.service'
-import type {RemoteConfigPayload, WorkResultPayload} from '@shared/types/work-collect.types'
+import type {
+    RemoteConfigPayload,
+    WorkResultPayload,
+    WorkSyncRunPayload,
+    WorkSyncRunResult,
+} from '@shared/types/work-collect.types'
 
 // ─── 本檔結構性 validators(primitive 走共用 runtime-guards) ─────────
 
@@ -71,7 +76,15 @@ export function registerWorkCollectHandlers(
   configManager: ConfigManager,
   windowManager: WindowManager,
   templateCacheService: WorkTemplateCacheService | null,
+  syncService: WorkCollectSyncService | null,
 ): void {
+
+    function validateRunSyncPayload(p: any): p is WorkSyncRunPayload {
+        if (!p || typeof p !== 'object') return false
+        return typeof p.userName === 'string' && p.userName.length > 0
+            && typeof p.token === 'string' && p.token.length > 0
+            && typeof p.baseUrl === 'string' && p.baseUrl.length > 0
+    }
 
     // 切換採集開關
     ipcMain.handle(IpcChannels.WORK_COLLECT_TOGGLE, async (_e, enabled: unknown): Promise<boolean> => {
@@ -188,6 +201,8 @@ export function registerWorkCollectHandlers(
     })
 
     // renderer sync 完成 ack → 清 / 保留 pending
+    // 集中化 sync 後 main 自己跑(WORK_COLLECT_RUN_SYNC),main 直接呼 scheduler.markSyncDone,
+    // 不再走這個 channel。保留 handler 供舊版 renderer 暫時兼容,新版 renderer 不會呼叫。
     ipcMain.handle(IpcChannels.WORK_COLLECT_SYNC_DONE, (_e, payload: unknown) => {
         const p = (payload ?? {}) as { ok?: unknown; synced?: unknown; failed?: unknown; error?: unknown }
         const ok = p.ok === true
@@ -195,6 +210,21 @@ export function registerWorkCollectHandlers(
         if (ok) {
             logger.info(`sync 完成 synced=${Number(p.synced) || 0} failed=${Number(p.failed) || 0}`, 'IPC:work')
         }
+    })
+
+    // 主進程 sync 主流程(集中化:取代 listUnsynced + HTTP + markSynced 的 50× IPC 來回)
+    ipcMain.handle(IpcChannels.WORK_COLLECT_RUN_SYNC, async (_e, payload: unknown): Promise<WorkSyncRunResult> => {
+        if (!syncService) {
+            return {ok: false, synced: 0, failed: 0, hitLimit: false, error: 'sync service not ready'}
+        }
+        if (!validateRunSyncPayload(payload)) {
+            logger.warn('WORK_COLLECT_RUN_SYNC payload 校驗失敗,丟棄', 'IPC:work')
+            return {ok: false, synced: 0, failed: 0, hitLimit: false, error: 'invalid payload'}
+        }
+        const result = await syncService.run(payload)
+        // 內聯 markSyncDone(取代渲染端 syncDone IPC):main 自己跑就由 main 自己 ack scheduler
+        scheduler.markSyncDone(result.ok, result.error)
+        return result
     })
 
     // renderer bootstrap ack → 重放 pending
