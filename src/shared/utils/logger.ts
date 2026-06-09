@@ -1,48 +1,78 @@
 /**
  * 渲染進程日誌工具
  *
- * ── API 與主進程 logger 完全一致 ──────────────────────────────────────
- *   logger.debug(msg, module?, ...args)
- *   logger.info(msg, module?, ...args)
- *   logger.warn(msg, module?, ...args)
- *   logger.error(msg, module?, ...args)
+ * ─── 兩種呼叫法(向後兼容,對齊主進程 logger) ──────────────────────────
  *
- * 寫入路徑：
- *  - console（瀏覽器 DevTools，dev 模式下可見）
- *  - 主進程文件（透過 IPC 轉發 → renderer-YYYY-MM-DD.log）
+ *   1. 舊式(module 是字串):
+ *        logger.info('登錄成功', 'auth.store')
+ *        logger.error('IPC 失敗', 'work-collect.store', err)
  *
- * ── 使用建議 ─────────────────────────────────────────────────────────
- * 任何 Vue 組件 / composable / store / api 攔截器中，凡是現在用
- * console.error / console.warn 的地方，改成：
- *   import { logger } from '@/shared/utils/logger'
- *   logger.error('登錄失敗', 'auth.store', err)
+ *   2. 新式(結構化欄位 — 跨模組關聯 / 量化耗時用):
+ *        import {newTraceId} from '@/shared/utils/logger'
+ *        const traceId = newTraceId()
+ *        logger.info('登錄開始', {module: 'auth.store', traceId})
+ *        ...
+ *        logger.info('登錄完成', {
+ *          module: 'auth.store',
+ *          traceId,
+ *          durationMs: Date.now() - startedAt,
+ *          userName,
+ *        })
  *
- * 這樣同一條訊息既會出現在 DevTools，也會落地到 txt 文件，
- * 生產環境用戶反映問題時，把 logs 資料夾打包發過來就能排查。
+ * 寫入路徑:
+ *  - console(瀏覽器 DevTools,dev 模式下可見)
+ *  - 主進程 SQLite(IPC 轉發,全等級)
+ *  - 主進程 txt 檔(IPC 轉發,**只 ERROR**)
  *
- * ── 日誌參數規範 ──────────────────────────────────────────────────────
- *   message：固定字串描述（例如「請求失敗」），不要把動態數據拼進去
- *   module：來源模塊名稱（例如 'auth.store'、'IframeContainer'）
- *   args：動態數據（response、error 物件、上下文對象等）
+ * ─── 日誌參數規範 ─────────────────────────────────────────────────────
+ *   message:固定字串描述(grep 可作為錨點)
+ *   module:來源模塊名稱,建議 `feature.layer` 格式(例 `auth.store`)
+ *   args:動態數據(error 物件、response、上下文對象)
  *
- * 這樣寫的好處：grep 文件時 message 可作為固定錨點。
- *
- * ── 為什麼不直接在渲染進程用 fs 寫文件 ────────────────────────────────
- * Electron 的 contextIsolation 安全機制下，渲染進程不能直接 require('fs')，
- * 必須通過 IPC 委託主進程寫文件。preload 層暴露 window.electronAPI.log.write，
- * 主進程的 log.handlers.ts 接收後寫到對應日期的 renderer 日誌文件。
- *
- * ── 安全考量 ─────────────────────────────────────────────────────────
- * 不要把 token、密碼等敏感資訊放進 args。雖然日誌只在本機，
- * 但用戶把日誌發給技術支援時可能不小心洩漏。
+ * ─── 安全考量 ─────────────────────────────────────────────────────────
+ * 不要把 token、密碼等敏感資訊放進 args / meta。
  */
 
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
 
+/** 對齊主進程 LogContext;module / traceId / durationMs 是保留欄位,其餘塞 meta */
+export interface LogContext {
+    module?: string
+    traceId?: string
+    durationMs?: number
+
+    [key: string]: unknown
+}
+
 /**
- * 將不可序列化的對象（如 Error、循環引用）轉成可送進 IPC 的形式。
- * Electron IPC 用 structured clone，不能傳 Function；Error 雖然可以但
- * 跨進程後 stack 可能丟失，這裡先處理成純物件。
+ * 生成 16-char hex traceId,給跨模組關聯用。
+ * crypto.randomUUID 在 prod electron renderer 可用(secure context = false 也可,
+ * Electron renderer 預設 isolated context 但 crypto 內建)。為穩定走 getRandomValues。
+ */
+export function newTraceId(): string {
+    const bytes = new Uint8Array(8)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** 把第二參數正規化:string → {module},object → 拆出保留欄位 + 其餘塞 meta */
+function normalizeContext(moduleOrCtx?: string | LogContext): {
+    module?: string
+    traceId?: string
+    durationMs?: number
+    meta?: Record<string, unknown>
+} {
+    if (moduleOrCtx == null) return {}
+    if (typeof moduleOrCtx === 'string') return {module: moduleOrCtx}
+    const {module, traceId, durationMs, ...rest} = moduleOrCtx
+    const hasRest = Object.keys(rest).length > 0
+    return {module, traceId, durationMs, meta: hasRest ? rest : undefined}
+}
+
+/**
+ * 將不可序列化的對象轉成可送進 IPC 的形式。
+ * Electron IPC 用 structured clone,不能傳 Function;Error 雖然可以但跨進程後 stack
+ * 可能丟失,這裡先處理成純物件。
  */
 function sanitizeArg(arg: unknown): unknown {
     if (arg instanceof Error) {
@@ -50,7 +80,7 @@ function sanitizeArg(arg: unknown): unknown {
             __error__: true,
             name: arg.name,
             message: arg.message,
-            stack: arg.stack
+            stack: arg.stack,
         }
     }
     if (typeof arg === 'function') return '[Function]'
@@ -58,26 +88,31 @@ function sanitizeArg(arg: unknown): unknown {
     return arg
 }
 
-/**
- * 把日誌轉發到主進程寫文件。
- * window.electronAPI 在 preload 之前不可用（理論上不會發生，因為渲染腳本
- * 必定在 preload 之後才執行），這裡保險檢查一下避免報錯。
- */
-function forwardToMain(level: LogLevel, message: string, module?: string, args?: unknown[]): void {
+/** 把日誌轉發到主進程寫文件 + DB。preload 之前不可用時靜默 noop */
+function forwardToMain(
+    level: LogLevel,
+    message: string,
+    module?: string,
+    args?: unknown[],
+    context?: { traceId?: string; durationMs?: number; meta?: Record<string, unknown> },
+): void {
     if (typeof window === 'undefined' || !window.electronAPI?.log) return
     try {
         window.electronAPI.log.write({
             level,
             message,
             module,
-            args: args?.map(sanitizeArg)
+            args: args?.map(sanitizeArg),
+            traceId: context?.traceId,
+            durationMs: context?.durationMs,
+            meta: context?.meta,
         })
     } catch {
-        // IPC 寫入失敗不要影響業務代碼，靜默吞掉
+        // IPC 寫入失敗不要影響業務代碼,靜默吞掉
     }
 }
 
-/** 本地時間毫秒精度時間戳，例 2026-04-29 14:35:22.123（不用 toISOString，那是 UTC） */
+/** 本地時間毫秒精度時間戳 */
 function localTimestamp(): string {
     const d = new Date()
     const pad = (n: number, w = 2) => String(n).padStart(w, '0')
@@ -88,71 +123,71 @@ function localTimestamp(): string {
     )
 }
 
-/** 控制台輸出格式（與主進程 logger 對齊） */
-function consolePrefix(level: LogLevel, module?: string): string {
+/** Console 前綴,跟主進程對齊;traceId / durationMs 有值才印 */
+function consolePrefix(level: LogLevel, module?: string, traceId?: string, durationMs?: number): string {
     const mod = module ? `[${module}]` : ''
-    return `[${localTimestamp()}] [${level}]${mod}`
+    const trace = traceId ? ` (trace:${traceId.slice(0, 8)})` : ''
+    const dur = durationMs != null ? ` (${durationMs}ms)` : ''
+    return `[${localTimestamp()}] [${level}]${mod}${trace}${dur}`
 }
 
-/** 是否為 dev 模式（影響 debug 級別輸出） */
 const isDev = import.meta.env.DEV
 
 /**
- * 寫入策略(本期重構後):
- *  - console:全等級都走(dev 看 DevTools)
- *  - 主進程 txt 檔:**只 error** 寫(主進程 writeRendererLog 內判斷,維持原行為)
- *  - 主進程 SQLite:**全等級**寫(主進程 LogService.write,給後續查詢用)
- *
- * 渲染端只負責「轉發到主進程」,**所有等級都 forward**;
- * 「txt 只 error / DB 全等級」的分流邏輯都在主進程那邊處理,渲染端不操心。
- *
- * IPC 流量保護:既有 LOG_WRITE handler 已實作 100/秒節流,本期不需要動。
+ * 統一寫入入口,所有等級走這條。差別在 console method / 是否 forward。
  */
+function writeOne(
+    level: LogLevel,
+    consoleFn: (...args: unknown[]) => void,
+    message: string,
+    moduleOrCtx?: string | LogContext,
+    args?: unknown[],
+): void {
+    const {module, traceId, durationMs, meta} = normalizeContext(moduleOrCtx)
+    // dev 才印 console(對齊主進程「DEBUG 只 dev console」邏輯)
+    if (level !== 'DEBUG' || isDev) {
+        consoleFn(consolePrefix(level, module, traceId, durationMs), message, ...(args ?? []))
+    }
+    // 所有等級都 forward,主進程那端會處理「DEBUG 不落庫」的分流
+    forwardToMain(level, message, module, args, {traceId, durationMs, meta})
+}
+
 export const logger = {
     /** 調試信息(console:dev 才印;forward:全環境,讓主進程 DB 拿到完整時間線) */
-    debug(message: string, module?: string, ...args: unknown[]): void {
-        if (isDev) {
-            console.debug(consolePrefix('DEBUG', module), message, ...args)
-        }
-        forwardToMain('DEBUG', message, module, args)
+    debug(message: string, moduleOrCtx?: string | LogContext, ...args: unknown[]): void {
+        writeOne('DEBUG', console.debug, message, moduleOrCtx, args)
     },
-
     /** 普通信息(console + forward) */
-    info(message: string, module?: string, ...args: unknown[]): void {
-        console.info(consolePrefix('INFO', module), message, ...args)
-        forwardToMain('INFO', message, module, args)
+    info(message: string, moduleOrCtx?: string | LogContext, ...args: unknown[]): void {
+        writeOne('INFO', console.info, message, moduleOrCtx, args)
     },
-
     /** 警告(console + forward) */
-    warn(message: string, module?: string, ...args: unknown[]): void {
-        console.warn(consolePrefix('WARN', module), message, ...args)
-        forwardToMain('WARN', message, module, args)
+    warn(message: string, moduleOrCtx?: string | LogContext, ...args: unknown[]): void {
+        writeOne('WARN', console.warn, message, moduleOrCtx, args)
     },
-
     /** 錯誤(console + forward;主進程那端唯一會落地 txt 的等級) */
-    error(message: string, module?: string, ...args: unknown[]): void {
-        console.error(consolePrefix('ERROR', module), message, ...args)
-        forwardToMain('ERROR', message, module, args)
+    error(message: string, moduleOrCtx?: string | LogContext, ...args: unknown[]): void {
+        writeOne('ERROR', console.error, message, moduleOrCtx, args)
     },
 }
 
 /**
  * 全局未捕獲異常 / Promise rejection 自動寫日誌。
- * 在 main.ts 呼叫一次：installGlobalErrorHandlers()
+ * 在 main.ts 呼叫一次:installGlobalErrorHandlers()
  */
 export function installGlobalErrorHandlers(): void {
     window.addEventListener('error', (event) => {
         logger.error(
             `Uncaught error: ${event.message}`,
-            'GlobalErrorHandler',
+            'global.error-handler',
             {
                 filename: event.filename,
                 lineno: event.lineno,
                 colno: event.colno,
                 error: event.error instanceof Error
                     ? {name: event.error.name, message: event.error.message, stack: event.error.stack}
-                    : event.error
-            }
+                    : event.error,
+            },
         )
     })
 
@@ -161,10 +196,10 @@ export function installGlobalErrorHandlers(): void {
         const message = reason instanceof Error ? reason.message : String(reason)
         logger.error(
             `Unhandled Promise rejection: ${message}`,
-            'GlobalErrorHandler',
-            reason
+            'global.error-handler',
+            reason,
         )
     })
 
-    logger.info('全局錯誤處理已啟用', 'GlobalErrorHandler')
+    logger.info('全局錯誤處理已啟用', 'global.error-handler')
 }

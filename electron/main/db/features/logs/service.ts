@@ -16,7 +16,7 @@ import {and, desc, eq, gte, inArray, like, lt, sql, type SQL} from 'drizzle-orm'
 import type {DatabaseManager} from '../../database-manager'
 import {type LogLevel, type LogRow, logs, type LogSource} from './schema'
 
-/** 查詢條件(預留給未來 dev 面板) */
+/** 查詢條件(LogViewer / dev 面板共用) */
 export interface LogQueryParams {
   /** 單一等級或多等級 IN */
   level?: LogLevel | LogLevel[]
@@ -28,6 +28,8 @@ export interface LogQueryParams {
   until?: number
   /** message LIKE %search% */
   search?: string
+    /** 過濾單一 traceId — LogViewer「點 traceId」走這個 */
+    traceId?: string
   /** 預設 200 */
   limit?: number
   /** 預設 0 */
@@ -44,10 +46,22 @@ export class LogService {
     module?: string
     message: string
     args?: unknown[]
+      /** 跨模組關聯 ID(對齊 schema.ts traceId 欄位) */
+      traceId?: string
+      /** 結構化 metadata(對齊 schema.ts meta 欄位);durationMs 會自動合進來方便查詢 */
+      meta?: Record<string, unknown>
+      /** 操作耗時 ms。為了 SQL 查詢方便,合進 meta 而不單獨開欄(meta 不大,JSON 查詢可走) */
+      durationMs?: number
   }): void {
     if (!this.dbManager.isReady()) return
     try {
       const {argsJson, errorStack} = serializeArgs(entry.args)
+        // 合 durationMs 進 meta:單欄查詢方便,且避免多開一欄為了一個常用值
+        const metaCombined = (entry.meta || entry.durationMs != null)
+            ? {...(entry.meta ?? {}), ...(entry.durationMs != null ? {durationMs: entry.durationMs} : {})}
+            : null
+        const metaJson = metaCombined ? safeStringify(metaCombined) : null
+
       this.dbManager
         .getDb()
         .insert(logs)
@@ -59,6 +73,8 @@ export class LogService {
           message: entry.message,
           args: argsJson,
           errorStack,
+            traceId: entry.traceId ?? null,
+            meta: metaJson,
         })
         .run()
     } catch (err) {
@@ -111,6 +127,7 @@ export class LogService {
     if (params.since != null) conds.push(gte(logs.createdAt, params.since))
     if (params.until != null) conds.push(lt(logs.createdAt, params.until))
     if (params.search) conds.push(like(logs.message, `%${params.search}%`))
+      if (params.traceId) conds.push(eq(logs.traceId, params.traceId))
     return conds
   }
 
@@ -186,4 +203,13 @@ function serializeArgs(args?: unknown[]): {argsJson: string | null; errorStack: 
     // 含循環引用等無法序列化的物件
     return {argsJson: '[unserializable]', errorStack}
   }
+}
+
+/** meta 用的安全 JSON.stringify,失敗 fallback 字串 */
+function safeStringify(obj: unknown): string {
+    try {
+        return JSON.stringify(obj)
+    } catch {
+        return '[unserializable]'
+    }
 }

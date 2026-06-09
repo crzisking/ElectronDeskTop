@@ -24,6 +24,8 @@ const moduleFilter = ref<string>('')
 const moduleOptions = ref<string[]>([])
 const searchKeyword = ref('')
 const dateRange = ref<[Date, Date] | null>(null)
+/** trace 過濾:點 trace cell 設這個,清掉就回正常列表 */
+const traceFilter = ref<string>('')
 
 // ── 分頁 + 資料 ─────────────────────────────────────────────────
 const currentPage = ref(1)
@@ -61,6 +63,7 @@ async function runQuery() {
     if (sourceFilter.value) params.source = sourceFilter.value
     if (moduleFilter.value) params.module = moduleFilter.value
     if (searchKeyword.value.trim()) params.search = searchKeyword.value.trim()
+    if (traceFilter.value) params.traceId = traceFilter.value
     if (dateRange.value) {
       params.since = dateRange.value[0].getTime()
       // 終點+1天-1ms,讓「2026-05-19」包含當天 23:59:59.999
@@ -90,6 +93,7 @@ function handleReset() {
   moduleFilter.value = ''
   searchKeyword.value = ''
   dateRange.value = null
+  traceFilter.value = ''
   currentPage.value = 1
   runQuery()
   void loadModules()
@@ -117,6 +121,27 @@ function handlePageSizeChange(size: number) {
 /** 點表格內模組名 → 自動套用過濾並查 */
 function onPickModule(m: string) {
   moduleFilter.value = m
+  handleSearch()
+}
+
+/**
+ * 點表格內 trace ID → 過濾整條 trace 的所有 log。
+ * 同時清掉其他過濾(level/source/module/search/date),不然會雙重過濾把目標 trace 的部分 log 也擋掉。
+ * 看完點「清除 trace」回到正常列表。
+ */
+function onPickTrace(traceId: string) {
+  traceFilter.value = traceId
+  // 清掉其他可能干擾的過濾 — 看一條 trace 就是要看「該 trace 的全部」,不該再被別的條件擋
+  levelFilter.value = []
+  sourceFilter.value = ''
+  moduleFilter.value = ''
+  searchKeyword.value = ''
+  dateRange.value = null
+  handleSearch()
+}
+
+function clearTraceFilter() {
+  traceFilter.value = ''
   handleSearch()
 }
 
@@ -166,12 +191,20 @@ onMounted(() => {
         @search="handleSearch"
     />
 
+    <!-- trace 過濾啟用時顯示一個 sticky 提示條,告訴使用者目前正在看單一 trace,提供「清除」按鈕 -->
+    <div v-if="traceFilter" class="trace-banner">
+      <span class="trace-banner__label">正在查看 Trace:</span>
+      <code class="mono">{{ traceFilter }}</code>
+      <el-button link size="small" type="primary" @click="clearTraceFilter">清除 trace 過濾</el-button>
+    </div>
+
     <LogTable
         :format-time="formatTime"
         :loading="loading"
         :pretty-json="prettyJson"
         :rows="rows"
         @pick-module="onPickModule"
+        @pick-trace="onPickTrace"
     />
 
     <div class="pagination-bar">
@@ -203,5 +236,28 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
+}
+
+/* Trace 過濾橫幅:紫色系與 LogTable trace cell 視覺一致,提示目前 scope 已收窄 */
+.trace-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #faf5ff;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.trace-banner__label {
+  font-size: 13px;
+  color: #581c87;
+  font-weight: 500;
+}
+
+.mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
 }
 </style>

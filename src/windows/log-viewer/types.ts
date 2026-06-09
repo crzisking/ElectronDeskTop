@@ -16,6 +16,10 @@ export interface LogRow {
     message: string
     args: string | null
     errorStack: string | null
+    /** 跨模組關聯 ID(docs/08 §13);LogViewer 點一下過濾全部同 trace */
+    traceId: string | null
+    /** 結構化 metadata JSON;含 durationMs 等;展開時 pretty 顯示 */
+    meta: string | null
 }
 
 export interface QueryResult {

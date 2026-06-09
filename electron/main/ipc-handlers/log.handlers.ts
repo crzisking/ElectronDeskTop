@@ -10,12 +10,18 @@ import {getLogsDir} from '../utils/log-file-writer'
 
 const TAG = 'IPC:log'
 
-/** 渲染端傳來的日誌條目結構 */
+/** 渲染端傳來的日誌條目結構(對齊 src/shared/utils/logger.ts forwardToMain) */
 interface RendererLogEntry {
   level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
   message: string
   module?: string
   args?: unknown[]
+    /** 跨模組關聯 ID */
+    traceId?: string
+    /** 操作耗時(ms) */
+    durationMs?: number
+    /** 結構化 metadata */
+    meta?: Record<string, unknown>
 }
 
 // ── 日誌節流：防止渲染進程高頻狂發日誌拖垮主進程文件 IO ──────────────
@@ -47,7 +53,12 @@ export function registerLogHandlers(): void {
       entry.level ?? 'INFO',
       entry.message,
       entry.module,
-      Array.isArray(entry.args) ? entry.args : undefined
+        Array.isArray(entry.args) ? entry.args : undefined,
+        {
+            traceId: typeof entry.traceId === 'string' ? entry.traceId : undefined,
+            durationMs: typeof entry.durationMs === 'number' ? entry.durationMs : undefined,
+            meta: entry.meta && typeof entry.meta === 'object' ? entry.meta : undefined,
+        },
     )
   })
 

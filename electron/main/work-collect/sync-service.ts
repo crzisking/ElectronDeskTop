@@ -16,7 +16,7 @@
  *    待下次觸發;markSynced 失敗自帶 3 次重試。
  */
 
-import {logger} from '../utils/logger'
+import {logger, newTraceId} from '../utils/logger'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 import type {WorkRecord} from '../db/features'
 import type {WorkSyncRunPayload, WorkSyncRunResult} from '../../shared/types/work-collect.types'
@@ -82,6 +82,11 @@ export class WorkCollectSyncService {
             return {ok: false, synced: 0, failed: 0, hitLimit: false, error: 'missing credentials'}
         }
 
+        // 每個 sync session 一個 traceId,debug 時點 ID 看完整這次同步的所有 log
+        const traceId = newTraceId()
+        const startedAt = Date.now()
+        logger.info('sync session 開始', {module: TAG, traceId, userName})
+
         let totalSynced = 0
         let totalFailed = 0
         let ok = true
@@ -107,7 +112,7 @@ export class WorkCollectSyncService {
             } catch (err) {
                 ok = false
                 error = `sync-daily HTTP 失敗: ${errMsg(err)}`
-                logger.warn(error, TAG)
+                logger.warn(error, {module: TAG, traceId, round, batchSize: chunk.length})
                 break
             }
 
@@ -118,7 +123,7 @@ export class WorkCollectSyncService {
                 if (!markRes.ok) {
                     ok = false
                     error = `markSynced 重試耗盡: ${markRes.reason}`
-                    logger.warn(error, TAG)
+                    logger.warn(error, {module: TAG, traceId, round})
                     // 退出但不視為災難:server 已收下,下次 sync 會被 server UNIQUE 擋,
                     // 走 duplicate 分支再嘗試 mark 一次,自然收斂。
                     break
@@ -133,15 +138,21 @@ export class WorkCollectSyncService {
             hitLimit = true
             logger.warn(
                 `sync 達單次輪數上限 ${SYNC_MAX_ROUNDS}(約 ${SYNC_MAX_ROUNDS * BATCH_SIZE} 條),剩餘留下次 trigger`,
-                TAG,
+                {module: TAG, traceId},
             )
         }
 
         if (totalFailed > 0 || hitLimit) ok = false
-        logger.info(
-            `sync 完成 synced=${totalSynced} failed=${totalFailed} hitLimit=${hitLimit} ok=${ok}`,
-            TAG,
-        )
+        logger.info('sync session 結束', {
+            module: TAG,
+            traceId,
+            durationMs: Date.now() - startedAt,
+            synced: totalSynced,
+            failed: totalFailed,
+            rounds: round,
+            hitLimit,
+            ok,
+        })
         return {ok, synced: totalSynced, failed: totalFailed, hitLimit, error}
     }
 

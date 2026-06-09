@@ -9,7 +9,7 @@ import {computed, ref} from 'vue'
 import type {UserProfile} from '@/types/api.types'
 import {authApi} from '@/api/auth.api'
 import {parseUserFromJwt} from '@/shared/utils/jwt'
-import {logger} from '@/shared/utils/logger'
+import {logger, newTraceId} from '@/shared/utils/logger'
 
 export const useAuthStore = defineStore('auth', () => {
 
@@ -53,12 +53,25 @@ export const useAuthStore = defineStore('auth', () => {
    * @throws 登錄失敗時拋出錯誤（由 LoginView 捕獲顯示給用戶）
    */
   async function login(userName: string, password: string): Promise<void> {
-    const {token, user: userInfo} = await authApi.login({username: userName, password})
-
-    accessToken.value = token
-    user.value = userInfo
-    isAuthenticated.value = true
-      startNotificationClient(userInfo.userName)
+      const traceId = newTraceId()
+      const startedAt = Date.now()
+      logger.info('表單登入開始', {module: 'auth.store', traceId, userName})
+      try {
+          const {token, user: userInfo} = await authApi.login({username: userName, password})
+          accessToken.value = token
+          user.value = userInfo
+          isAuthenticated.value = true
+          logger.info('表單登入成功', {
+              module: 'auth.store',
+              traceId,
+              durationMs: Date.now() - startedAt,
+              userName: userInfo.userName,
+          })
+          startNotificationClient(userInfo.userName, traceId)
+      } catch (err) {
+          logger.warn('表單登入失敗', {module: 'auth.store', traceId, userName}, err as Error)
+          throw err
+      }
   }
 
   /**
@@ -78,22 +91,25 @@ export const useAuthStore = defineStore('auth', () => {
    * @returns true 成功並寫入 store;false 失敗。
    */
   async function loginByAd(): Promise<boolean> {
+      const traceId = newTraceId()
+      const startedAt = Date.now()
     // 1. 本次 session 內已被禁用(使用者剛登出)
     if (adLoginDisabledThisSession.value) {
-      logger.debug('AD 自動登入本次 session 已被禁用,跳過', 'Auth')
+        logger.debug('AD 自動登入本次 session 已被禁用,跳過', {module: 'auth.store', traceId})
       return false
     }
+      logger.info('AD 自動登入嘗試', {module: 'auth.store', traceId})
 
     // 2. 取 Windows 帳號
     let account = ''
     try {
       account = await window.electronAPI.auth.getAdAccount()
     } catch (err) {
-      logger.warn('讀取本機 AD 帳號 IPC 失敗', 'Auth', err as Error)
+        logger.warn('讀取本機 AD 帳號 IPC 失敗', {module: 'auth.store', traceId}, err as Error)
       return false
     }
     if (!account) {
-      logger.info('未取得本機 AD 帳號(非 Windows 或讀取失敗),跳過 AD 登入', 'Auth')
+        logger.info('未取得本機 AD 帳號(非 Windows 或讀取失敗),跳過 AD 登入', {module: 'auth.store', traceId})
       return false
     }
 
@@ -103,20 +119,20 @@ export const useAuthStore = defineStore('auth', () => {
       token = await authApi.adLogin(account)
       // 走 logger 讓這條紀錄落入 SQLite logs 表(同時 DevTools console 仍可見)。
       // 不印完整 token,只印長度確認接口是否回傳有效字串,避免 token 落地敏感資訊。
-      logger.debug(`AD 換 token 完成,長度=${token.length}`, 'Auth')
+        logger.debug('AD 換 token 完成', {module: 'auth.store', traceId, tokenLen: token.length})
     } catch (err) {
-      logger.warn(`AD 換 token 接口失敗,帳號=${account}`, 'Auth', err as Error)
+        logger.warn('AD 換 token 接口失敗', {module: 'auth.store', traceId, account}, err as Error)
       return false
     }
     if (!token) {
-      logger.info(`AD 換 token 接口回傳空字串,帳號=${account}`, 'Auth')
+        logger.info('AD 換 token 接口回傳空字串', {module: 'auth.store', traceId, account})
       return false
     }
 
     // 4. 解 JWT
     const profile = parseUserFromJwt(token)
     if (!profile) {
-      logger.warn('AD token JWT 解析失敗', 'Auth')
+        logger.warn('AD token JWT 解析失敗', {module: 'auth.store', traceId})
       return false
     }
 
@@ -124,8 +140,13 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = token
     user.value = profile
     isAuthenticated.value = true
-    logger.info(`AD 自動登入成功,使用者=${profile.userName}`, 'Auth')
-      startNotificationClient(profile.userName)
+      logger.info('AD 自動登入成功', {
+          module: 'auth.store',
+          traceId,
+          durationMs: Date.now() - startedAt,
+          userName: profile.userName,
+      })
+      startNotificationClient(profile.userName, traceId)
     return true
   }
 
@@ -142,14 +163,17 @@ export const useAuthStore = defineStore('auth', () => {
    * @returns true 成功並寫入 store;false 沒憑證 / 登入失敗。
    */
   async function loginBySaved(): Promise<boolean> {
+      const traceId = newTraceId()
+      const startedAt = Date.now()
       let entry: Awaited<ReturnType<typeof window.electronAPI.savedCredentials.get>>
       try {
           entry = await window.electronAPI.savedCredentials.get()
       } catch (err) {
-          logger.warn('讀取已記住的憑證 IPC 失敗', 'Auth', err as Error)
+          logger.warn('讀取已記住的憑證 IPC 失敗', {module: 'auth.store', traceId}, err as Error)
           return false
       }
       if (!entry) return false
+      logger.info('記住密碼自動登入嘗試', {module: 'auth.store', traceId, userName: entry.userId})
 
       try {
           const {token, user: userInfo} = await authApi.login({
@@ -159,12 +183,21 @@ export const useAuthStore = defineStore('auth', () => {
           accessToken.value = token
           user.value = userInfo
           isAuthenticated.value = true
-          logger.info(`記住密碼自動登入成功,使用者=${entry.userId}`, 'Auth')
-          startNotificationClient(userInfo.userName)
+          logger.info('記住密碼自動登入成功', {
+              module: 'auth.store',
+              traceId,
+              durationMs: Date.now() - startedAt,
+              userName: entry.userId,
+          })
+          startNotificationClient(userInfo.userName, traceId)
           return true
       } catch (err) {
           // 密碼可能被後端改了 / 帳號鎖了 — 清掉憑證,讓使用者下次手動重來
-          logger.warn(`記住密碼自動登入失敗,清除憑證,使用者=${entry.userId}`, 'Auth', err as Error)
+          logger.warn('記住密碼自動登入失敗,清除憑證', {
+              module: 'auth.store',
+              traceId,
+              userName: entry.userId,
+          }, err as Error)
           await window.electronAPI.savedCredentials.clear().catch(() => undefined)
           return false
       }
@@ -187,25 +220,26 @@ export const useAuthStore = defineStore('auth', () => {
     adLoginDisabledThisSession.value = true
         // 主動斷開 NotificationClient(送 unregister + close);失敗不擴散
         window.electronAPI.notification.stop().catch((err) => {
-            logger.warn('登出時關閉 NotificationClient 失敗', 'Auth', err as Error)
+            logger.warn('登出時關閉 NotificationClient 失敗', 'auth.store', err as Error)
         })
         // 清除本機憑證 — IPC 失敗不擴散,登出狀態本身仍然完成
         await window.electronAPI.savedCredentials.clear().catch((err) => {
-            logger.warn('登出時清除已記住密碼失敗', 'Auth', err as Error)
+            logger.warn('登出時清除已記住密碼失敗', 'auth.store', err as Error)
         })
   }
 
     /**
      * 三條登入路徑共用 — 啟動遠程通知 WebSocket(docs/18)。
      * 失敗只 log,不擴散:遠程通知掛了不該阻擋登入流程,使用者該進主畫面還是進。
+     * 帶 traceId 把登入鏈跟 NotificationClient 啟動串成同一條 trace。
      */
-    function startNotificationClient(userName: string): void {
+    function startNotificationClient(userName: string, traceId?: string): void {
         window.electronAPI.notification.start(userName).then((res) => {
             if (!res.ok && res.reason && res.reason !== 'disabled in config') {
-                logger.warn(`啟動 NotificationClient 未成功 reason=${res.reason}`, 'Auth')
+                logger.warn('啟動 NotificationClient 未成功', {module: 'auth.store', traceId, reason: res.reason})
             }
         }).catch((err) => {
-            logger.warn('啟動 NotificationClient 異常', 'Auth', err as Error)
+            logger.warn('啟動 NotificationClient 異常', {module: 'auth.store', traceId}, err as Error)
         })
     }
 

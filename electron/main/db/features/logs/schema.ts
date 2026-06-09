@@ -41,6 +41,22 @@ export const logs = sqliteTable(
 
     /** args 內若含 Error,把 stack 拉出來方便 SQL 全文搜尋 */
     errorStack: text('errorStack'),
+
+      /**
+       * 關聯 ID(對齊 docs/08 §13 traceId 設計)。
+       * 跨模組 / 跨進程的同一個業務操作共用一個 traceId,debug 時點一個 ID 過濾全部相關 log。
+       * 例:登入流程的 auth.store → notification.ipc → notification.client 全用同個 traceId。
+       * null = 此筆 log 不屬於任何 trace(獨立事件,例如啟動時的 init log)。
+       */
+      traceId: text('traceId'),
+
+      /**
+       * 結構化 metadata JSON。給 logger 第二參數傳 object 時的非保留欄位用。
+       * 例 {durationMs: 1234, userName: 'X', recordCount: 50}。
+       * 查詢可走 json_extract: WHERE json_extract(meta, '$.durationMs') > 1000。
+       * 不該塞太大,單 row 上限 ~8KB(SQLite 軟限制,可調大但意義不大)。
+       */
+      meta: text('meta'),
   },
   (table) => ({
     /** 列表時間倒序用 */
@@ -52,6 +68,11 @@ export const logs = sqliteTable(
        * 日誌累積到 ~10K+ 後 LogViewer 的 module 下拉變慢,加這條把它變成索引掃描。
        */
       idxModule: index('idx_logs_module').on(table.module),
+      /**
+       * traceId 過濾:LogViewer 「點 traceId 看相關 log」走這條,sparse index(大多 null)
+       * SQLite 預設不索引 null,儲存效率好。
+       */
+      idxTraceId: index('idx_logs_traceId').on(table.traceId),
   })
 )
 

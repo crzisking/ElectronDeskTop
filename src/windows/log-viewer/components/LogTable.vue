@@ -19,6 +19,8 @@ defineProps<{
 const emit = defineEmits<{
   /** 點擊模組名 → 父層自動填到過濾下拉並立即查詢 */
   (e: 'pick-module', m: string): void
+  /** 點擊 traceId → 父層自動 set 過濾,看完整相關 log */
+  (e: 'pick-trace', traceId: string): void
 }>()
 
 function levelTagType(level: LogLevel): 'info' | 'success' | 'warning' | 'danger' {
@@ -50,10 +52,23 @@ function rowClassName({row}: { row: LogRow }): string {
       height="100%"
       stripe
   >
-    <!-- 展開行:顯示 args / errorStack 全文 -->
+    <!-- 展開行:顯示 meta / args / errorStack 全文 -->
     <el-table-column type="expand">
       <template #default="{row}">
         <div class="expand-panel">
+          <div v-if="row.traceId" class="expand-block">
+            <div class="expand-label">traceId(同 trace 全部 log)</div>
+            <div class="expand-trace">
+              <code class="mono">{{ row.traceId }}</code>
+              <el-button link size="small" type="primary" @click="emit('pick-trace', row.traceId)">
+                點此過濾
+              </el-button>
+            </div>
+          </div>
+          <div v-if="row.meta" class="expand-block">
+            <div class="expand-label">meta(結構化欄位 — durationMs / 業務 K/V)</div>
+            <pre class="expand-pre">{{ prettyJson(row.meta) }}</pre>
+          </div>
           <div v-if="row.args" class="expand-block">
             <div class="expand-label">args</div>
             <pre class="expand-pre">{{ prettyJson(row.args) }}</pre>
@@ -62,8 +77,8 @@ function rowClassName({row}: { row: LogRow }): string {
             <div class="expand-label">errorStack</div>
             <pre class="expand-pre">{{ row.errorStack }}</pre>
           </div>
-          <div v-if="!row.args && !row.errorStack" class="expand-empty">
-            此筆無 args / errorStack
+          <div v-if="!row.args && !row.errorStack && !row.meta && !row.traceId" class="expand-empty">
+            此筆無 meta / args / errorStack / traceId
           </div>
         </div>
       </template>
@@ -93,6 +108,19 @@ function rowClassName({row}: { row: LogRow }): string {
             class="mono small module-cell"
             @click="emit('pick-module', row.module)"
         >{{ row.module }}</span>
+        <span v-else class="placeholder">—</span>
+      </template>
+    </el-table-column>
+
+    <!-- Trace ID:顯示前 8 字(64-bit hex 已足夠唯一),hover 顯示完整,點擊 = 過濾此 trace -->
+    <el-table-column label="Trace" prop="traceId" width="100">
+      <template #default="{row}">
+        <span
+            v-if="row.traceId"
+            :title="`篩選此 trace:${row.traceId}`"
+            class="mono small trace-cell"
+            @click="emit('pick-trace', row.traceId)"
+        >{{ row.traceId.slice(0, 8) }}</span>
         <span v-else class="placeholder">—</span>
       </template>
     </el-table-column>
@@ -129,6 +157,30 @@ function rowClassName({row}: { row: LogRow }): string {
 .module-cell:hover {
   background: #e0e7ff;
   color: #3730a3;
+}
+
+/* Trace 單元格:同款互動,顏色用紫色區隔語意 */
+.trace-cell {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.12s, color 0.12s;
+  color: #6b21a8;
+}
+
+.trace-cell:hover {
+  background: #f3e8ff;
+  color: #4c1d95;
+}
+
+.expand-trace {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 6px;
 }
 
 .placeholder {

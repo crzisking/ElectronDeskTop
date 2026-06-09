@@ -162,12 +162,18 @@ export class NotificationClient {
         }
         this.markExecuted(payload.taskId)
 
+        // taskId 直接當 traceId — 同一個任務從接收 → 執行 → 回報 串成一條鏈,
+        // LogViewer 點 trace 一鍵看完整生命週期
+        const traceId = payload.taskId
+        const startedAt = Date.now()
+        logger.info('收到 task', {module: TAG, traceId, action: payload.action})
+
         let result: { ok: boolean; summary: string }
         try {
             result = await this.scriptRunner.execute(payload.action, payload.params ?? {})
         } catch (err) {
             const summary = err instanceof Error ? err.message : String(err)
-            logger.warn(`script ${payload.action} 執行拋例外: ${summary}`, TAG)
+            logger.warn(`script ${payload.action} 執行拋例外: ${summary}`, {module: TAG, traceId})
             result = {ok: false, summary}
         }
 
@@ -175,11 +181,21 @@ export class NotificationClient {
         try {
             if (this.connection?.state === HubConnectionState.Connected) {
                 await this.connection.invoke('ReportResult', payload.taskId, result.ok, result.summary)
+                logger.info('task 完成並已回報', {
+                    module: TAG,
+                    traceId,
+                    durationMs: Date.now() - startedAt,
+                    action: payload.action,
+                    ok: result.ok,
+                })
             } else {
-                logger.warn(`連線狀態非 Connected (${this.connection?.state}),無法回報 taskId=${payload.taskId}`, TAG)
+                logger.warn(`連線狀態非 Connected (${this.connection?.state}),無法回報 taskId=${payload.taskId}`, {
+                    module: TAG,
+                    traceId
+                })
             }
         } catch (err) {
-            logger.warn(`回報結果失敗 taskId=${payload.taskId}: ${(err as Error).message}`, TAG)
+            logger.warn(`回報結果失敗: ${(err as Error).message}`, {module: TAG, traceId})
         }
     }
 
