@@ -2,7 +2,8 @@
  * NotificationClient — 連 tmbom 後端的 SignalR 客戶端。
  *
  * 設計對齊 docs/18-遠程通知與內置腳本執行設計.md(SignalR 版):
- *   - desktop 主動連 ws://{server}/hubs/notifications?userName=&hostname=&ip=&appVersion=
+ *   - desktop 主動連 http://{server}/hubs/notifications?userName=&hostname=&ip=&appVersion=
+ *     (URL 必須 http://;@microsoft/signalr 自己會升級成 WebSocket,給 ws:// 在 electron main 會炸)
  *   - server 推 "Task" 事件 → ScriptRunner 執行 → connection.invoke("ReportResult", taskId, ok, summary)
  *   - server 推 "Kick" 事件 → 主動 stop(同 machineKey 重連時被舊連線取代)
  *   - 心跳 / 重連走 SignalR 內建 withAutomaticReconnect([1000, 2000, 5000, 10000, 30000])
