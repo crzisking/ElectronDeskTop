@@ -177,11 +177,17 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
   notification: {
     // 遠程通知(docs/18):啟用後 desktop 主動連 tmbom SignalR Hub,IT 端可推訊息 / 派發腳本
     enabled: true,
+      //
+      // **必須 http:// 開頭,不是 ws://**:
+      //   @microsoft/signalr 的 HubConnectionBuilder.withUrl 內部 _resolveUrl 只認得 http/https,
+      //   碰到 ws:// 又因 electron main process 沒 window 物件,會 throw `Cannot resolve`。
+      //   SignalR 會在握手後自己升級成 WebSocket,我們給它 HTTP URL 就行。
+      //
     // dev / prod 自動切:對齊 .env.* 的 VITE_WORK_COLLECT_API_URL 規則。
-    //   - dev (electron-vite dev) :app.isPackaged=false → ws://localhost:5247
-    //   - prod (electron-builder 打包後):app.isPackaged=true → ws://192.168.120.79:9004
+      //   - dev (electron-vite dev) :app.isPackaged=false → http://localhost:5247
+      //   - prod (electron-builder 打包後):app.isPackaged=true → http://192.168.120.79:9004
     // 標記為 dev-owned,resync 啟動時會強制覆寫成這個值(改值改這裡 + 重啟即可,不會被 user 鎖死)
-    wsUrl: app.isPackaged ? 'ws://192.168.120.79:9004' : 'ws://localhost:5247',
+      wsUrl: app.isPackaged ? 'http://192.168.120.79:9004' : 'http://localhost:5247',
     pingIntervalMs: 30_000,
     reconnectMaxMs: 30_000,
   },

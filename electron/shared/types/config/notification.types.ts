@@ -10,9 +10,13 @@ export interface NotificationConfig {
     enabled: boolean
 
     /**
-     * WebSocket 服務端 URL(scheme + host + port,**不含 path**)。
-     * desktop 客戶端會自動補上 `/ws/notifications?userName=&hostname=&...`。
-     * 範例:`ws://192.168.120.79:9004`(prod)/ `ws://localhost:5247`(dev)
+     * SignalR Hub 服務端基址(scheme + host + port,**不含 path**)。
+     * desktop 客戶端會自動補上 `/hubs/notifications?userName=&hostname=&...`。
+     *
+     * **必須 http:// 開頭(不是 ws://)**:@microsoft/signalr 內部要 HTTP URL,
+     * 自己會在握手後升級成 WebSocket。給 ws:// 在 electron main 會炸 `Cannot resolve`。
+     *
+     * 範例:`http://192.168.120.79:9004`(prod)/ `http://localhost:5247`(dev)
      */
     wsUrl: string
 
