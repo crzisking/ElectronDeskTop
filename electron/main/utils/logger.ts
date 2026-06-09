@@ -14,9 +14,17 @@
  * 設計文件:[docs/08-本地數據庫設計.md §12](../../../docs/08-本地數據庫設計.md)
  */
 
+import {app} from 'electron'
 import {writeLine} from './log-file-writer'
 import type {LogLevel} from '../db/features/logs/schema'
 import type {LogService} from '../db/features/logs/service'
+
+/**
+ * dev / prod 判定。對齊 main process 其他地方(database-manager / defaults.ts)的慣例,
+ * 用 app.isPackaged 而不是 process.env.NODE_ENV — 後者依賴 electron-vite 構建時替換,
+ * 換構建工具會失效。app.isPackaged 是 Electron 原生 API,electron-builder 打包後永遠 true。
+ */
+const isDev = !app.isPackaged
 
 // ─── DB 後端注入 ────────────────────────────────────────────────────────
 //
@@ -77,7 +85,7 @@ function formatLine(level: string, message: string, module?: string, args?: unkn
 export const logger = {
   /** 調試:僅 dev console,**不落庫**(高頻噪音不污染 DB) */
   debug(message: string, module?: string, ...args: unknown[]): void {
-    if (process.env.NODE_ENV !== 'production') {
+      if (isDev) {
       console.debug(formatLine('DEBUG', message, module, args))
     }
   },
@@ -129,7 +137,7 @@ export function writeRendererLog(
   const line = formatLine(level, message, module, args)
 
   // dev 鏡像到主進程 console 方便聯調
-  if (process.env.NODE_ENV !== 'production') {
+    if (isDev) {
     const out =
       level === 'ERROR' ? console.error :
       level === 'WARN'  ? console.warn :

@@ -305,10 +305,10 @@ export class UpdateManager {
       logger.info('開始檢查更新…', TAG)
       return await autoUpdater.checkForUpdates()
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+        // autoUpdater 內部 checkForUpdates reject 時也會 emit 'error' 事件 → on('error')
+        // handler 統一推 PUSH_UPDATE_ERROR。這裡不再手動 send,避免 UI 收到雙錯誤 toast。
+        // 之前的「雙保險」假設證實為 over-engineering,實測 autoUpdater 一定會發。
       logger.error('checkForUpdates 失敗', TAG, err)
-      // 雙保險：autoUpdater 內部理論上會發 'error'，這裡再補一次確保 UI 解鎖
-      this.send(IpcChannels.PUSH_UPDATE_ERROR, { message })
       return undefined
     }
   }

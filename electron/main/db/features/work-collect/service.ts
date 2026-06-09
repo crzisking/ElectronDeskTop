@@ -194,7 +194,12 @@ export class WorkRecordService {
                     tx.insert(workRecords).values({...r, synced: 1, syncedAt: now}).run()
                     inserted++
                 } catch (err) {
-                    this.recordFailure('write', errMsg(err))
+                    // log 加上行的關鍵欄位摘要,排查時可定位是哪筆 server 推下來的資料壞
+                    // (capturedAt 是 Unix ms,跨進程唯一識別;category 看是否 schema 變了)
+                    this.recordFailure(
+                        'write',
+                        `${errMsg(err)} | capturedAt=${r.capturedAt} category=${r.category ?? '?'}`,
+                    )
                 }
             }
         })

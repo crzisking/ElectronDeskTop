@@ -88,16 +88,18 @@ export class WorkCollectSyncService {
         let error: string | undefined
         let hitLimit = false
 
+        // 削峰:對齊舊 client-side jitter,500 機在 25s 內隨機分佈 ≈ 20 req/s。
+        // **每個 sync session 只 jitter 一次**(不是每批):本來 per-batch 0-25s × 最多 50 批
+        // = 最壞 21 分鐘才同步完。jitter 的本意是「跨機器分散同秒峰值」,單機內 batch 連續打
+        // 對 server 負載無差。Math.random 各機獨立,期望分佈仍均勻。
+        await sleep(Math.floor(Math.random() * SPREAD_MS))
+
         let round = 0
         for (; round < SYNC_MAX_ROUNDS; round++) {
             const chunk = this.recordService.listUnsynced(BATCH_SIZE)
             if (chunk.length === 0) break
 
             const records = chunk.map(toSyncRecord)
-
-            // 削峰:對齊舊 client-side jitter,500 機在 25s 內隨機分佈 ≈ 20 req/s。
-            // 取消這層 main process 也會在同秒爆 500 req。Math.random 各機獨立。
-            await sleep(Math.floor(Math.random() * SPREAD_MS))
 
             let resp: SyncDailyResponseData
             try {

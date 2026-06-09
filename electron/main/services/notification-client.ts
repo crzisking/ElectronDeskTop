@@ -206,7 +206,10 @@ export class NotificationClient {
             this.restartTimer = null
             if (this.stopped) return
             logger.info(`${RESTART_AFTER_DISCONNECT_MS}ms 後嘗試重新連線`, TAG)
-            // start 內會 build 新的 HubConnection;直接走 connection.start() 對已 closed 的 instance 沒用
+            // withAutomaticReconnect 跑完所有退避仍失敗時,state 變 Disconnected(SignalR 沒有
+            // "Closed" 狀態,只有 Disconnected/Connecting/Connected/Disconnecting/Reconnecting)。
+            // 對 Disconnected instance 呼 .start() 是 SignalR 官方推薦的 manual reconnect pattern,
+            // 既有 withAutomaticReconnect 配置會保留,不需要 rebuild。
             try {
                 await this.connection?.start()
                 logger.info(`重新連線成功`, TAG)
