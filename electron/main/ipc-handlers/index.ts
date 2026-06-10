@@ -34,6 +34,7 @@ import {registerUserProfileHandlers} from './user-profile.handlers'
 import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
 import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
 import {registerNotificationHandlers} from './notification.handlers'
+import {registerProjectFlowHandlers} from './project-flow.handlers'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -125,6 +126,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerSavedCredentialsHandlers(savedCredentialsService)
   registerWorkAnalysisHandlers(workAnalysisService, workRecordService, workTemplateCacheService, llmClient, configManager, agentService, windowManager)
   registerNotificationHandlers(notificationClient, configManager)
+    // AI 本地端點(memo-suggest / report-generate)需要 LlmClient + workRecordService
+    registerProjectFlowHandlers({llmClient, workRecordService})
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

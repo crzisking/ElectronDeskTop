@@ -109,8 +109,12 @@ async function handleActiveChange(id: string) {
 }
 
 async function persist() {
+  // ⚠️ providers.value 是 Vue reactive Proxy,直接送 IPC 會被 Electron structuredClone 拒收
+  //    ("An object could not be cloned."),整條 invoke 在 renderer 就 reject 掉,DB 根本沒寫進去。
+  //    JSON 圓滾一次扁平化成純 POJO,讓 structuredClone 收得了。
+  const plainProviders = JSON.parse(JSON.stringify(providers.value)) as LlmProviderConfig[]
   const ok = await window.electronAPI.workAnalysis.writeLlmConfig({
-    providers: providers.value,
+    providers: plainProviders,
     activeProviderId: activeId.value ?? undefined,
   })
   if (!ok) {

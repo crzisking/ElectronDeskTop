@@ -129,6 +129,7 @@ export function seedOrMigrate(db: BetterSQLite3Database<any>): void {
         enabled: it.enabled ? 1 : 0,
         openMode: it.openMode,
         routeName: it.routeName ?? null,
+        windowId: it.windowId ?? null,
         ord,
       }).run()
     })

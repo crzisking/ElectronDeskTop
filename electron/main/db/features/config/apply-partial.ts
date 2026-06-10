@@ -122,6 +122,7 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
                     enabled: it.enabled ? 1 : 0,
                     openMode: it.openMode,
                     routeName: it.routeName ?? null,
+                    windowId: it.windowId ?? null,
                     ord,
                 }).run()
             })

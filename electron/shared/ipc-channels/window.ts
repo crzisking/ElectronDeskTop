@@ -24,6 +24,12 @@ export const WindowChannels = {
    */
   OPEN_CHILD_WINDOW: 'window:open-child',
 
+  /**
+   * 打開備忘錄獨立窗(docs/20 §5.5)。
+   * invoke,無 payload;已開則 focus,未開則 create。
+   */
+  WINDOW_OPEN_MEMOS: 'window:open-memos',
+
   /** PUSH:主視窗最大化 / 還原狀態變動推送 */
   PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
 

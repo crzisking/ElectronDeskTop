@@ -41,6 +41,15 @@ function handleOpen(tool: PersonalTool) {
     router.push({name: tool.routeName}).catch((err) => {
       logger.warn('個人功能路由跳轉失敗', 'PersonalFunctions', {routeName: tool.routeName, err})
     })
+    return
+  }
+  if (tool.openMode === 'window' && tool.windowId) {
+    // 目前只有 memos 一個獨立窗;之後加新窗在這 switch
+    if (tool.windowId === 'memos') {
+      window.electronAPI.window.openMemos().catch((err) => {
+        logger.warn('打開備忘錄子窗失敗', 'PersonalFunctions', err as Error)
+      })
+    }
   }
 }
 

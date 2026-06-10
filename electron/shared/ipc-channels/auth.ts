@@ -13,4 +13,11 @@ export const AuthChannels = {
    * invoke。返回:{ token, user } 或 throw。
    */
   AUTH_AD_LOGIN: 'auth:ad-login',
+
+    /**
+     * AUTH_SET_CONTEXT:主窗登入 / 登出時推進 main 全局身分上下文。
+     * 子視窗(Memos / LogViewer)以這份為準,不再各自存 token / userId。
+     * invoke。payload: {userId: string, token?: string} | {userId: ''}(clear)
+     */
+    AUTH_SET_CONTEXT: 'auth:set-context',
 } as const

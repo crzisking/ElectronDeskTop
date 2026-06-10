@@ -15,6 +15,7 @@ import {ipcMain, net} from 'electron'
 import os from 'os'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
+import {authContext} from '../services/auth-context'
 
 /**
  * AD 換 token 端點 —— 跨環境唯一。
@@ -126,5 +127,21 @@ export function registerAuthHandlers(): void {
         'Auth'
     )
     return token
+  })
+
+  /**
+   * 主窗 renderer 登入完成 / 登出時推進來,主進程持作子視窗的身分來源。
+   * payload: {userId, token?} 或 {userId: ''} 表示清空。
+   */
+  ipcMain.handle(IpcChannels.AUTH_SET_CONTEXT, (_e, payload: { userId?: string; token?: string }) => {
+    const userId = (payload?.userId ?? '').trim()
+    if (!userId) {
+      authContext.clear()
+      logger.info('AUTH_SET_CONTEXT cleared', 'Auth')
+      return {ok: true}
+    }
+    authContext.set(userId, payload?.token ?? '')
+    logger.info(`AUTH_SET_CONTEXT set userId=${userId}`, 'Auth')
+    return {ok: true}
   })
 }

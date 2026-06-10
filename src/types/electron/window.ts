@@ -31,4 +31,7 @@ export interface WindowAPI {
      * @param title 子窗口標題(顯示在任務欄)
      */
     openChild: (url: string, title: string) => Promise<void>
+
+    /** 打開備忘錄獨立窗(docs/20 §5.5);已開則 focus,未開則 create */
+    openMemos: () => Promise<void>
 }

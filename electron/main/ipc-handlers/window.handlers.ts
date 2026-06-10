@@ -85,5 +85,11 @@ export function registerWindowHandlers(
     logger.info(`打開子窗口: ${title}`, 'IPC:window')
   })
 
+  /** 打開備忘錄獨立窗(docs/20 §5.5);已開則 focus,未開則 create */
+  ipcMain.handle(IpcChannels.WINDOW_OPEN_MEMOS, () => {
+    windowManager.createMemosWindow()
+    logger.info('打開備忘錄視窗', 'IPC:window')
+  })
+
   logger.info('窗口 IPC Handlers 已註冊', 'IPC:window')
 }

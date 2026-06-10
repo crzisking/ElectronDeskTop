@@ -138,9 +138,12 @@ export const personalTools = sqliteTable(
     description: text('description').notNull().default(''),
     icon: text('icon').notNull(),
     enabled: integer('enabled').notNull().default(1),
-    /** 'page'(目前只支援這一種) */
+      /** 'page'(走 router) / 'window'(走獨立 BrowserWindow) */
     openMode: text('openMode').notNull(),
+      /** 僅 openMode='page' 使用 */
     routeName: text('routeName'),
+      /** 僅 openMode='window' 使用,目前支援 'memos' */
+      windowId: text('windowId'),
     ord: integer('ord').notNull(),
   },
   (table) => ({

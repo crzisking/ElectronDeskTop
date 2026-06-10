@@ -16,7 +16,16 @@
     "error": "錯誤",
     "warning": "警告",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "back": "返回",
+    "actions": "操作",
+    "status": "狀態",
+    "search": "搜尋",
+    "select": "選擇",
+    "input": "請輸入",
+    "createSuccess": "新建成功",
+    "deleteSuccess": "刪除成功",
+    "saveSuccess": "保存成功"
   },
 
   "app": {
@@ -331,8 +340,171 @@
     "bpmFinder": "BPM 負責人查詢",
     "aiSop": "AI SOP 生成",
     "itRepair": "IT 報修",
-    "workCollect": "工作自動採集"
+    "workCollect": "工作自動採集",
+    "projectFlow": "項目流程",
+    "projectCanvas": "流程畫布",
+    "projectReports": "工作匯報",
+    "reportEditor": "編輯匯報",
+    "projectMemos": "備忘錄",
+    "projectTeam": "團隊視圖"
   },
+  "projectFlow": {
+    "editLevel": {
+      "0": "不可見",
+      "1": "唯讀",
+      "2": "可編輯",
+      "3": "完全控制"
+    },
+    "projects": {
+      "title": "我的項目",
+      "create": "+ 新建項目",
+      "name": "名稱",
+      "description": "說明",
+      "editLevel": "權限",
+      "nodeCount": "節點",
+      "updatedAt": "最後更新",
+      "progress": "進度",
+      "open": "開啟",
+      "nameRequired": "名稱必填",
+      "deleteConfirm": "確定刪除「{name}」?該項目所有節點 / 連線 / 匯報關聯將一併移除。"
+    },
+    "canvas": {
+      "hint": "從左側拖入節點、hover 顯示連線點、Ctrl+滾輪縮放、空白拖移畫布",
+      "newNodeTitle": "新節點",
+      "renameNode": "節點新標題",
+      "actionPrompt": "輸入動作:rename / delete / status",
+      "statusPrompt": "節點狀態 (例:todo / doing / done)",
+      "stencilTitle": "節點類型",
+      "dragHint": "拖到右側畫布",
+      "shapeTask": "任務",
+      "shapeMilestone": "里程碑",
+      "shapeDecision": "決策",
+      "zoomIn": "放大",
+      "zoomOut": "縮小",
+      "fit": "適應視窗",
+      "viewCanvas": "畫布",
+      "viewTimeline": "時間線"
+    },
+    "node": {
+      "deadline": "截止日期",
+      "deadlinePlaceholder": "選擇截止日(時間線依此排序)",
+      "assignee": "負責人",
+      "assigneePlaceholder": "點右側選擇員工",
+      "priority": "優先級",
+      "description": "描述"
+    },
+    "nodeStatus": {
+      "not_started": "未開始",
+      "in_progress": "進行中",
+      "blocked": "阻塞",
+      "completed": "完成",
+      "cancelled": "取消"
+    },
+    "timeline": {
+      "empty": "尚無節點;切回畫布拖入節點開始規劃",
+      "noAssignee": "未指派負責人",
+      "unscheduled": "未排期",
+      "noDeadlineHint": "沒有截止日,不會出現在時間線上 — 點擊補上",
+      "overdueDays": "已逾期 {n} 天",
+      "dueToday": "今天到期",
+      "daysLeft": "剩 {n} 天"
+    },
+    "employee": {
+      "pickTitle": "選擇員工",
+      "searchPlaceholder": "工號 / 姓名 / 電話",
+      "empNo": "工號",
+      "name": "姓名",
+      "job": "職位"
+    },
+    "reports": {
+      "title": "工作匯報",
+      "create": "+ 新建匯報",
+      "titleCol": "標題",
+      "titlePh": "匯報標題",
+      "defaultTitle": "未命名匯報",
+      "updatedAt": "更新時間",
+      "createdAt": "建立時間",
+      "items": "匯報項目",
+      "itemContentPh": "描述本次工作項目進展",
+      "noItems": "尚無項目;點「+ 新增」或「AI 生成」",
+      "sectionWork": "今日工作",
+      "sectionIssue": "遇到的問題",
+      "sectionPlan": "明日計畫",
+      "placeholderWork": "今天完成 / 推進了什麼?",
+      "placeholderIssue": "遇到什麼困難或阻塞?",
+      "placeholderPlan": "明天打算做什麼?",
+      "emptyWork": "尚未填寫今日工作",
+      "emptyIssue": "今天沒遇到問題,很順利",
+      "emptyPlan": "尚未規劃明日工作",
+      "needHelp": "需要主管協助",
+      "linkNode": "關聯節點(可選)",
+      "submit": "提交",
+      "submitted": "已提交,主管會收到通知",
+      "submitConfirm": "提交後不可再編輯,確認?",
+      "deleteConfirm": "確定刪除此匯報草稿?",
+      "aiAdvice": "AI 寫作建議",
+      "aiEmpty": "沒有可用資料生成",
+      "todayData": "今日工作數據",
+      "todayDataHint": "本機自動採集的聚合數據,僅供參考著寫,不會自動填入",
+      "todayDataEmpty": "今日尚無採集數據",
+      "minutes": "約 {n} 分鐘",
+      "adviceTitle": "AI 寫作建議",
+      "adviceIdeas": "可以寫的方向",
+      "advicePolish": "潤色建議",
+      "adviceMissing": "可能遺漏",
+      "status": {
+        "draft": "草稿",
+        "submitted": "已提交"
+      }
+    },
+    "memos": {
+      "title": "備忘錄",
+      "create": "新建備忘",
+      "titleCol": "標題",
+      "titleRequired": "標題必填",
+      "description": "說明",
+      "priority": "優先級",
+      "priorityLevel": {
+        "0": "低",
+        "1": "中",
+        "2": "高"
+      },
+      "dueDate": "到期時間",
+      "deleteConfirm": "確定刪除?",
+      "aiSuggest": "AI 建議",
+      "aiEmpty": "目前無建議 — 項目進度與待辦都在掌握中",
+      "aiAdded": "已加入 {n} 條建議",
+      "acceptChecked": "採納勾選項",
+      "status": {
+        "pending": "進行中",
+        "done": "完成",
+        "dismissed": "已忽略"
+      }
+    },
+    "team": {
+      "subordinates": "下屬",
+      "noSub": "目前無下屬",
+      "pickSub": "從左側選一名下屬",
+      "recentReports": "近期匯報",
+      "openMemos": "進行中備忘",
+      "aiSummary": "AI 摘要",
+      "aiFailed": "AI 摘要生成失敗",
+      "highlights": "亮點",
+      "blockers": "阻塞",
+      "suggestedActions": "建議行動",
+      "lastReport": "最後匯報:{time}",
+      "neverReported": "尚未提交過匯報",
+      "feedback": "回饋",
+      "feedbackPlaceholder": "給這份匯報寫點回饋(下屬會收到通知)",
+      "sendFeedback": "送出回饋",
+      "feedbackSent": "回饋已送出"
+    },
+    "feedback": {
+      "title": "未讀反饋",
+      "empty": "沒有未讀反饋"
+    }
+  },
+
 
   "personal": {
     "title": "個人",

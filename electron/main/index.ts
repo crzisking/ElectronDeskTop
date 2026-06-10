@@ -11,6 +11,9 @@ import {TrayManager} from './tray-manager'
 import {ConfigManager} from './config-manager'
 import {UpdateManager} from './update-manager'
 import {registerAllHandlers} from './ipc-handlers'
+import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
+import {DailyAdviceService} from './db/features/daily-advice/service'
+import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
 import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
@@ -28,6 +31,7 @@ import {WorkCollectorScheduler, WorkCollectSyncService} from './work-collect'
 import {NotificationClient} from './services/notification-client'
 import {ScriptRunner} from './services/script-runner'
 import {registerBuiltinScripts} from './services/scripts'
+import {IpcChannels} from '../shared/ipc-channels'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -52,6 +56,8 @@ let agentService: AgentService | null = null
 let llmClient: LlmClient | null = null
 /** 工作分析報告儲存 */
 let workAnalysisService: WorkAnalysisService | null = null
+let dailyAdviceService: DailyAdviceService | null = null
+let dailyAdviceScheduler: DailyAdviceScheduler | null = null
 let workCollector: WorkCollectorScheduler
 /** 遠程通知 WebSocket 客戶端(docs/18)。登入後由 renderer IPC NOTIFICATION_START 觸發實際連線 */
 let notificationClient: NotificationClient
@@ -107,6 +113,7 @@ function gracefulShutdown(): void {
   floatingBallMgr?.dispose()
   updateMgr?.dispose()
   workCollector?.dispose()
+    dailyAdviceScheduler?.dispose()
     // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
     notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
@@ -156,6 +163,7 @@ app.whenReady().then(async () => {
     // LlmClient 依賴 agentService 拿 provider 配置;一起建,出問題一起 null
     llmClient = new LlmClient(agentService)
     workAnalysisService = new WorkAnalysisService(dbManager)
+      dailyAdviceService = new DailyAdviceService(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
@@ -168,6 +176,7 @@ app.whenReady().then(async () => {
     agentService = null
     llmClient = null
     workAnalysisService = null
+      dailyAdviceService = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -247,6 +256,13 @@ app.whenReady().then(async () => {
     scriptRunner = new ScriptRunner()
     registerBuiltinScripts(scriptRunner, {configManager, windowManager, logService})
     notificationClient = new NotificationClient(scriptRunner)
+    // 收到 ProjectFlow 業務事件 → 廣播給主窗 + memos 子窗(任一打開就收得到)
+    notificationClient.setProjectFlowHandler((action, payload) => {
+        const evt = {action, payload}
+        windowManager?.sendToMainWindow(IpcChannels.PUSH_PROJECT_FLOW_EVENT, evt)
+        const memos = windowManager?.getMemosWindow()
+        if (memos && !memos.isDestroyed()) memos.webContents.send(IpcChannels.PUSH_PROJECT_FLOW_EVENT, evt)
+    })
 
   registerAllHandlers({
     windowManager,
@@ -269,6 +285,16 @@ app.whenReady().then(async () => {
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
   workCollector.start()
+
+    // 每日學習建議(純桌面端):08:00 排程 + 啟動補生成。
+    // 前置(模板綁定 / LLM 配置)在 scheduler 內部檢查,不滿足就靜默跳過。
+    if (configManager && workRecordService && workTemplateCacheService && dailyAdviceService && llmClient) {
+        dailyAdviceScheduler = new DailyAdviceScheduler(
+            configManager, workRecordService, workTemplateCacheService, dailyAdviceService, llmClient, windowManager,
+        )
+        dailyAdviceScheduler.start()
+    }
+    registerDailyAdviceHandlers(dailyAdviceScheduler)
 
   // 在 IPC handler 註冊後才 init，托盤菜單點擊才能正確觸發處理器
   trayManager.init()

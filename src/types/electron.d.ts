@@ -20,6 +20,7 @@ import type {SavedCredentialsAPI} from './electron/saved-credentials'
 import type {WorkAnalysisAPI} from './electron/work-analysis'
 import type {AuthAPI} from './electron/auth'
 import type {NotificationAPI} from './electron/notification'
+import type {ProjectFlowAPI} from './electron/project-flow'
 
 // 確保此檔被視為模塊(避免全局聲明衝突)
 export {}
@@ -39,6 +40,7 @@ declare global {
       workAnalysis: WorkAnalysisAPI
       auth: AuthAPI
         notification: NotificationAPI
+      projectFlow: ProjectFlowAPI
 
       /**
        * 浮球右鍵原生菜單。

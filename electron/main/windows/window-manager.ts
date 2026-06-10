@@ -16,12 +16,14 @@ import {logger} from '../utils/logger'
 import {MainWindow} from './main-window'
 import {FloatingBallWindow} from './floating-ball-window'
 import {LogViewerWindow} from './log-viewer-window'
+import {MemosWindow} from './memos-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
     private main = new MainWindow()
     private floatingBall = new FloatingBallWindow()
     private logViewer = new LogViewerWindow()
+    private memos = new MemosWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -40,6 +42,11 @@ export class WindowManager {
     // ── 按需建構(IPC / 浮球菜單觸發)───────────────────────────────
     createLogViewerWindow(): BrowserWindow {
         return this.logViewer.open(this.main.instance)
+    }
+
+    /** 開啟備忘錄獨立窗(docs/20 §5.5);已開過就 focus,不重建 */
+    createMemosWindow(): BrowserWindow {
+        return this.memos.open(this.main.instance)
     }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
@@ -112,8 +119,14 @@ export class WindowManager {
         return openChildWindow(url, title, allowedDomains)
     }
 
+    /** Memos 子視窗(SignalR push 廣播時要包含)*/
+    getMemosWindow(): BrowserWindow | null {
+        return this.memos.instance
+    }
+
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
+        this.memos.destroy()
         this.logViewer.destroy()
         this.floatingBall.destroy()
         this.main.destroy()

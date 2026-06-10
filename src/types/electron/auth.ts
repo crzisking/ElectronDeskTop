@@ -17,4 +17,12 @@ export interface AuthAPI {
      * @returns JWT 字串;空字串視為失敗
      */
     adLogin: (account: string) => Promise<string>
+
+    /**
+     * 推主進程 authContext(主窗登入 / 登出時呼叫)。
+     * 子視窗(Memos / LogViewer)以此為身分來源,不再各自存 token。
+     * @param userId 工號;空字串表示清空
+     * @param token  JWT(可選,目前主要靠 userId)
+     */
+    setContext: (userId: string, token?: string) => Promise<{ ok: true }>
 }

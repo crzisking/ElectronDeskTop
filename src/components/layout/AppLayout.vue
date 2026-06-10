@@ -15,14 +15,24 @@
  * 子路由通過 <router-view> 渲染在右側內容區。
  */
 
+import {ref} from 'vue'
 import {useI18n} from 'vue-i18n'
+import {Bell} from '@element-plus/icons-vue'
 import TitleBar from './TitleBar.vue'
 import SidebarNav from './SidebarNav.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import FeedbackDrawer from '@/features/project-flow/FeedbackDrawer.vue'
 import {useUiStore} from '@/stores/ui.store'
+import {useProjectFlowStore} from '@/features/project-flow/store'
 
 const uiStore = useUiStore()
 const {t} = useI18n()
+const projectFlowStore = useProjectFlowStore()
+const feedbackDrawerRef = ref<InstanceType<typeof FeedbackDrawer> | null>(null)
+
+function openFeedback() {
+  feedbackDrawerRef.value?.open()
+}
 </script>
 
 <template>
@@ -49,6 +59,16 @@ const {t} = useI18n()
         <router-view />
       </main>
     </div>
+
+      <!-- 反饋通知浮動入口(右下角紅點 + 抽屜)— docs/20 §5.7 -->
+      <div :title="t('projectFlow.feedback.title')" class="feedback-fab" @click="openFeedback">
+        <el-badge :hidden="!projectFlowStore.hasUnread" :max="99" :value="projectFlowStore.unreadCount">
+          <el-icon :size="20">
+            <Bell/>
+          </el-icon>
+        </el-badge>
+      </div>
+      <FeedbackDrawer ref="feedbackDrawerRef"/>
     </template>
   </div>
 </template>
@@ -72,6 +92,29 @@ const {t} = useI18n()
   height: calc(100vh - var(--titlebar-height));
   padding: 12px;
   gap: 12px;
+}
+
+/* 反饋通知浮動按鈕(右下角)— 跨頁面共用入口 */
+.feedback-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--app-bg-surface);
+  border: 1px solid var(--app-border-subtle);
+  box-shadow: var(--app-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform 0.15s;
+}
+
+.feedback-fab:hover {
+  transform: scale(1.08);
 }
 
 /* 右側內容區域：白色卡片化的主舞台 */

@@ -222,6 +222,10 @@ export const useAuthStore = defineStore('auth', () => {
         window.electronAPI.notification.stop().catch((err) => {
             logger.warn('登出時關閉 NotificationClient 失敗', 'auth.store', err as Error)
         })
+        // 清空主進程 authContext,子窗失去身分(後續操作會 401 / 空 userId)
+        window.electronAPI.auth.setContext('', '').catch((err) => {
+            logger.warn('登出時清除主進程 authContext 失敗', 'auth.store', err as Error)
+        })
         // 清除本機憑證 — IPC 失敗不擴散,登出狀態本身仍然完成
         await window.electronAPI.savedCredentials.clear().catch((err) => {
             logger.warn('登出時清除已記住密碼失敗', 'auth.store', err as Error)
@@ -240,6 +244,10 @@ export const useAuthStore = defineStore('auth', () => {
             }
         }).catch((err) => {
             logger.warn('啟動 NotificationClient 異常', {module: 'auth.store', traceId}, err as Error)
+        })
+        // 推主進程 authContext,讓 Memos / LogViewer 等子窗有身分可用
+        window.electronAPI.auth.setContext(userName, accessToken.value ?? '').catch((err) => {
+            logger.warn('AUTH_SET_CONTEXT 失敗', {module: 'auth.store', traceId}, err as Error)
         })
     }
 

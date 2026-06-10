@@ -110,6 +110,14 @@ export class LlmClient {
         const cfg = this.agentService.readConfig()
         const providers = cfg.providers ?? []
         if (providers.length === 0) {
+            logger.warn(
+                `resolveProvider 看到 providers 為空 — readConfig 回傳: ${JSON.stringify({
+                    hasProviders: 'providers' in cfg,
+                    providersValue: cfg.providers,
+                    activeProviderId: cfg.activeProviderId,
+                })}`,
+                TAG,
+            )
             throw new LlmConfigError('尚未配置任何 LLM provider')
         }
 

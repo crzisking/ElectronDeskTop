@@ -37,9 +37,19 @@ export interface PersonalTool {
     /** 是否啟用(false 不顯示) */
     enabled: boolean
 
-    /** 打開方式 —— 'page' 模式走 router.push({ name: routeName }) */
-    openMode: 'page'
+    /**
+     * 打開方式:
+     *   - 'page'   走 router.push({ name: routeName })
+     *   - 'window' 走 IPC 打開獨立 BrowserWindow,由 windowId 指定哪個窗口
+     */
+    openMode: 'page' | 'window'
 
-    /** 路由名(對應 router/index.ts 內路由的 name 字段) */
+    /** 路由名(對應 router/index.ts 內路由的 name 字段);僅 openMode='page' 用 */
     routeName?: string
+
+    /**
+     * 子視窗 ID;僅 openMode='window' 用。目前支援:
+     *   - 'memos':備忘錄獨立窗(docs/20 §5.5)
+     */
+    windowId?: 'memos'
 }

@@ -14,7 +14,16 @@
     "error": "Error",
     "warning": "Warning",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "back": "Back",
+    "actions": "Actions",
+    "status": "Status",
+    "search": "Search",
+    "select": "Select",
+    "input": "Input",
+    "createSuccess": "Created",
+    "deleteSuccess": "Deleted",
+    "saveSuccess": "Saved"
   },
 
   "app": {
@@ -329,8 +338,171 @@
     "bpmFinder": "BPM Owner Lookup",
     "aiSop": "AI SOP Generator",
     "itRepair": "IT Repair",
-    "workCollect": "Work Auto-Capture"
+    "workCollect": "Work Auto-Capture",
+    "projectFlow": "Project Flow",
+    "projectCanvas": "Flow Canvas",
+    "projectReports": "Work Reports",
+    "reportEditor": "Edit Report",
+    "projectMemos": "Memos",
+    "projectTeam": "Team View"
   },
+  "projectFlow": {
+    "editLevel": {
+      "0": "Hidden",
+      "1": "Read-only",
+      "2": "Editable",
+      "3": "Full Control"
+    },
+    "projects": {
+      "title": "My Projects",
+      "create": "+ New Project",
+      "name": "Name",
+      "description": "Description",
+      "editLevel": "Permission",
+      "nodeCount": "Nodes",
+      "updatedAt": "Updated",
+      "progress": "Progress",
+      "open": "Open",
+      "nameRequired": "Name required",
+      "deleteConfirm": "Delete \"{name}\"? All nodes / edges / report links will be removed."
+    },
+    "canvas": {
+      "hint": "Drag node from left, hover to show ports, Ctrl+wheel to zoom, drag blank to pan",
+      "newNodeTitle": "New node",
+      "renameNode": "New node title",
+      "actionPrompt": "Action: rename / delete / status",
+      "statusPrompt": "Node status (e.g. todo / doing / done)",
+      "stencilTitle": "Node types",
+      "dragHint": "Drag to canvas",
+      "shapeTask": "Task",
+      "shapeMilestone": "Milestone",
+      "shapeDecision": "Decision",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit",
+      "viewCanvas": "Canvas",
+      "viewTimeline": "Timeline"
+    },
+    "node": {
+      "deadline": "Deadline",
+      "deadlinePlaceholder": "Pick a deadline (timeline sorts by this)",
+      "assignee": "Assignee",
+      "assigneePlaceholder": "Click Select to pick an employee",
+      "priority": "Priority",
+      "description": "Description"
+    },
+    "nodeStatus": {
+      "not_started": "Not started",
+      "in_progress": "In progress",
+      "blocked": "Blocked",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "timeline": {
+      "empty": "No nodes yet; switch to canvas and drag nodes in",
+      "noAssignee": "No assignee",
+      "unscheduled": "Unscheduled",
+      "noDeadlineHint": "No deadline — won't appear on the timeline. Click to set one.",
+      "overdueDays": "Overdue {n} days",
+      "dueToday": "Due today",
+      "daysLeft": "{n} days left"
+    },
+    "employee": {
+      "pickTitle": "Select Employee",
+      "searchPlaceholder": "Emp No / Name / Phone",
+      "empNo": "Emp No",
+      "name": "Name",
+      "job": "Job"
+    },
+    "reports": {
+      "title": "Work Reports",
+      "create": "+ New Report",
+      "titleCol": "Title",
+      "titlePh": "Report title",
+      "defaultTitle": "Untitled Report",
+      "updatedAt": "Updated",
+      "createdAt": "Created",
+      "items": "Items",
+      "itemContentPh": "Describe progress on this item",
+      "noItems": "No items yet; click + Add or AI Generate",
+      "sectionWork": "Today's Work",
+      "sectionIssue": "Issues",
+      "sectionPlan": "Tomorrow's Plan",
+      "placeholderWork": "What did you complete / progress today?",
+      "placeholderIssue": "Any blockers or difficulties?",
+      "placeholderPlan": "What will you work on tomorrow?",
+      "emptyWork": "No work items yet",
+      "emptyIssue": "No issues — smooth day",
+      "emptyPlan": "No plans yet",
+      "needHelp": "Need supervisor help",
+      "linkNode": "Link to node (optional)",
+      "submit": "Submit",
+      "submitted": "Submitted; supervisor has been notified",
+      "submitConfirm": "Submitted reports cannot be edited. Continue?",
+      "deleteConfirm": "Delete this draft?",
+      "aiAdvice": "AI Writing Tips",
+      "aiEmpty": "No data available",
+      "todayData": "Today's Activity",
+      "todayDataHint": "Locally collected aggregate data, for reference only — never auto-filled",
+      "todayDataEmpty": "No activity collected today",
+      "minutes": "~{n} min",
+      "adviceTitle": "AI Writing Tips",
+      "adviceIdeas": "Ideas",
+      "advicePolish": "Polish",
+      "adviceMissing": "Possibly Missing",
+      "status": {
+        "draft": "Draft",
+        "submitted": "Submitted"
+      }
+    },
+    "memos": {
+      "title": "Memos",
+      "create": "New Memo",
+      "titleCol": "Title",
+      "titleRequired": "Title required",
+      "description": "Description",
+      "priority": "Priority",
+      "priorityLevel": {
+        "0": "Low",
+        "1": "Medium",
+        "2": "High"
+      },
+      "dueDate": "Due Date",
+      "deleteConfirm": "Delete?",
+      "aiSuggest": "AI Suggest",
+      "aiEmpty": "No suggestions — projects and memos all under control",
+      "aiAdded": "Added {n} suggestions",
+      "acceptChecked": "Accept Checked",
+      "status": {
+        "pending": "Pending",
+        "done": "Done",
+        "dismissed": "Dismissed"
+      }
+    },
+    "team": {
+      "subordinates": "Subordinates",
+      "noSub": "No subordinates",
+      "pickSub": "Pick a subordinate from the left",
+      "recentReports": "Recent Reports",
+      "openMemos": "Open Memos",
+      "aiSummary": "AI Summary",
+      "aiFailed": "Failed to generate AI summary",
+      "highlights": "Highlights",
+      "blockers": "Blockers",
+      "suggestedActions": "Suggested Actions",
+      "lastReport": "Last report: {time}",
+      "neverReported": "No reports yet",
+      "feedback": "Feedback",
+      "feedbackPlaceholder": "Write feedback on this report (subordinate gets notified)",
+      "sendFeedback": "Send Feedback",
+      "feedbackSent": "Feedback sent"
+    },
+    "feedback": {
+      "title": "Unread Feedback",
+      "empty": "No unread feedback"
+    }
+  },
+
 
   "personal": {
     "title": "Personal Functions",

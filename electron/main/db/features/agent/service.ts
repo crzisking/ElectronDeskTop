@@ -45,7 +45,10 @@ export class AgentService {
      * 不立刻寫回 DB —— 等使用者第一次 writeConfig 時才落地新格式,避免讀路徑有副作用。
      */
     readConfig(): LlmConfig {
-        if (!this.dbManager.isReady()) return {}
+        if (!this.dbManager.isReady()) {
+            logger.warn('readConfig: dbManager not ready, returning empty', 'AgentService')
+            return {}
+        }
         const rows = this.dbManager.getDb().select().from(agentConfigs).all()
         const map = new Map(rows.map((r) => [r.key, parseValue(r.value)]))
 
@@ -54,6 +57,14 @@ export class AgentService {
             const v = map.get(k)
             if (v !== undefined && v !== null) (cfg as Record<string, unknown>)[k] = v
         }
+
+        // Diagnostic:debug 路徑顯示 DB 內每 key 的原始值,協助排查「UI 看得到 provider 但 LlmClient 看不到」
+        logger.debug(
+            `readConfig: rows=${rows.length}, keys=[${Array.from(map.keys()).join(',')}], providers=${
+                Array.isArray(cfg.providers) ? cfg.providers.length + ' items' : typeof cfg.providers
+            }, active=${cfg.activeProviderId ?? '(none)'}`,
+            'AgentService',
+        )
 
         // ── Legacy 一次性遷移 ─────────────────────────────────────────
         // 條件:沒有新格式的 providers,但有舊格式的 apiKey/baseUrl

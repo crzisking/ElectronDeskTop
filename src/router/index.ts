@@ -111,6 +111,40 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: 'router.workCollect'
         }
+      },
+
+      // 項目流程(docs/20)— 五個子頁面共用 AppLayout
+      {
+        path: 'project-flow',
+        name: 'project-flow',
+        component: () => import('@/features/project-flow/ProjectListView.vue'),
+        meta: {requiresAuth: true, title: 'router.projectFlow'}
+      },
+      {
+        path: 'project-flow/canvas/:projectId',
+        name: 'project-canvas',
+        component: () => import('@/features/project-flow/ProjectCanvasView.vue'),
+        meta: {requiresAuth: true, title: 'router.projectCanvas'}
+      },
+      {
+        path: 'project-flow/reports',
+        name: 'project-reports',
+        component: () => import('@/features/project-flow/ReportListView.vue'),
+        meta: {requiresAuth: true, title: 'router.projectReports'}
+      },
+      {
+        path: 'project-flow/reports/:reportId',
+        name: 'report-editor',
+        component: () => import('@/features/project-flow/ReportEditorView.vue'),
+        meta: {requiresAuth: true, title: 'router.reportEditor'}
+      },
+      // 備忘錄改成獨立 BrowserWindow(electron/main/windows/memos-window.ts),
+      // 不再以路由形式嵌在主窗。FeedbackDrawer 跳轉時 fallback 到 project-flow 列表。
+      {
+        path: 'project-flow/team',
+        name: 'project-team',
+        component: () => import('@/features/project-flow/TeamView.vue'),
+        meta: {requiresAuth: true, title: 'router.projectTeam'}
       }
 
     ]

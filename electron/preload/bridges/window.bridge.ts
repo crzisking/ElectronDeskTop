@@ -11,6 +11,7 @@ export interface WindowChannelMap {
   WINDOW_HIDE: string
   WINDOW_IS_MAXIMIZED: string
   OPEN_CHILD_WINDOW: string
+  WINDOW_OPEN_MEMOS: string
 }
 
 export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
@@ -28,5 +29,8 @@ export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
      * @param title 子窗口標題
      */
     openChild: (url: string, title: string) => ipc.invoke(ch.OPEN_CHILD_WINDOW, url, title),
+
+    /** 打開備忘錄獨立窗(docs/20 §5.5) */
+    openMemos: () => ipc.invoke(ch.WINDOW_OPEN_MEMOS) as Promise<void>,
   }
 }

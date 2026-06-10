@@ -94,8 +94,9 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
                 description: r.description,
                 icon: r.icon,
                 enabled: r.enabled === 1,
-                openMode: r.openMode as 'page',
+                openMode: r.openMode as 'page' | 'window',
                 routeName: r.routeName ?? undefined,
+                windowId: (r.windowId ?? undefined) as 'memos' | undefined,
             })),
         },
         update: {

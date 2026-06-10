@@ -29,6 +29,8 @@ import {UserProfileChannels} from './user-profile'
 import {SavedCredentialsChannels} from './saved-credentials'
 import {WorkAnalysisChannels} from './work-analysis'
 import {NotificationChannels} from './notification'
+import {ProjectFlowChannels} from './project-flow'
+import {DailyAdviceChannels} from './daily-advice'
 
 export const IpcChannels = {
   ...AuthChannels,
@@ -42,6 +44,8 @@ export const IpcChannels = {
   ...SavedCredentialsChannels,
   ...WorkAnalysisChannels,
     ...NotificationChannels,
+  ...ProjectFlowChannels,
+  ...DailyAdviceChannels,
 } as const
 
 // 分組常數本身也 export,需要更細粒度的 import 時可以走這條
@@ -57,4 +61,6 @@ export {
   SavedCredentialsChannels,
   WorkAnalysisChannels,
     NotificationChannels,
+  ProjectFlowChannels,
+  DailyAdviceChannels,
 }
