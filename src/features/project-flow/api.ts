@@ -100,7 +100,14 @@ export const projectFlowApi = {
     markFeedbackRead: (id: number) => unwrap(pf().markFeedbackRead(ctx(), id)),
 
     // ── Team ──
-    listSubordinates: () => unwrap(pf().listSubordinates(ctx())),
+    listSubordinates: (query: { keyword?: string; pageIndex?: number; pageSize?: number } = {}) =>
+        unwrap(pf().listSubordinates(ctx(), plain(query))),
+    // ── Members(成員制權限) ──
+    listMembers: (projectId: number) => unwrap(pf().listMembers(ctx(), projectId)),
+    upsertMember: (projectId: number, body: { userId: string; role: 'viewer' | 'editor' }) =>
+        unwrap(pf().upsertMember(ctx(), projectId, plain(body))),
+    removeMember: (projectId: number, memberUserId: string) =>
+        unwrap(pf().removeMember(ctx(), projectId, memberUserId)),
     listSubReports: (userId: string, query: object = {}) =>
         unwrap(pf().listSubReports(ctx(), userId, plain(query))),
     listSubMemos: (userId: string) => unwrap(pf().listSubMemos(ctx(), userId)),

@@ -29,6 +29,7 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
   sidebar: {
     defaultCollapsed: false,
     items: [
+        {id: 'home', label: '首頁', icon: 'House', routeName: 'home', enabled: true},
         {id: 'unified-platform', label: '系統整理', icon: 'Grid', routeName: 'unified-platform', enabled: true},
       {id: 'internal-functions', label: '內部功能', icon: 'Grid', routeName: 'internal-functions', enabled: true},
         {id: 'personal-functions', label: '個人', icon: 'User', routeName: 'personal-functions', enabled: true},

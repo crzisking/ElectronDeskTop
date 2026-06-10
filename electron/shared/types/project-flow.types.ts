@@ -85,10 +85,22 @@ export interface NodeProgressItem {
     createdAt: number
 }
 
+/** 我在項目中的角色 — 後端 ResolveRoleAsync 的結果,前端據此切唯讀 */
+export type ProjectRole = 'owner' | 'editor' | 'viewer'
+
 export interface ProjectDetailResponse {
     project: ProjectListItem
     nodes: NodeResponse[]
     edges: EdgeResponse[]
+    myRole: ProjectRole
+}
+
+/** 項目成員(owner 由後端合成在第一筆) */
+export interface ProjectMemberItem {
+    userId: string
+    name?: string
+    role: ProjectRole
+    createdAt?: number
 }
 
 // ─── Report ─────────────────────────────────────────────────

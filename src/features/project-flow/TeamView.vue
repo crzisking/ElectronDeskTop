@@ -22,6 +22,16 @@
 
     <div class="content">
       <aside v-loading="loadingSub" class="sub-list">
+        <!-- 下屬多時靠搜尋 + 分頁;keyword 同時匹配工號與姓名(後端過濾) -->
+        <el-input
+            v-model="subKeyword"
+            :placeholder="$t('projectFlow.team.searchSub')"
+            class="sub-search"
+            clearable
+            size="small"
+            @clear="loadSubs(1)"
+            @keyup.enter="loadSubs(1)"
+        />
         <el-empty v-if="!subordinates.length" :description="$t('projectFlow.team.noSub')"/>
         <div
             v-for="s in subordinates"
@@ -35,6 +45,16 @@
             {{ lastReportText(s.lastReportAt) }}
           </div>
         </div>
+        <el-pagination
+            v-if="subTotal > SUB_PAGE_SIZE"
+            :current-page="subPage"
+            :page-size="SUB_PAGE_SIZE"
+            :pager-count="5"
+            :total="subTotal"
+            layout="prev, pager, next"
+            small
+            @current-change="loadSubs"
+        />
       </aside>
 
       <main class="detail">
@@ -145,7 +165,12 @@ function goBack() {
 
 // ─── 下屬列表 ────────────────────────────────────────────────
 
+const SUB_PAGE_SIZE = 20
+
 const subordinates = ref<TeamSubordinateItem[]>([])
+const subKeyword = ref('')
+const subPage = ref(1)
+const subTotal = ref(0)
 const selected = ref<string>('')
 const subReports = ref<ReportSummaryItem[]>([])
 const subMemos = ref<MemoResponse[]>([])
@@ -153,12 +178,19 @@ const loadingSub = ref(false)
 
 const STALE_MS = 3 * 86_400_000 // 超過 3 天沒匯報 → 橙色提醒
 
-onMounted(loadSubs)
+onMounted(() => loadSubs(1))
 
-async function loadSubs() {
+async function loadSubs(page: number) {
+  subPage.value = page
   loadingSub.value = true
   try {
-    subordinates.value = ((await projectFlowApi.listSubordinates()) as TeamSubordinateItem[]) ?? []
+    const r = (await projectFlowApi.listSubordinates({
+      keyword: subKeyword.value.trim() || undefined,
+      pageIndex: page,
+      pageSize: SUB_PAGE_SIZE,
+    })) as PagedResult<TeamSubordinateItem[]>
+    subordinates.value = r?.list ?? []
+    subTotal.value = r?.total ?? 0
   } catch (err) {
     ElMessage.error((err as Error).message)
   } finally {
@@ -331,6 +363,10 @@ function formatTime(ms?: number | null): string {
   border-right: 1px solid #e4e7ed;
   padding: 12px;
   overflow: auto;
+}
+
+.sub-search {
+  margin-bottom: 10px;
 }
 
 .sub-item {

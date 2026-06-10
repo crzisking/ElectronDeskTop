@@ -338,6 +338,7 @@
     "bpmFinder": "BPM Owner Lookup",
     "aiSop": "AI SOP Generator",
     "itRepair": "IT Repair",
+    "home": "Home",
     "workCollect": "Work Auto-Capture",
     "projectFlow": "Project Flow",
     "projectCanvas": "Flow Canvas",
@@ -490,6 +491,7 @@
       "highlights": "Highlights",
       "blockers": "Blockers",
       "suggestedActions": "Suggested Actions",
+      "searchSub": "Search ID / name",
       "lastReport": "Last report: {time}",
       "neverReported": "No reports yet",
       "feedback": "Feedback",
@@ -497,10 +499,34 @@
       "sendFeedback": "Send Feedback",
       "feedbackSent": "Feedback sent"
     },
+    "members": {
+      "title": "Members",
+      "add": "Add Member",
+      "role": "Role",
+      "roleOwner": "Owner",
+      "roleEditor": "Editor",
+      "roleViewer": "Viewer",
+      "readonlyTag": "Read-only",
+      "hint": "The owner can add members and change roles. Editors can modify nodes/edges; viewers are read-only. Node assignees can always view even if not listed."
+    },
     "feedback": {
       "title": "Unread Feedback",
       "empty": "No unread feedback"
     }
+  },
+  "home": {
+    "title": "Home",
+    "adviceTitle": "Today's Learning Tips",
+    "generatedAt": "Generated at {time}",
+    "generateNow": "Generate Now",
+    "regenerate": "Regenerate",
+    "noAdviceYet": "No tips for today yet — click \"Generate Now\", or wait for 8 AM auto-generation",
+    "setupIntro": "Complete the setup below; every day at 8 AM tips will be generated from your job type and recent work:",
+    "needTemplate": "Bind a work-collect template (tells the system your job type)",
+    "needLlm": "Configure an AI model ApiKey",
+    "goBind": "Bind",
+    "goConfig": "Configure",
+    "basedOn": "Based on {n} records from the last 7 days · Job: {job}"
   },
 
 

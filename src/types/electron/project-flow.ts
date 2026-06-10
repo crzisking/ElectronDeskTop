@@ -33,6 +33,11 @@ export interface ProjectFlowAPI {
     searchEmployees: (ctx: Ctx, query: object) => Promise<Result<unknown>>
     todayActivity: () => Promise<Result<unknown>>
 
+    // Members
+    listMembers: (ctx: Ctx, projectId: number) => Promise<Result<unknown>>
+    upsertMember: (ctx: Ctx, projectId: number, body: object) => Promise<Result<unknown>>
+    removeMember: (ctx: Ctx, projectId: number, memberUserId: string) => Promise<Result<unknown>>
+
     // Edges
     createEdge: (ctx: Ctx, projectId: number, body: object) => Promise<Result<{ edgeId: number }>>
     updateEdge: (ctx: Ctx, edgeId: number, body: object) => Promise<Result<unknown>>
@@ -61,7 +66,7 @@ export interface ProjectFlowAPI {
     markFeedbackRead: (ctx: Ctx, feedbackId: number) => Promise<Result<unknown>>
 
     // Team
-    listSubordinates: (ctx: Ctx) => Promise<Result<unknown>>
+    listSubordinates: (ctx: Ctx, query?: object) => Promise<Result<unknown>>
     listSubReports: (ctx: Ctx, userId: string, query: object) => Promise<Result<unknown>>
     listSubMemos: (ctx: Ctx, userId: string) => Promise<Result<unknown>>
 

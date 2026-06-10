@@ -20,7 +20,8 @@
       <el-button :icon="Close" link size="small" @click="$emit('close')"/>
     </header>
 
-    <el-form class="ins-form" label-position="top" size="small">
+    <!-- readonly(viewer 角色)時整個表單禁用,只能看 -->
+    <el-form :disabled="readonly" class="ins-form" label-position="top" size="small">
       <el-form-item label="標題">
         <el-input v-model="form.title" @blur="onTitleBlur"/>
       </el-form-item>
@@ -103,7 +104,7 @@
       </ul>
     </section>
 
-    <div class="ins-footer">
+    <div v-if="!readonly" class="ins-footer">
       <el-button :icon="Delete" plain type="danger" @click="$emit('delete')">刪除節點</el-button>
     </div>
   </aside>
@@ -123,6 +124,8 @@ const {t} = useI18n()
 
 const props = defineProps<{
   node: NodeResponse | null
+  /** viewer 角色 = true:表單禁用、刪除鈕隱藏(關聯匯報仍可看可跳轉) */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{

@@ -24,6 +24,11 @@ export const ProjectFlowChannels = {
 
     /** 跨項目「我的節點」(個人時間線 / 備忘 AI 進度輸入) */
     PROJECT_FLOW_MY_NODES: 'pf:my-nodes',
+
+    // ── Members(成員制權限:viewer 唯讀 / editor 可編)──────
+    PROJECT_FLOW_LIST_MEMBERS: 'pf:list-members',
+    PROJECT_FLOW_UPSERT_MEMBER: 'pf:upsert-member',
+    PROJECT_FLOW_REMOVE_MEMBER: 'pf:remove-member',
     /** 員工模糊搜尋(複用後端 /api/employee/getEmployees;負責人選擇彈窗用) */
     PROJECT_FLOW_SEARCH_EMPLOYEES: 'pf:search-employees',
     /** 今日 work-collect 聚合(唯讀參考數據,給匯報編輯器顯示) */

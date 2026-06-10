@@ -11,10 +11,10 @@ import {i18n} from '@/locales'
  */
 const routes: RouteRecordRaw[] = [
 
-  // 根路徑重定向到統一平台首頁
+  // 根路徑重定向到首頁(每日建議儀表板)
   {
     path: '/',
-    redirect: '/unified-platform'
+    redirect: '/home'
   },
 
   // 登錄頁（不需認證的公開頁面）
@@ -36,7 +36,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
 
-      // 統一平台（默認首頁）；原文 title：統一平台
+      // 首頁 — 每日學習建議儀表板;原文 title:首頁
+      {
+        path: 'home',
+        name: 'home',
+        component: () => import('@/views/Home/HomeView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'router.home'
+        }
+      },
+
+      // 統一平台；原文 title：統一平台
       {
         path: 'unified-platform',
         name: 'unified-platform',
@@ -153,7 +164,7 @@ const routes: RouteRecordRaw[] = [
   // 通配符兜底：未定義路由全部重定向到首頁（必須放最後）
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/unified-platform'
+    redirect: '/home'
   }
 ]
 

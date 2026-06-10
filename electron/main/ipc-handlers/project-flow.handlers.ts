@@ -119,6 +119,21 @@ export function registerProjectFlowHandlers(deps: ProjectFlowHandlerDeps = {
         if (!ctx) return {ok: false, error: 'missing ctx'}
         return safeRun(() => projectFlowApi.listMyNodes(ctx))
     })
+    ipcMain.handle(ch.PROJECT_FLOW_LIST_MEMBERS, async (_e, p: any) => {
+        const ctx = getCtx(p);
+        if (!ctx) return {ok: false, error: 'missing ctx'}
+        return safeRun(() => projectFlowApi.listMembers(ctx, p.projectId))
+    })
+    ipcMain.handle(ch.PROJECT_FLOW_UPSERT_MEMBER, async (_e, p: any) => {
+        const ctx = getCtx(p);
+        if (!ctx) return {ok: false, error: 'missing ctx'}
+        return safeRun(() => projectFlowApi.upsertMember(ctx, p.projectId, p.body))
+    })
+    ipcMain.handle(ch.PROJECT_FLOW_REMOVE_MEMBER, async (_e, p: any) => {
+        const ctx = getCtx(p);
+        if (!ctx) return {ok: false, error: 'missing ctx'}
+        return safeRun(() => projectFlowApi.removeMember(ctx, p.projectId, p.memberUserId))
+    })
     ipcMain.handle(ch.PROJECT_FLOW_SEARCH_EMPLOYEES, async (_e, p: any) => {
         const ctx = getCtx(p);
         if (!ctx) return {ok: false, error: 'missing ctx'}
@@ -239,7 +254,7 @@ export function registerProjectFlowHandlers(deps: ProjectFlowHandlerDeps = {
     ipcMain.handle(ch.PROJECT_FLOW_LIST_SUBORDINATES, async (_e, p: any) => {
         const ctx = getCtx(p);
         if (!ctx) return {ok: false, error: 'missing ctx'}
-        return safeRun(() => projectFlowApi.listSubordinates(ctx))
+        return safeRun(() => projectFlowApi.listSubordinates(ctx, p.query ?? {}))
     })
     ipcMain.handle(ch.PROJECT_FLOW_LIST_SUB_REPORTS, async (_e, p: any) => {
         const ctx = getCtx(p);

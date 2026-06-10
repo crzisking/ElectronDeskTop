@@ -26,6 +26,8 @@ const store = useWorkAnalysisStore()
 
 /** 歷史摺疊面板開關 */
 const historyOpen = ref(false)
+/** 報告本體折疊 — 預設收起,頁面不被長報告擠爆;點 header 整列切換 */
+const bodyOpen = ref(false)
 
 /**
  * 嘗試把 reportJson parse 成 AnalysisReport。
@@ -104,13 +106,16 @@ void locale
 
 <template>
   <el-card v-if="store.latest" class="analysis-card" shadow="never">
-    <!-- ── 頂部:時段 / provider / 配額 ────────────────────────── -->
-    <div class="analysis-card__header">
+    <!-- ── 頂部:時段 / provider / 配額;整列可點 = 折疊/展開報告本體 ── -->
+    <div class="analysis-card__header analysis-card__header--toggle" @click="bodyOpen = !bodyOpen">
       <div class="analysis-card__title">
         <el-icon>
           <Document/>
         </el-icon>
         <span>{{ t('workAnalysis.reportTitle') }}</span>
+        <el-icon class="fold-icon">
+          <component :is="bodyOpen ? ArrowUp : ArrowDown"/>
+        </el-icon>
       </div>
       <div class="analysis-card__meta">
         <span class="meta-chip">
@@ -127,20 +132,20 @@ void locale
 
     <!-- ── unstructured fallback:JSON 解析失敗,顯示 raw text ── -->
     <el-alert
-        v-if="isUnstructured"
+        v-if="isUnstructured && bodyOpen"
         :closable="false"
         :title="t('workAnalysis.unstructuredWarning')"
         class="analysis-card__warning"
         show-icon
         type="warning"
     />
-    <pre v-if="isUnstructured" class="analysis-card__raw">{{ store.latest.reportJson }}</pre>
+    <pre v-if="isUnstructured && bodyOpen" class="analysis-card__raw">{{ store.latest.reportJson }}</pre>
 
     <!-- ── 正常結構化渲染 — 走共用 ReportContent(內含 reasoning / leverage 新區塊) ── -->
-    <ReportContent v-else-if="parsedReport" :report="parsedReport"/>
+    <ReportContent v-else-if="parsedReport && bodyOpen" :report="parsedReport"/>
 
     <!-- ── 歷史摺疊 ───────────────────────────────────────────── -->
-    <div v-if="store.history.length > 1" class="analysis-card__footer">
+    <div v-if="bodyOpen && store.history.length > 1" class="analysis-card__footer">
       <el-button
           :icon="historyOpen ? ArrowUp : ArrowDown"
           link
@@ -177,6 +182,16 @@ void locale
 <style scoped>
 .analysis-card {
   border-radius: 12px;
+}
+
+.analysis-card__header--toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.fold-icon {
+  color: var(--el-text-color-secondary);
+  margin-left: 4px;
 }
 
 .analysis-card__header {

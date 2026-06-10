@@ -22,6 +22,8 @@ export type {
     TeamSubordinateItem,
     MyNodeItem,
     EmployeeItem,
+    ProjectMemberItem,
+    ProjectRole,
     TodayActivityCategory,
     AiReportAdvice,
     AiMemoSuggestion,

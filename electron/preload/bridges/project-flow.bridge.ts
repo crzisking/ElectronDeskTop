@@ -54,6 +54,14 @@ export function createProjectFlowBridge(ipc: IpcRenderer, ch: ProjectFlowChannel
             c(ch.PROJECT_FLOW_LIST_NODE_REPORT_ITEMS, {ctx, nodeId}) as Promise<Result<unknown>>,
         listMyNodes: (ctx: Ctx) =>
             c(ch.PROJECT_FLOW_MY_NODES, {ctx}) as Promise<Result<unknown>>,
+
+        // Members
+        listMembers: (ctx: Ctx, projectId: number) =>
+            c(ch.PROJECT_FLOW_LIST_MEMBERS, {ctx, projectId}) as Promise<Result<unknown>>,
+        upsertMember: (ctx: Ctx, projectId: number, body: object) =>
+            c(ch.PROJECT_FLOW_UPSERT_MEMBER, {ctx, projectId, body}) as Promise<Result<unknown>>,
+        removeMember: (ctx: Ctx, projectId: number, memberUserId: string) =>
+            c(ch.PROJECT_FLOW_REMOVE_MEMBER, {ctx, projectId, memberUserId}) as Promise<Result<unknown>>,
         searchEmployees: (ctx: Ctx, query: object) =>
             c(ch.PROJECT_FLOW_SEARCH_EMPLOYEES, {ctx, query}) as Promise<Result<unknown>>,
         todayActivity: () =>
@@ -106,8 +114,8 @@ export function createProjectFlowBridge(ipc: IpcRenderer, ch: ProjectFlowChannel
             c(ch.PROJECT_FLOW_MARK_FEEDBACK_READ, {ctx, feedbackId}) as Promise<Result<unknown>>,
 
         // Team
-        listSubordinates: (ctx: Ctx) =>
-            c(ch.PROJECT_FLOW_LIST_SUBORDINATES, {ctx}) as Promise<Result<unknown>>,
+        listSubordinates: (ctx: Ctx, query: object = {}) =>
+            c(ch.PROJECT_FLOW_LIST_SUBORDINATES, {ctx, query}) as Promise<Result<unknown>>,
         listSubReports: (ctx: Ctx, userId: string, query: object) =>
             c(ch.PROJECT_FLOW_LIST_SUB_REPORTS, {ctx, userId, query}) as Promise<Result<unknown>>,
         listSubMemos: (ctx: Ctx, userId: string) =>

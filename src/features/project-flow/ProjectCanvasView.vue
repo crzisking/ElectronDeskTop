@@ -22,6 +22,9 @@
       <el-button size="small" @click="$router.push({name: 'project-flow'})">← {{ $t('common.back') }}</el-button>
       <h3 class="title">{{ detail?.project?.name ?? '-' }}</h3>
 
+      <!-- 唯讀成員看得到但不能動;tag 讓使用者知道為什麼不能編輯 -->
+      <el-tag v-if="detail && !canEdit" size="small" type="info">{{ $t('projectFlow.members.readonlyTag') }}</el-tag>
+
       <!-- 畫布(編排依賴關係)/ 時間線(看排期與人員)雙視圖,同一份數據 -->
       <el-radio-group v-model="viewMode" size="small">
         <el-radio-button value="canvas">{{ $t('projectFlow.canvas.viewCanvas') }}</el-radio-button>
@@ -40,8 +43,17 @@
           <el-button :icon="FullScreen" @click="fitContent"/>
         </el-tooltip>
       </el-button-group>
+      <el-button size="small" @click="membersDialogVisible = true">
+        👥 {{ $t('projectFlow.members.title') }}
+      </el-button>
       <span class="hint">{{ $t('projectFlow.canvas.hint') }}</span>
     </header>
+
+    <ProjectMembersDialog
+        v-model="membersDialogVisible"
+        :can-manage="canManageMembers"
+        :project-id="currentProjectId()"
+    />
 
     <div class="body">
       <aside v-show="viewMode === 'canvas'" class="stencil">
@@ -78,6 +90,7 @@
       <NodeInspector
           v-if="selectedNode"
           :node="selectedNode"
+          :readonly="!canEdit"
           @close="closeInspector"
           @delete="onDeleteSelected"
           @update="onNodeUpdated"
@@ -98,6 +111,7 @@ import {projectFlowApi} from './api'
 import type {EdgeResponse, NodeResponse, ProjectDetailResponse} from './types'
 import NodeInspector from './components/NodeInspector.vue'
 import ProjectTimeline from './components/ProjectTimeline.vue'
+import ProjectMembersDialog from './components/ProjectMembersDialog.vue'
 
 const TAG = 'ProjectCanvasView'
 const route = useRoute()
@@ -111,7 +125,11 @@ const viewMode = ref<'canvas' | 'timeline'>('canvas')
 
 let graph: Graph | null = null
 
-const canEdit = computed(() => true)
+/** 後端 detail.myRole 決定:owner / editor 可編;viewer 全唯讀(畫布互動 + 檢視器都關) */
+const canEdit = computed(() => detail.value?.myRole === 'owner' || detail.value?.myRole === 'editor')
+/** 成員管理:owner 才開放(管理員後端會放行,但桌面入口只給 owner 保持簡單) */
+const canManageMembers = computed(() => detail.value?.myRole === 'owner')
+const membersDialogVisible = ref(false)
 
 // ── 節點 shape 註冊 ────────────────────────────────────────
 

@@ -86,6 +86,17 @@ export const projectFlowApi = {
         return get(ctx, '/api/projectflow/my-nodes', {})
     },
 
+    // ── Members(成員制權限) ──
+    listMembers(ctx: ProjectFlowApiContext, projectId: number) {
+        return get(ctx, `/api/projectflow/projects/${projectId}/members`, {})
+    },
+    upsertMember(ctx: ProjectFlowApiContext, projectId: number, body: unknown) {
+        return post(ctx, `/api/projectflow/projects/${projectId}/members`, body)
+    },
+    removeMember(ctx: ProjectFlowApiContext, projectId: number, memberUserId: string) {
+        return req(ctx, 'DELETE', `/api/projectflow/projects/${projectId}/members/${encodeURIComponent(memberUserId)}`, null)
+    },
+
     /**
      * 員工模糊搜尋 — 複用後端既有 /api/employee/getEmployees(工號/姓名/電話 OR 匹配)。
      * 不屬於 projectflow controller,但同一個 baseUrl,放這裡讓負責人選擇彈窗共用。
@@ -163,8 +174,12 @@ export const projectFlowApi = {
     },
 
     // Team
-    listSubordinates(ctx: ProjectFlowApiContext) {
-        return get(ctx, '/api/projectflow/team/subordinates', {})
+    listSubordinates(ctx: ProjectFlowApiContext, params: {
+        keyword?: string;
+        pageIndex?: number;
+        pageSize?: number
+    } = {}) {
+        return get(ctx, '/api/projectflow/team/subordinates', params)
     },
     listSubReports(ctx: ProjectFlowApiContext, userId: string, params: unknown) {
         return get(ctx, `/api/projectflow/team/subordinates/${encodeURIComponent(userId)}/reports`, params as Record<string, unknown>)

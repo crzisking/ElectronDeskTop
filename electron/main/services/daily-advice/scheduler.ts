@@ -20,7 +20,7 @@ import type {ConfigManager} from '../../config-manager'
 import type {WorkRecordService} from '../../db/features/work-collect/service'
 import type {WorkTemplateCacheService} from '../../db/features/work-collect/template-cache.service'
 import type {DailyAdviceService} from '../../db/features/daily-advice/service'
-import type {DailyAdviceRow} from '../../db/features/daily-advice/schema'
+import type {DailyAdviceRow} from '../../db/features'
 import type {LlmClient} from '../llm'
 import type {WindowManager} from '../../windows/window-manager'
 
@@ -169,42 +169,46 @@ export class DailyAdviceScheduler {
             .map((it) => `- ${it.label}${it.description ? `:${it.description}` : ''}`)
             .join('\n') || '(模板無分類明細)'
 
-        // 近 7 天工作聚合
+        // 近 7 天工作分布 — 只給「類別 + 分鐘」判斷重心。
+        // 刻意不傳 activeApp / 視窗標題:那會把具體文件名洩給 LLM,
+        // 產出「package.json 怎麼改」這種任務級建議,而我們要的是工種級成長建議。
         const since = Date.now() - 7 * DAY_MS
         const records = this.workRecords.listByRange(since, Date.now(), false)
-        const byCategory = new Map<string, { apps: Set<string>; count: number }>()
+        const byCategory = new Map<string, number>()
         for (const r of records) {
             const cat = r.category ?? 'unknown'
-            const e = byCategory.get(cat) ?? {apps: new Set<string>(), count: 0}
-            e.count++
-            if (r.activeApp) e.apps.add(r.activeApp)
-            byCategory.set(cat, e)
+            byCategory.set(cat, (byCategory.get(cat) ?? 0) + 1)
         }
         const workSummary = Array.from(byCategory.entries())
-            .sort((a, b) => b[1].count - a[1].count)
-            .map(([cat, e]) => `- ${cat}: 約 ${e.count * 5} 分鐘(主要應用: ${Array.from(e.apps).slice(0, 3).join(', ')})`)
+            .sort((a, b) => b[1] - a[1])
+            .map(([cat, count]) => `- ${cat}: 約 ${count * 5} 分鐘`)
             .join('\n') || '(近 7 天沒有工作紀錄)'
 
         const result = await this.llm.complete({
             responseFormat: 'json_object',
-            temperature: 0.6,
+            temperature: 0.7,
             messages: [
                 {
                     role: 'system',
                     content:
-                        '你是職業成長教練。根據使用者的工種與最近一週的實際工作分布,' +
-                        '給出今天值得投入的學習建議:具體技能點、最佳實踐、效率工具等。' +
-                        '建議要貼合他的工種與實際工作內容,不要泛泛的「多學習多溝通」。回 JSON,用繁體中文。',
+                        '你是職業發展顧問,為使用者的「工種」提供值得投入的成長型學習建議:' +
+                        '該領域的最新技術動態與趨勢、進階專業知識、業界方法論與最佳實踐。' +
+                        '例:軟件開發 → 新框架/工程實踐/值得關注的技術發布;採購 → 供應鏈知識、談判方法、成本分析進階。\n' +
+                        '硬性規則:\n' +
+                        '1. 只給工種層面的學習方向,嚴禁提及任何具體文件、具體代碼、具體待辦任務的操作建議\n' +
+                        '2. 工作分布只用來判斷使用者最近的工作重心,從而挑更相關的主題\n' +
+                        '3. 不要泛泛的「多學習多溝通」,每條都要有具體的主題/關鍵字方便使用者去搜\n' +
+                        '回 JSON,用繁體中文。',
                 },
                 {
                     role: 'user',
                     content:
-                        `我的工種:${templateName}\n工作分類定義:\n${jobDesc}\n\n` +
-                        `近 7 天實際工作分布:\n${workSummary}\n\n` +
+                        `我的工種:${templateName}\n工種的工作分類:\n${jobDesc}\n\n` +
+                        `近 7 天工作重心(僅供判斷方向):\n${workSummary}\n\n` +
                         `請給今天的學習建議,回 JSON:\n` +
-                        `{"summary":"一兩句總結我近期的工作重心","suggestions":[` +
-                        `{"title":"建議標題","detail":"具體怎麼做/學什麼(可含關鍵字、工具名)","reason":"為什麼建議(連結到我的工作數據)"}]}\n` +
-                        `suggestions 給 2~4 條,實用優先。`,
+                        `{"summary":"一兩句點出我這個工種當下值得關注什麼","suggestions":[` +
+                        `{"title":"學習主題","detail":"學什麼/關鍵字/從哪裡入手","reason":"為什麼這個主題對我的工種有價值"}]}\n` +
+                        `suggestions 給 2~4 條。`,
                 },
             ],
         })

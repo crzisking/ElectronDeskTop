@@ -340,6 +340,7 @@
     "bpmFinder": "BPM 負責人查詢",
     "aiSop": "AI SOP 生成",
     "itRepair": "IT 報修",
+    "home": "首頁",
     "workCollect": "工作自動採集",
     "projectFlow": "項目流程",
     "projectCanvas": "流程畫布",
@@ -492,6 +493,7 @@
       "highlights": "亮點",
       "blockers": "阻塞",
       "suggestedActions": "建議行動",
+      "searchSub": "搜尋工號 / 姓名",
       "lastReport": "最後匯報:{time}",
       "neverReported": "尚未提交過匯報",
       "feedback": "回饋",
@@ -499,10 +501,34 @@
       "sendFeedback": "送出回饋",
       "feedbackSent": "回饋已送出"
     },
+    "members": {
+      "title": "成員",
+      "add": "加成員",
+      "role": "角色",
+      "roleOwner": "負責人",
+      "roleEditor": "可編輯",
+      "roleViewer": "唯讀",
+      "readonlyTag": "唯讀",
+      "hint": "負責人可加成員、改角色。「可編輯」能改節點/連線;「唯讀」只能看。被分配節點的人即使不在成員列表也能唯讀查看。"
+    },
     "feedback": {
       "title": "未讀反饋",
       "empty": "沒有未讀反饋"
     }
+  },
+  "home": {
+    "title": "首頁",
+    "adviceTitle": "今日學習建議",
+    "generatedAt": "生成於 {time}",
+    "generateNow": "立即生成",
+    "regenerate": "重新生成",
+    "noAdviceYet": "今日建議還沒生成 — 點右上「立即生成」,或等明早 8 點自動生成",
+    "setupIntro": "完成以下設定後,每天早上 8 點會根據你的工種與近期工作,自動生成學習建議:",
+    "needTemplate": "綁定工作採集模板(讓系統知道你的工種)",
+    "needLlm": "配置 AI 模型 ApiKey",
+    "goBind": "去綁定",
+    "goConfig": "去配置",
+    "basedOn": "基於近 7 天 {n} 筆工作紀錄 · 工種:{job}"
   },
 
 
