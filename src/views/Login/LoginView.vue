@@ -127,8 +127,8 @@ async function handleLogin() {
     // loginCheck 內部已包含失敗兜底，不會把錯誤拋出影響登錄流程
     void useUpdate().loginCheck()
 
-    // 跳轉首頁
-    await router.push({name: 'unified-platform'})
+    // 跳轉首頁(每日建議儀表板)
+    await router.push({name: 'home'})
   } catch (err: unknown) {
     // 顯示後端返回的錯誤信息或通用提示
     // 原文 fallback：登錄失敗，請稍後再試

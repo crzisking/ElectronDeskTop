@@ -8,16 +8,8 @@
  * 統一回 {ok: true, data} | {ok: false, error}(對齊 IPC handler safeRun 包裝)。
  */
 import type {IpcRenderer} from 'electron'
-
-interface Ctx {
-    baseUrl: string;
-    userId: string;
-    token?: string
-}
-
-type Ok<T> = { ok: true; data: T }
-type Err = { ok: false; error: string }
-type Result<T> = Ok<T> | Err
+// 型別 import 編譯期擦除,sandbox preload 不會因此產生 chunk
+import type {IpcCtx as Ctx, IpcResult as Result} from '@shared/types/ipc.types'
 
 export interface ProjectFlowChannelMap {
     [key: string]: string
@@ -70,8 +62,6 @@ export function createProjectFlowBridge(ipc: IpcRenderer, ch: ProjectFlowChannel
         // Edges
         createEdge: (ctx: Ctx, projectId: number, body: object) =>
             c(ch.PROJECT_FLOW_CREATE_EDGE, {ctx, projectId, body}) as Promise<Result<{ edgeId: number }>>,
-        updateEdge: (ctx: Ctx, edgeId: number, body: object) =>
-            c(ch.PROJECT_FLOW_UPDATE_EDGE, {ctx, edgeId, body}) as Promise<Result<unknown>>,
         deleteEdge: (ctx: Ctx, edgeId: number) =>
             c(ch.PROJECT_FLOW_DELETE_EDGE, {ctx, edgeId}) as Promise<Result<unknown>>,
 

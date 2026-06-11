@@ -19,7 +19,6 @@ export const ProjectFlowChannels = {
     PROJECT_FLOW_LIST_NODE_REPORT_ITEMS: 'pf:list-node-report-items',
 
     PROJECT_FLOW_CREATE_EDGE: 'pf:create-edge',
-    PROJECT_FLOW_UPDATE_EDGE: 'pf:update-edge',
     PROJECT_FLOW_DELETE_EDGE: 'pf:delete-edge',
 
     /** 跨項目「我的節點」(個人時間線 / 備忘 AI 進度輸入) */

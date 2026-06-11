@@ -8,7 +8,7 @@
  * 不經過後端。
  */
 
-import {index, integer, sqliteTable, text} from 'drizzle-orm/sqlite-core'
+import {integer, sqliteTable, text} from 'drizzle-orm/sqlite-core'
 
 export const dailyAdvice = sqliteTable(
     'daily_advice',
@@ -36,9 +36,7 @@ export const dailyAdvice = sqliteTable(
         /** 生成時間(Unix ms) */
         createdAt: integer('createdAt').notNull(),
     },
-    (table) => ({
-        idxDateKey: index('idx_daily_advice_dateKey').on(table.dateKey),
-    }),
+    // dateKey 的 unique() 已隱含索引,不需要再建一條
 )
 
 export type DailyAdviceRow = typeof dailyAdvice.$inferSelect

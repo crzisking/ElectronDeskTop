@@ -23,6 +23,7 @@ import type {DailyAdviceService} from '../../db/features/daily-advice/service'
 import type {DailyAdviceRow} from '../../db/features'
 import type {LlmClient} from '../llm'
 import type {WindowManager} from '../../windows/window-manager'
+import {stripJsonFence} from '../project-flow/ai-local'
 
 const TAG = 'DailyAdvice'
 
@@ -65,7 +66,7 @@ export class DailyAdviceScheduler {
             this.catchupTimer = null
             const now = new Date()
             if (now.getHours() >= FIRE_HOUR && !this.store.getByDate(todayKey())) {
-                void this.generate('startup-catchup')
+                void this.generateScheduled('startup-catchup')
             }
         }, STARTUP_CATCHUP_DELAY_MS)
         logger.info('每日學習建議排程已啟動', TAG)
@@ -92,9 +93,17 @@ export class DailyAdviceScheduler {
 
     // ── 對外 API(IPC handler 用) ───────────────────────────
 
-    /** 手動立即生成(覆蓋今日);前置不滿足會拋帶說明的錯誤 */
+    /** 手動立即生成(覆蓋今日);前置不滿足拋帶說明的錯誤(IPC handler 轉成友善訊息) */
     async generateNow(): Promise<DailyAdviceRow> {
-        return this.generate('manual', /* force */ true)
+        if (this.generating) throw new Error('正在生成中,請稍候')
+
+        const wc = this.cfg.getConfig().workCollect
+        if (wc?.categoryTemplateId == null)
+            throw new Error('尚未綁定工作採集模板(到工作自動採集頁綁定後才知道你的工種)')
+        if (!this.isLlmConfigured())
+            throw new Error('尚未配置 AI 模型(到 設定 → AI Provider 填入 ApiKey)')
+
+        return this.runGenerate('manual')
     }
 
     /** 對齊下一個本地 08:00,觸發後遞迴重排(比 24h interval 更耐時區/休眠漂移) */
@@ -104,7 +113,7 @@ export class DailyAdviceScheduler {
         if (next.getTime() <= now.getTime()) next.setTime(next.getTime() + DAY_MS)
 
         this.dailyTimer = setTimeout(() => {
-            void this.generate('scheduled')
+            void this.generateScheduled('scheduled')
             this.scheduleNextFire()
         }, next.getTime() - now.getTime())
     }
@@ -121,33 +130,36 @@ export class DailyAdviceScheduler {
     }
 
     /**
-     * 生成一份今日建議。
-     * force=false(排程/補生成):前置不滿足靜默跳過、今天已有就不重生。
-     * force=true(手動):前置不滿足拋錯給 UI 顯示、覆蓋今日。
+     * 排程/補生成路徑 — 「跳過」是正常返回(null),不是異常。
+     * ⚠️ 這條路徑被 `void` 呼叫,任何 throw 都會變主進程 unhandled rejection,
+     * 所以連真失敗(LLM 掛了)也在這裡吞掉只記 log,等明天再試。
      */
-    private async generate(trigger: string, force = false): Promise<DailyAdviceRow> {
-        if (this.generating) throw new Error('正在生成中,請稍候')
+    private async generateScheduled(trigger: string): Promise<void> {
+        if (this.generating) return
 
         const wc = this.cfg.getConfig().workCollect
         if (wc?.categoryTemplateId == null) {
-            if (!force) {
-                logger.info(`[${trigger}] 未綁定工作模板,跳過生成`, TAG)
-                throw new Error('skip')
-            }
-            throw new Error('尚未綁定工作採集模板(到工作自動採集頁綁定後才知道你的工種)')
+            logger.info(`[${trigger}] 未綁定工作模板,跳過生成`, TAG)
+            return
         }
         if (!this.isLlmConfigured()) {
-            if (!force) {
-                logger.info(`[${trigger}] LLM provider 未配置,跳過生成`, TAG)
-                throw new Error('skip')
-            }
-            throw new Error('尚未配置 AI 模型(到 設定 → AI Provider 填入 ApiKey)')
+            logger.info(`[${trigger}] LLM provider 未配置,跳過生成`, TAG)
+            return
         }
-        if (!force && this.store.getByDate(todayKey())) {
+        if (this.store.getByDate(todayKey())) {
             logger.info(`[${trigger}] 今日建議已存在,跳過`, TAG)
-            throw new Error('skip')
+            return
         }
 
+        try {
+            await this.runGenerate(trigger)
+        } catch (err) {
+            logger.warn(`[${trigger}] 生成失敗:${(err as Error).message}`, TAG)
+        }
+    }
+
+    /** 實際生成(前置已由 caller 驗過);併發鎖 + 落庫 + 推送 */
+    private async runGenerate(trigger: string): Promise<DailyAdviceRow> {
         this.generating = true
         try {
             const row = await this.doGenerate()
@@ -207,14 +219,15 @@ export class DailyAdviceScheduler {
                         `近 7 天工作重心(僅供判斷方向):\n${workSummary}\n\n` +
                         `請給今天的學習建議,回 JSON:\n` +
                         `{"summary":"一兩句點出我這個工種當下值得關注什麼","suggestions":[` +
-                        `{"title":"學習主題","detail":"學什麼/關鍵字/從哪裡入手","reason":"為什麼這個主題對我的工種有價值"}]}\n` +
+                        `{"title":"學習主題","detail":"學什麼/從哪裡入手","reason":"為什麼這個主題對我的工種有價值",` +
+                        `"keywords":["可直接拿去搜尋的關鍵字,1~3 個"]}]}\n` +
                         `suggestions 給 2~4 條。`,
                 },
             ],
         })
 
-        // 剝 markdown 圍欄 + 驗證 JSON,存庫的一定是合法 JSON
-        const cleaned = result.content.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim()
+        // 剝 markdown 圍欄(共用 ai-local 的實作)+ 驗證 JSON,存庫的一定是合法 JSON
+        const cleaned = stripJsonFence(result.content)
         JSON.parse(cleaned)
 
         const entry = {

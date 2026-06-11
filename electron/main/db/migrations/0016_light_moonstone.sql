@@ -1,0 +1,1 @@
+DROP INDEX `idx_daily_advice_dateKey`;

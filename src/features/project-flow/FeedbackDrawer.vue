@@ -29,6 +29,7 @@ import {ElMessage} from 'element-plus'
 import {useProjectFlowStore} from './store'
 import {projectFlowApi} from './api'
 import type {FeedbackResponse} from './types'
+import {formatDateTime as formatTime} from '@/shared/utils/format'
 
 const store = useProjectFlowStore()
 const router = useRouter()
@@ -41,19 +42,26 @@ function open() {
 
 defineExpose({open})
 
+/**
+ * 點未讀反饋:先跳到目標,**到達後才標已讀** —
+ * 反過來的話跳轉失敗(目標被刪 / 無權限)這條反饋就從未讀消失,再也找不回。
+ * node 類反饋帶 projectId(後端批量解析),直接進對應項目畫布。
+ */
 async function onClick(f: FeedbackResponse) {
   try {
+    if (f.targetType === 'report') {
+      await router.push({name: 'report-editor', params: {reportId: String(f.targetId)}})
+    } else if (f.targetType === 'node' && f.projectId) {
+      await router.push({name: 'project-canvas', params: {projectId: String(f.projectId)}})
+    } else {
+      // 沒有 projectId(舊資料 / 目標已刪)→ 退到項目列表,但不標已讀,使用者還能再看到
+      await router.push({name: 'project-flow'})
+      visible.value = false
+      return
+    }
+    visible.value = false
     await projectFlowApi.markFeedbackRead(f.feedbackId)
     await store.refreshUnread()
-    visible.value = false
-    // 跳轉到對應 target;targetType 目前只有 'node' | 'report'(對齊 schema docs/20 §3.6)
-    // node 反饋暫無 projectId 欄位,先回到 project 列表讓用戶手動進入
-    if (f.targetType === 'report') {
-      router.push({name: 'report-editor', params: {reportId: String(f.targetId)}})
-    } else if (f.targetType === 'node') {
-      router.push({name: 'project-flow'})
-    }
-    // 備忘錄反饋走獨立窗(目前 schema 沒有 'memo' targetType,將來擴展時加 case 打開 memos 窗)
   } catch (err) {
     ElMessage.error((err as Error).message)
   }
@@ -61,10 +69,6 @@ async function onClick(f: FeedbackResponse) {
 
 function targetTagType(t: string) {
   return t === 'report' ? 'success' : 'info'
-}
-
-function formatTime(ms: number): string {
-  return ms ? new Date(ms).toLocaleString() : ''
 }
 </script>
 

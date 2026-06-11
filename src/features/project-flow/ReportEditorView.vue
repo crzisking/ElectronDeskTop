@@ -154,7 +154,7 @@ onMounted(() => {
 /** 今日數據純本地讀取,失敗不打擾(參考欄留空即可) */
 async function loadActivity() {
   try {
-    activity.value = ((await projectFlowApi.todayActivity()) as TodayActivityCategory[]) ?? []
+    activity.value = (await projectFlowApi.todayActivity()).categories
   } catch {
     activity.value = []
   }
@@ -164,7 +164,7 @@ async function load() {
   loading.value = true
   try {
     const id = Number(route.params.reportId)
-    const r = (await projectFlowApi.getReport(id)) as ReportResponse
+    const r = await projectFlowApi.getReport(id)
     report.value = r
     form.title = r.title ?? ''
     form.items = (r.items ?? []).map((it) => ({...it}))
@@ -228,7 +228,7 @@ async function onAiAdvice() {
       work: pick('work'),
       issue: pick('issue'),
       plan: pick('plan'),
-    })) as AiReportAdvice
+    }))
   } catch (err) {
     ElMessage.error((err as Error).message)
   } finally {

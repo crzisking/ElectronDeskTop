@@ -47,6 +47,23 @@
       </el-table-column>
     </el-table>
 
+    <!-- 備忘獨立窗在主窗登入前打開:列表載入會吃 'missing ctx',給明確提示而不是空表 -->
+    <el-empty
+        v-if="authMissing"
+        :description="$t('projectFlow.memos.loginRequired')"
+        :image-size="64"
+    />
+
+    <el-pagination
+        v-if="store.memosTotal > PF_PAGE_SIZE"
+        :current-page="page"
+        :page-size="PF_PAGE_SIZE"
+        :total="store.memosTotal"
+        class="pager"
+        layout="total, prev, pager, next"
+        @current-change="loadPage"
+    />
+
     <el-dialog v-model="dialogVisible" :title="$t('projectFlow.memos.create')" width="480px">
       <el-form :model="form" label-width="80px">
         <el-form-item :label="$t('projectFlow.memos.titleCol')" required>
@@ -96,12 +113,13 @@
 </template>
 
 <script lang="ts" setup>
-import {onMounted, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useI18n} from 'vue-i18n'
-import {useProjectFlowStore} from './store'
+import {PF_PAGE_SIZE, useProjectFlowStore} from './store'
 import {projectFlowApi} from './api'
-import type {MemoResponse, MyNodeItem} from './types'
+import type {MemoResponse} from './types'
+import {formatDateTime as formatTime} from '@/shared/utils/format'
 
 const store = useProjectFlowStore()
 const {t} = useI18n()
@@ -115,7 +133,17 @@ const form = ref<{ title: string; description: string; priority: number; dueDate
   title: '', description: '', priority: 1, dueDate: null,
 })
 
-onMounted(() => store.loadMemos())
+const page = ref(1)
+
+/** 'missing ctx' = 主進程 authContext 還沒有登入身分(備忘獨立窗先於主窗登入打開) */
+const authMissing = computed(() => !store.memos.length && (store.lastError?.includes('missing ctx') ?? false))
+
+function loadPage(toPage: number) {
+  page.value = toPage
+  void store.loadMemos(toPage)
+}
+
+onMounted(() => loadPage(1))
 
 function openCreate() {
   form.value = {title: '', description: '', priority: 1, dueDate: null}
@@ -137,7 +165,7 @@ async function onSubmit() {
       dueDateMs: form.value.dueDate ? Number(form.value.dueDate) : null,
     })
     dialogVisible.value = false
-    await store.loadMemos()
+    await store.loadMemos(page.value)
   } catch (err) {
     ElMessage.error((err as Error).message)
   } finally {
@@ -150,7 +178,7 @@ async function onStatusChange(row: MemoResponse) {
     await projectFlowApi.setMemoStatus(row.memoId, {status: row.status})
   } catch (err) {
     ElMessage.error((err as Error).message)
-    store.loadMemos()
+    store.loadMemos(page.value)
   }
 }
 
@@ -158,7 +186,7 @@ async function onDelete(id: number) {
   try {
     await ElMessageBox.confirm(t('projectFlow.memos.deleteConfirm'), t('common.warning'), {type: 'warning'})
     await projectFlowApi.deleteMemo(id)
-    await store.loadMemos()
+    await store.loadMemos(page.value)
   } catch (err) {
     if (err === 'cancel') return
     ElMessage.error((err as Error).message ?? String(err))
@@ -187,7 +215,7 @@ const accepting = ref(false)
 async function onAiSuggest() {
   aiLoading.value = true
   try {
-    const myNodes = ((await projectFlowApi.listMyNodes()) as MyNodeItem[]) ?? []
+    const myNodes = await projectFlowApi.listMyNodes()
     const pendingMemos = store.memos.filter((m) => m.status === 'pending')
 
     const r = (await projectFlowApi.aiMemoSuggest({
@@ -236,7 +264,7 @@ async function onAcceptSuggestions() {
       })
     }
     suggestDialogVisible.value = false
-    await store.loadMemos()
+    await store.loadMemos(page.value)
     ElMessage.success(t('projectFlow.memos.aiAdded', {n: chosen.length}))
   } catch (err) {
     ElMessage.error((err as Error).message)
@@ -247,10 +275,6 @@ async function onAcceptSuggestions() {
 
 function priorityTagType(p: number) {
   return p >= 2 ? 'danger' : p === 1 ? 'warning' : 'info'
-}
-
-function formatTime(ms: number | null | undefined): string {
-  return ms ? new Date(ms).toLocaleString() : '-'
 }
 </script>
 
@@ -269,6 +293,11 @@ function formatTime(ms: number | null | undefined): string {
 .actions {
   display: flex;
   gap: 8px;
+}
+
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 
 .sug-item {

@@ -113,6 +113,13 @@
       "when": 1781074201831,
       "tag": "0015_groovy_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1781090198616,
+      "tag": "0016_light_moonstone",
+      "breakpoints": true
     }
   ]
 }

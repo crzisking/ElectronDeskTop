@@ -59,16 +59,19 @@
       <aside v-show="viewMode === 'canvas'" class="stencil">
         <div class="stencil-title">{{ $t('projectFlow.canvas.stencilTitle') }}</div>
         <div class="stencil-hint">{{ $t('projectFlow.canvas.dragHint') }}</div>
-        <div
-            v-for="tpl in TEMPLATES"
-            :key="tpl.type"
-            :style="{borderColor: NODE_TYPE_COLOR[tpl.type].stroke, background: NODE_TYPE_COLOR[tpl.type].fill}"
-            class="stencil-item"
-            draggable="true"
-            @dragstart="onDragStart($event, tpl.type)"
-        >
-          {{ $t(tpl.labelKey) }}
-        </div>
+        <template v-for="group in TEMPLATE_GROUPS" :key="group.titleKey">
+          <div class="stencil-group">{{ $t(group.titleKey) }}</div>
+          <div
+              v-for="tpl in group.items"
+              :key="tpl.type"
+              :style="{borderColor: NODE_TYPE_COLOR[tpl.type].stroke, background: NODE_TYPE_COLOR[tpl.type].fill}"
+              class="stencil-item"
+              draggable="true"
+              @dragstart="onDragStart($event, tpl.type)"
+          >
+            {{ $t(tpl.labelKey) }}
+          </div>
+        </template>
       </aside>
 
       <!-- v-show 不是 v-if:graph 實例要保活,切回畫布不用重建 -->
@@ -103,7 +106,7 @@
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useRoute} from 'vue-router'
 import {Graph, Shape} from '@antv/x6'
-import {ElMessage} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {FullScreen, ZoomIn, ZoomOut} from '@element-plus/icons-vue'
 import {useI18n} from 'vue-i18n'
 import {logger} from '@/shared/utils/logger'
@@ -135,17 +138,61 @@ const membersDialogVisible = ref(false)
 
 const NODE_SHAPE = 'pf-flow-node'
 
+/**
+ * 節點類型 — 覆蓋項目從啟動到結項的完整生命週期。
+ * 「階段」沿生命週期排序;「元素」是可隨時插入的橫切節點(決策/風險)。
+ * 後端 NodeType 是自由字串,新增類型只要改這裡 + i18n,不動後端。
+ */
 const NODE_TYPE_COLOR: Record<string, { fill: string; stroke: string }> = {
-  task: {fill: '#ffffff', stroke: '#5F95FF'},
+  start: {fill: '#F6FFED', stroke: '#52C41A'},
+  requirement: {fill: '#E6FFFB', stroke: '#13C2C2'},
+  design: {fill: '#F9F0FF', stroke: '#722ED1'},
+  task: {fill: '#FFFFFF', stroke: '#5F95FF'},
+  test: {fill: '#FCFFE6', stroke: '#A0D911'},
+  review: {fill: '#FFFBE6', stroke: '#FAAD14'},
   milestone: {fill: '#FFF7E6', stroke: '#FA8C16'},
+  finish: {fill: '#FAFAFA', stroke: '#595959'},
   decision: {fill: '#FFF1F0', stroke: '#F5222D'},
+  risk: {fill: '#FFF2E8', stroke: '#FA541C'},
 }
 
-const TEMPLATES: { type: string; labelKey: string }[] = [
-  {type: 'task', labelKey: 'projectFlow.canvas.shapeTask'},
-  {type: 'milestone', labelKey: 'projectFlow.canvas.shapeMilestone'},
-  {type: 'decision', labelKey: 'projectFlow.canvas.shapeDecision'},
+interface NodeTemplate {
+  type: string
+  labelKey: string
+}
+
+/** stencil 分組:階段(生命週期順序)/ 元素(橫切) */
+const TEMPLATE_GROUPS: { titleKey: string; items: NodeTemplate[] }[] = [
+  {
+    titleKey: 'projectFlow.canvas.groupPhases',
+    items: [
+      {type: 'start', labelKey: 'projectFlow.nodeType.start'},
+      {type: 'requirement', labelKey: 'projectFlow.nodeType.requirement'},
+      {type: 'design', labelKey: 'projectFlow.nodeType.design'},
+      {type: 'task', labelKey: 'projectFlow.nodeType.task'},
+      {type: 'test', labelKey: 'projectFlow.nodeType.test'},
+      {type: 'review', labelKey: 'projectFlow.nodeType.review'},
+      {type: 'milestone', labelKey: 'projectFlow.nodeType.milestone'},
+      {type: 'finish', labelKey: 'projectFlow.nodeType.finish'},
+    ],
+  },
+  {
+    titleKey: 'projectFlow.canvas.groupElements',
+    items: [
+      {type: 'decision', labelKey: 'projectFlow.nodeType.decision'},
+      {type: 'risk', labelKey: 'projectFlow.nodeType.risk'},
+    ],
+  },
 ]
+
+/** drop 時取節點預設標題(= stencil 上顯示的類型名) */
+function typeLabel(nodeType: string): string {
+  for (const g of TEMPLATE_GROUPS) {
+    const hit = g.items.find((it) => it.type === nodeType)
+    if (hit) return t(hit.labelKey)
+  }
+  return t('projectFlow.nodeType.task')
+}
 
 function ensureShapeRegistered(): void {
   try {
@@ -203,7 +250,7 @@ onBeforeUnmount(() => {
 async function loadProject() {
   const projectId = Number(route.params.projectId)
   try {
-    detail.value = (await projectFlowApi.getProject(projectId)) as ProjectDetailResponse
+    detail.value = await projectFlowApi.getProject(projectId)
   } catch (err) {
     ElMessage.error((err as Error).message)
   }
@@ -302,7 +349,9 @@ function initGraph() {
     }
   })
 
-  // 新連線 → 後端建立
+  // 新連線 → 後端建立。
+  // ⚠️ x6 的 cell id 不可變(setProp('id') 無效,跟節點同坑)—
+  //    成功後移除 temp edge,用後端 edgeId 重建,之後刪除才找得到對的 cell
   graph.on('edge:connected', async ({edge, isNew}) => {
     if (!isNew || !canEdit.value) return
     const src = Number(edge.getSourceCellId())
@@ -317,10 +366,33 @@ function initGraph() {
         sourceNodeId: src,
         targetNodeId: tgt,
       })
-      edge.setProp('id', String((r as { edgeId: number }).edgeId))
+      edge.remove()
+      graph?.addEdge({
+        id: String((r as { edgeId: number }).edgeId),
+        source: String(src),
+        target: String(tgt),
+        attrs: {
+          line: {stroke: '#A2B1C3', strokeWidth: 1.5, targetMarker: {name: 'block', width: 8, height: 6}},
+        },
+      })
     } catch (err) {
       edge.remove()
       ElMessage.error((err as Error).message)
+    }
+  })
+
+  // 點連線 → 確認後刪除(畫錯的依賴關係要能改;viewer 不給刪)
+  graph.on('edge:click', async ({edge}) => {
+    if (!canEdit.value) return
+    const edgeId = Number(edge.id)
+    if (!Number.isFinite(edgeId)) return // temp edge 還沒 sync 完
+    try {
+      await ElMessageBox.confirm(t('projectFlow.canvas.deleteEdgeConfirm'), t('common.warning'), {type: 'warning'})
+      await projectFlowApi.deleteEdge(edgeId)
+      edge.remove()
+    } catch (err) {
+      if (err === 'cancel') return
+      ElMessage.error((err as Error).message ?? String(err))
     }
   })
 
@@ -352,7 +424,7 @@ async function onCanvasDrop(e: DragEvent) {
   const x = local.x - 70
   const y = local.y - 24
   const color = NODE_TYPE_COLOR[nodeType] ?? NODE_TYPE_COLOR.task
-  const labelText = t(`projectFlow.canvas.shape${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}`)
+  const labelText = typeLabel(nodeType)
 
   const nodeAttrs = {
     body: {fill: color.fill, stroke: color.stroke, strokeWidth: 1, rx: 6, ry: 6},
@@ -540,6 +612,12 @@ function fitContent() {
   font-weight: 600;
   color: #303133;
   margin-bottom: 4px;
+}
+
+.stencil-group {
+  font-size: 12px;
+  color: #909399;
+  margin: 12px 0 6px;
 }
 
 .stencil-hint {

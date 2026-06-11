@@ -29,7 +29,17 @@ export interface ProjectListItem {
 }
 
 export type NodeStatus = 'not_started' | 'in_progress' | 'blocked' | 'completed' | 'cancelled'
-export type NodeType = 'task' | 'milestone' | 'decision'
+/**
+ * 節點類型 — 覆蓋項目全生命週期。
+ * 階段:start 啟動 / requirement 需求 / design 設計 / task 任務 / test 測試 /
+ *       review 評審驗收 / milestone 里程碑 / finish 結項
+ * 元素:decision 決策 / risk 風險(可插在任何階段之間)
+ * 後端 NodeType 是自由字串,擴充只動這裡 + 畫布配色 + i18n。
+ */
+export type NodeType =
+    | 'start' | 'requirement' | 'design' | 'task' | 'test'
+    | 'review' | 'milestone' | 'finish'
+    | 'decision' | 'risk'
 
 export interface NodeResponse {
     nodeId: number
@@ -202,6 +212,13 @@ export interface TodayActivityCategory {
     apps: string[]
 }
 
+/** 今日活動完整摘要 — 匯報編輯器參考面板 + 首頁熱力圖共用 */
+export interface TodayActivitySummary {
+    categories: TodayActivityCategory[]
+    /** 24 格:每小時的工作分鐘數(0-60),首頁熱力圖用 */
+    hourly: number[]
+}
+
 // ─── Feedback ───────────────────────────────────────────────
 
 export type FeedbackTargetType = 'node' | 'report'
@@ -210,6 +227,8 @@ export interface FeedbackResponse {
     feedbackId: number
     targetType: FeedbackTargetType
     targetId: number
+    /** targetType=node 時節點所屬項目(跳轉用);report 類為 null */
+    projectId?: number | null
     fromUserId: string
     toUserId: string
     content: string

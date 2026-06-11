@@ -112,9 +112,6 @@ export const projectFlowApi = {
     createEdge(ctx: ProjectFlowApiContext, projectId: number, body: unknown) {
         return post(ctx, `/api/projectflow/projects/${projectId}/edges`, body)
     },
-    updateEdge(ctx: ProjectFlowApiContext, edgeId: number, body: unknown) {
-        return req(ctx, 'PUT', `/api/projectflow/edges/${edgeId}`, body)
-    },
     deleteEdge(ctx: ProjectFlowApiContext, edgeId: number) {
         return req(ctx, 'DELETE', `/api/projectflow/edges/${edgeId}`, null)
     },
@@ -197,9 +194,6 @@ export const projectFlowApi = {
     },
     getQuota(ctx: ProjectFlowApiContext) {
         return get(ctx, '/api/projectflow/ai/quota', {})
-    },
-    consumeQuota(ctx: ProjectFlowApiContext, body: unknown) {
-        return post(ctx, '/api/projectflow/ai/quota/consume', body)
     },
 }
 

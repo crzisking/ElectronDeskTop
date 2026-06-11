@@ -351,10 +351,10 @@
   },
   "projectFlow": {
     "editLevel": {
-      "0": "不可見",
-      "1": "唯讀",
-      "2": "可編輯",
-      "3": "完全控制"
+      "0": "無權限",
+      "1": "可建項目",
+      "2": "全項目管理",
+      "3": "超級管理"
     },
     "projects": {
       "title": "我的項目",
@@ -377,16 +377,33 @@
       "statusPrompt": "節點狀態 (例:todo / doing / done)",
       "stencilTitle": "節點類型",
       "dragHint": "拖到右側畫布",
-      "shapeTask": "任務",
-      "shapeMilestone": "里程碑",
-      "shapeDecision": "決策",
       "zoomIn": "放大",
       "zoomOut": "縮小",
       "fit": "適應視窗",
       "viewCanvas": "畫布",
-      "viewTimeline": "時間線"
+      "viewTimeline": "時間線",
+      "deleteEdgeConfirm": "刪除這條連線(依賴關係)?",
+      "groupPhases": "階段",
+      "groupElements": "元素"
+    },
+    "nodeType": {
+      "start": "項目啟動",
+      "requirement": "需求",
+      "design": "設計",
+      "task": "任務",
+      "test": "測試",
+      "review": "評審驗收",
+      "milestone": "里程碑",
+      "finish": "項目結項",
+      "decision": "決策",
+      "risk": "風險"
     },
     "node": {
+      "detailTitle": "節點詳情",
+      "linkedReports": "關聯的匯報",
+      "linkedEmpty": "尚無匯報引用此節點",
+      "needHelpTag": "需協助",
+      "deleteNode": "刪除節點",
       "deadline": "截止日期",
       "deadlinePlaceholder": "選擇截止日(時間線依此排序)",
       "assignee": "負責人",
@@ -476,6 +493,7 @@
       "aiEmpty": "目前無建議 — 項目進度與待辦都在掌握中",
       "aiAdded": "已加入 {n} 條建議",
       "acceptChecked": "採納勾選項",
+      "loginRequired": "請先在主視窗登入,再回來使用備忘錄",
       "status": {
         "pending": "進行中",
         "done": "完成",
@@ -518,6 +536,22 @@
   },
   "home": {
     "title": "首頁",
+    "greetMorning": "早安",
+    "greetNoon": "午安",
+    "greetAfternoon": "下午好",
+    "greetEvening": "晚安",
+    "heroSub": "今天也是值得認真對待的一天",
+    "statPace": "今日節奏",
+    "statTopCategory": "最投入的類別",
+    "statActiveHours": "活躍時段",
+    "heatTitle": "今日工作熱力",
+    "distTitle": "工作重心",
+    "minutesUnit": "分鐘",
+    "noActivityYet": "今日尚無採集數據",
+    "pace0": "蓄勢待發",
+    "pace1": "剛起步",
+    "pace2": "漸入佳境",
+    "pace3": "火力全開",
     "adviceTitle": "今日學習建議",
     "generatedAt": "生成於 {time}",
     "generateNow": "立即生成",
@@ -628,6 +662,8 @@
 
     "viewDay": "日檢視",
     "viewWeek": "週檢視",
+    "foldCharts": "圖表分析",
+    "foldDetail": "採集明細",
 
     "enableLabel": "啟用採集",
     "enableHintBefore": "開啟後,每",

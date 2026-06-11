@@ -33,6 +33,16 @@
         </template>
       </el-table-column>
     </el-table>
+    <!-- 匯報日積月累,必須分頁;page state 在本 view,數據在 store -->
+    <el-pagination
+        v-if="store.reportsTotal > PF_PAGE_SIZE"
+        :current-page="page"
+        :page-size="PF_PAGE_SIZE"
+        :total="store.reportsTotal"
+        class="pager"
+        layout="total, prev, pager, next"
+        @current-change="refresh"
+    />
   </div>
 </template>
 
@@ -41,20 +51,23 @@ import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useI18n} from 'vue-i18n'
-import {useProjectFlowStore} from './store'
+import {PF_PAGE_SIZE, useProjectFlowStore} from './store'
 import {projectFlowApi} from './api'
+import {formatDateTime as formatTime} from '@/shared/utils/format'
 
 const router = useRouter()
 const store = useProjectFlowStore()
 const {t} = useI18n()
 const loading = ref(false)
+const page = ref(1)
 
-onMounted(refresh)
+onMounted(() => refresh(1))
 
-async function refresh() {
+async function refresh(toPage: number = page.value) {
+  page.value = toPage
   loading.value = true
   try {
-    await store.loadReports()
+    await store.loadReports(toPage)
   } finally {
     loading.value = false
   }
@@ -68,8 +81,7 @@ function goBack() {
 async function onCreate() {
   try {
     const r = await projectFlowApi.createReport({title: t('projectFlow.reports.defaultTitle')})
-    const id = (r as any).reportId as number
-    router.push({name: 'report-editor', params: {reportId: String(id)}})
+    router.push({name: 'report-editor', params: {reportId: String(r.reportId)}})
   } catch (err) {
     ElMessage.error((err as Error).message)
   }
@@ -90,10 +102,6 @@ async function onDelete(id: number) {
     ElMessage.error((err as Error).message ?? String(err))
   }
 }
-
-function formatTime(ms: number): string {
-  return ms ? new Date(ms).toLocaleString() : '-'
-}
 </script>
 
 <style scoped>
@@ -111,5 +119,10 @@ function formatTime(ms: number): string {
 .header h2 {
   flex: 1;
   margin: 0;
+}
+
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 </style>

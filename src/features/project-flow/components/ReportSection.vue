@@ -81,7 +81,7 @@
 import {ref} from 'vue'
 import type {CascaderProps, CascaderValue} from 'element-plus'
 import {projectFlowApi} from '../api'
-import type {NodeResponse, PagedResult, ProjectDetailResponse, ProjectListItem, ReportItemResponse} from '../types'
+import type {NodeResponse, ReportItemResponse} from '../types'
 
 defineProps<{
   title: string
@@ -130,7 +130,7 @@ const cascaderProps = {
     try {
       if (node.root) {
         // 第一次展開,拉項目列表
-        const r = (await projectFlowApi.listProjects({pageIndex: 1, pageSize: 100})) as PagedResult<ProjectListItem[]>
+        const r = await projectFlowApi.listProjects({pageIndex: 1, pageSize: 100})
         const opts: CascaderOption[] = (r?.list ?? []).map((p) => ({
           value: p.projectId,
           label: p.name,
@@ -142,7 +142,7 @@ const cascaderProps = {
         // 展開某項目,拉它的節點
         const projectId = node.value ?? node.data?.value
         if (!projectId) return resolve([])
-        const detail = (await projectFlowApi.getProject(projectId)) as ProjectDetailResponse
+        const detail = await projectFlowApi.getProject(projectId)
         const opts: CascaderOption[] = (detail?.nodes ?? []).map((n: NodeResponse) => ({
           value: n.nodeId,
           label: n.title,

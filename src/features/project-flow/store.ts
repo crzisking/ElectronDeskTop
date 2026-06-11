@@ -15,7 +15,6 @@ import {logger} from '@/shared/utils/logger'
 import {useAuthStore} from '@/stores/auth.store'
 import {projectFlowApi} from './api'
 import type {
-    AiQuotaInfo,
     FeedbackResponse,
     MemoResponse,
     PagedResult,
@@ -26,19 +25,28 @@ import type {
 
 const TAG = 'projectFlow.store'
 
+/** 列表統一頁大小 */
+export const PF_PAGE_SIZE = 20
+
 /**
- * 統一 loadX 模板:呼叫 paged API → 取 .list → 賦值給 target ref。
- * 後端 PagedResult<T>.List 欄位是 list(對齊 PagedResult.cs)。
+ * 統一 loadX 模板:呼叫 paged API → list 進 target、total 進 totalRef。
+ * 後端 PagedResult<T> 欄位是 list / total(對齊 PagedResult.cs)。
+ * 失敗時把錯誤訊息留在 lastError(備忘獨立窗用它判斷「未登入」狀態)。
  */
 async function loadPaged<T>(
     fetch: () => Promise<PagedResult<T[]> | unknown>,
     target: { value: T[] },
+    totalRef: { value: number },
+    errorRef: { value: string | null },
     label: string,
 ) {
     try {
         const res = (await fetch()) as PagedResult<T[]> | undefined
         target.value = res?.list ?? []
+        totalRef.value = res?.total ?? 0
+        errorRef.value = null
     } catch (err) {
+        errorRef.value = (err as Error).message
         logger.warn(`${label} 失敗: ${(err as Error).message}`, TAG)
     }
 }
@@ -46,12 +54,16 @@ async function loadPaged<T>(
 export const useProjectFlowStore = defineStore('projectFlow', () => {
     // ── State ──
     const projects = ref<ProjectListItem[]>([])
+    const projectsTotal = ref(0)
     const reports = ref<ReportSummaryItem[]>([])
+    const reportsTotal = ref(0)
     const memos = ref<MemoResponse[]>([])
+    const memosTotal = ref(0)
     const unreadFeedbacks = ref<FeedbackResponse[]>([])
     const unreadCount = ref(0)
-    const quota = ref<AiQuotaInfo | null>(null)
     const loading = ref(false)
+    /** 最後一次列表載入的錯誤(null=正常);備忘獨立窗用 'missing ctx' 判斷未登入 */
+    const lastError = ref<string | null>(null)
 
     // 命名 callback;Proxy 註冊到 listenerMap 後才能正確 off()(對齊 preload/index.ts WeakMap 機制)
     let pushHandler: ((...args: unknown[]) => void) | null = null
@@ -61,17 +73,24 @@ export const useProjectFlowStore = defineStore('projectFlow', () => {
     const hasUnread = computed(() => unreadCount.value > 0)
 
     // ── Actions ──
-    async function loadProjects() {
+    // ⚠️ 後端分頁參數名是 pageIndex(PagedQuery.cs),不是 page — 傳錯會被無聲忽略
+    async function loadProjects(pageIndex = 1) {
         loading.value = true
-        await loadPaged(() => projectFlowApi.listProjects({page: 1, pageSize: 50}), projects, 'loadProjects')
+        await loadPaged(
+            () => projectFlowApi.listProjects({pageIndex, pageSize: PF_PAGE_SIZE}),
+            projects, projectsTotal, lastError, 'loadProjects')
         loading.value = false
     }
 
-    const loadReports = () =>
-        loadPaged(() => projectFlowApi.listReports({page: 1, pageSize: 50}), reports, 'loadReports')
+    const loadReports = (pageIndex = 1) =>
+        loadPaged(
+            () => projectFlowApi.listReports({pageIndex, pageSize: PF_PAGE_SIZE}),
+            reports, reportsTotal, lastError, 'loadReports')
 
-    const loadMemos = () =>
-        loadPaged(() => projectFlowApi.listMemos({page: 1, pageSize: 50}), memos, 'loadMemos')
+    const loadMemos = (pageIndex = 1) =>
+        loadPaged(
+            () => projectFlowApi.listMemos({pageIndex, pageSize: PF_PAGE_SIZE}),
+            memos, memosTotal, lastError, 'loadMemos')
 
     async function refreshUnread() {
         try {
@@ -86,14 +105,6 @@ export const useProjectFlowStore = defineStore('projectFlow', () => {
             }
         } catch (err) {
             logger.warn(`refreshUnread 失敗: ${(err as Error).message}`, TAG)
-        }
-    }
-
-    async function refreshQuota() {
-        try {
-            quota.value = (await projectFlowApi.getQuota()) as AiQuotaInfo
-        } catch (err) {
-            logger.warn(`refreshQuota 失敗: ${(err as Error).message}`, TAG)
         }
     }
 
@@ -128,10 +139,7 @@ export const useProjectFlowStore = defineStore('projectFlow', () => {
         watch(
             () => auth.isAuthenticated,
             (yes) => {
-                if (yes) {
-                    refreshUnread()
-                    refreshQuota()
-                }
+                if (yes) refreshUnread()
             },
             {immediate: true},
         )
@@ -147,9 +155,10 @@ export const useProjectFlowStore = defineStore('projectFlow', () => {
     }
 
     return {
-        projects, reports, memos, unreadFeedbacks, unreadCount, quota, loading,
+        projects, projectsTotal, reports, reportsTotal, memos, memosTotal,
+        unreadFeedbacks, unreadCount, loading, lastError,
         hasUnread,
-        loadProjects, loadReports, loadMemos, refreshUnread, refreshQuota,
+        loadProjects, loadReports, loadMemos, refreshUnread,
         bootstrap, dispose,
     }
 })

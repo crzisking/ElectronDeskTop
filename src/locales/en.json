@@ -349,10 +349,10 @@
   },
   "projectFlow": {
     "editLevel": {
-      "0": "Hidden",
-      "1": "Read-only",
-      "2": "Editable",
-      "3": "Full Control"
+      "0": "No Access",
+      "1": "Can Create Projects",
+      "2": "Admin (All Projects)",
+      "3": "Super Admin"
     },
     "projects": {
       "title": "My Projects",
@@ -375,16 +375,33 @@
       "statusPrompt": "Node status (e.g. todo / doing / done)",
       "stencilTitle": "Node types",
       "dragHint": "Drag to canvas",
-      "shapeTask": "Task",
-      "shapeMilestone": "Milestone",
-      "shapeDecision": "Decision",
       "zoomIn": "Zoom in",
       "zoomOut": "Zoom out",
       "fit": "Fit",
       "viewCanvas": "Canvas",
-      "viewTimeline": "Timeline"
+      "viewTimeline": "Timeline",
+      "deleteEdgeConfirm": "Delete this edge (dependency)?",
+      "groupPhases": "Phases",
+      "groupElements": "Elements"
+    },
+    "nodeType": {
+      "start": "Kickoff",
+      "requirement": "Requirement",
+      "design": "Design",
+      "task": "Task",
+      "test": "Test",
+      "review": "Review",
+      "milestone": "Milestone",
+      "finish": "Closure",
+      "decision": "Decision",
+      "risk": "Risk"
     },
     "node": {
+      "detailTitle": "Node Details",
+      "linkedReports": "Linked Reports",
+      "linkedEmpty": "No reports reference this node yet",
+      "needHelpTag": "Help",
+      "deleteNode": "Delete Node",
       "deadline": "Deadline",
       "deadlinePlaceholder": "Pick a deadline (timeline sorts by this)",
       "assignee": "Assignee",
@@ -474,6 +491,7 @@
       "aiEmpty": "No suggestions — projects and memos all under control",
       "aiAdded": "Added {n} suggestions",
       "acceptChecked": "Accept Checked",
+      "loginRequired": "Please sign in from the main window first, then come back to memos",
       "status": {
         "pending": "Pending",
         "done": "Done",
@@ -516,6 +534,22 @@
   },
   "home": {
     "title": "Home",
+    "greetMorning": "Good morning",
+    "greetNoon": "Good noon",
+    "greetAfternoon": "Good afternoon",
+    "greetEvening": "Good evening",
+    "heroSub": "Make today count",
+    "statPace": "Today's Pace",
+    "statTopCategory": "Top Category",
+    "statActiveHours": "Active Hours",
+    "heatTitle": "Today's Activity Heat",
+    "distTitle": "Work Focus",
+    "minutesUnit": "min",
+    "noActivityYet": "No activity captured today",
+    "pace0": "Ready to go",
+    "pace1": "Warming up",
+    "pace2": "In the flow",
+    "pace3": "Full speed",
     "adviceTitle": "Today's Learning Tips",
     "generatedAt": "Generated at {time}",
     "generateNow": "Generate Now",
@@ -625,6 +659,8 @@
     "title": "Work Auto-Capture",
 
     "viewDay": "Day",
+    "foldCharts": "Charts",
+    "foldDetail": "Capture Details",
     "viewWeek": "Week",
 
     "enableLabel": "Enable capture",

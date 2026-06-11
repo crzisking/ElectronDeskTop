@@ -25,6 +25,7 @@ export type {
     ProjectMemberItem,
     ProjectRole,
     TodayActivityCategory,
+    TodayActivitySummary,
     AiReportAdvice,
     AiMemoSuggestion,
 } from '@shared/types/project-flow.types'

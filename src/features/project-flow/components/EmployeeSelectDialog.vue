@@ -63,7 +63,7 @@
 import {ref} from 'vue'
 import {ElMessage} from 'element-plus'
 import {projectFlowApi} from '../api'
-import type {EmployeeItem, PagedResult} from '../types'
+import type {EmployeeItem} from '../types'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{
@@ -92,7 +92,7 @@ async function search(toPage: number) {
       keyword: keyword.value.trim() || undefined,
       pageIndex: toPage,
       pageSize,
-    })) as PagedResult<EmployeeItem[]>
+    }))
     rows.value = r?.list ?? []
     total.value = r?.total ?? 0
   } catch (err) {

@@ -86,7 +86,7 @@ const empDialogVisible = ref(false)
 async function load() {
   loading.value = true
   try {
-    members.value = (await projectFlowApi.listMembers(props.projectId)) as ProjectMemberItem[]
+    members.value = await projectFlowApi.listMembers(props.projectId)
   } catch (err) {
     ElMessage.error((err as Error).message)
   } finally {

@@ -19,7 +19,13 @@ export interface DailyAdviceRow {
 /** contentJson 解析後的結構 */
 export interface DailyAdviceContent {
     summary: string
-    suggestions: { title: string; detail: string; reason: string }[]
+    suggestions: {
+        title: string
+        detail: string
+        reason: string
+        /** 可直接拿去搜尋的關鍵字(舊資料可能沒有) */
+        keywords?: string[]
+    }[]
 }
 
 export interface DailyAdviceStatus {

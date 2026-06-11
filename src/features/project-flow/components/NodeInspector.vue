@@ -16,17 +16,17 @@
 <template>
   <aside v-if="node" class="inspector">
     <header class="ins-header">
-      <span class="ins-title">節點詳情</span>
+      <span class="ins-title">{{ $t('projectFlow.node.detailTitle') }}</span>
       <el-button :icon="Close" link size="small" @click="$emit('close')"/>
     </header>
 
     <!-- readonly(viewer 角色)時整個表單禁用,只能看 -->
     <el-form :disabled="readonly" class="ins-form" label-position="top" size="small">
-      <el-form-item label="標題">
+      <el-form-item :label="$t('projectFlow.reports.titleCol')">
         <el-input v-model="form.title" @blur="onTitleBlur"/>
       </el-form-item>
 
-      <el-form-item label="狀態">
+      <el-form-item :label="$t('common.status')">
         <el-select v-model="form.status" @change="onStatusChange">
           <el-option
               v-for="s in STATUS_OPTIONS"
@@ -79,11 +79,12 @@
     <!-- 掛在此節點的匯報項目 -->
     <section class="ins-section">
       <header class="sec-head">
-        <span>📌 關聯的匯報</span>
+        <span>📌 {{ $t('projectFlow.node.linkedReports') }}</span>
         <el-tag effect="plain" size="small" type="info">{{ linkedItems.length }}</el-tag>
         <el-button :icon="Refresh" :loading="loadingLinked" link size="small" @click="loadLinkedItems"/>
       </header>
-      <el-empty v-if="!loadingLinked && !linkedItems.length" :image-size="48" description="尚無匯報引用此節點"/>
+      <el-empty v-if="!loadingLinked && !linkedItems.length" :description="$t('projectFlow.node.linkedEmpty')"
+                :image-size="48"/>
       <ul v-else class="linked-list">
         <li
             v-for="item in linkedItems"
@@ -95,7 +96,7 @@
           <div class="linked-head">
             <el-tag :type="typeTagType(item.itemType)" size="small">{{ item.itemType }}</el-tag>
             <span class="linked-user">{{ item.reportUserId }}</span>
-            <el-tag v-if="item.needHelp" size="small" type="danger">需協助</el-tag>
+            <el-tag v-if="item.needHelp" size="small" type="danger">{{ $t('projectFlow.node.needHelpTag') }}</el-tag>
             <span class="linked-time">{{ formatTime(item.submittedAt ?? item.createdAt) }}</span>
           </div>
           <div class="linked-content">{{ item.content }}</div>
@@ -105,7 +106,10 @@
     </section>
 
     <div v-if="!readonly" class="ins-footer">
-      <el-button :icon="Delete" plain type="danger" @click="$emit('delete')">刪除節點</el-button>
+      <el-button :icon="Delete" plain type="danger" @click="$emit('delete')">{{
+          $t('projectFlow.node.deleteNode')
+        }}
+      </el-button>
     </div>
   </aside>
 </template>
@@ -119,6 +123,7 @@ import {ElMessage} from 'element-plus'
 import {projectFlowApi} from '../api'
 import EmployeeSelectDialog from './EmployeeSelectDialog.vue'
 import type {EmployeeItem, NodeLinkedReportItem, NodeResponse} from '../types'
+import {formatShortTime as formatTime} from '@/shared/utils/format'
 
 const {t} = useI18n()
 
@@ -158,7 +163,7 @@ async function loadLinkedItems() {
   if (!props.node) return
   loadingLinked.value = true
   try {
-    linkedItems.value = (await projectFlowApi.listNodeReportItems(props.node.nodeId)) as NodeLinkedReportItem[]
+    linkedItems.value = await projectFlowApi.listNodeReportItems(props.node.nodeId)
   } catch (err) {
     ElMessage.error((err as Error).message)
     linkedItems.value = []
@@ -185,12 +190,13 @@ watch(
     {immediate: true},
 )
 
+// label 走 i18n(projectFlow.nodeStatus.*),英文介面才不會破
 const STATUS_OPTIONS = [
-  {value: 'not_started', label: '未開始', color: '#909399'},
-  {value: 'in_progress', label: '進行中', color: '#409EFF'},
-  {value: 'blocked', label: '阻塞', color: '#F56C6C'},
-  {value: 'completed', label: '完成', color: '#67C23A'},
-  {value: 'cancelled', label: '取消', color: '#C0C4CC'},
+  {value: 'not_started', label: t('projectFlow.nodeStatus.not_started'), color: '#909399'},
+  {value: 'in_progress', label: t('projectFlow.nodeStatus.in_progress'), color: '#409EFF'},
+  {value: 'blocked', label: t('projectFlow.nodeStatus.blocked'), color: '#F56C6C'},
+  {value: 'completed', label: t('projectFlow.nodeStatus.completed'), color: '#67C23A'},
+  {value: 'cancelled', label: t('projectFlow.nodeStatus.cancelled'), color: '#C0C4CC'},
 ]
 
 /**
@@ -260,12 +266,6 @@ function typeTagType(t: string): 'success' | 'warning' | 'danger' | 'info' {
   if (t === 'issue') return 'danger'
   if (t === 'plan') return 'info'
   return 'info'
-}
-
-function formatTime(ms: number | null | undefined): string {
-  if (!ms) return ''
-  const d = new Date(ms)
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 /** 點關聯匯報 → 直接跳該匯報編輯頁(子元件自帶 router,鬆耦合) */

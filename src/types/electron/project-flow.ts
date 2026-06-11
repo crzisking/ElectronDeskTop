@@ -3,16 +3,8 @@
  * 每個 method 接 ctx + 業務 args,返回統一 {ok, data} | {ok, error} envelope。
  */
 
-// userId = 工號;對齊後端 [AllowAnonymous] + [FromQuery] string userId
-interface Ctx {
-    baseUrl: string;
-    userId: string;
-    token?: string
-}
-
-type Ok<T> = { ok: true; data: T }
-type Err = { ok: false; error: string }
-type Result<T> = Ok<T> | Err
+// userId = 工號;信封型別統一來自 @shared/types/ipc.types
+import type {IpcCtx as Ctx, IpcResult as Result} from '@shared/types/ipc.types'
 
 export interface ProjectFlowAPI {
     // Projects
@@ -40,7 +32,6 @@ export interface ProjectFlowAPI {
 
     // Edges
     createEdge: (ctx: Ctx, projectId: number, body: object) => Promise<Result<{ edgeId: number }>>
-    updateEdge: (ctx: Ctx, edgeId: number, body: object) => Promise<Result<unknown>>
     deleteEdge: (ctx: Ctx, edgeId: number) => Promise<Result<unknown>>
 
     // Reports

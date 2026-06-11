@@ -146,14 +146,8 @@ import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import {ElMessage} from 'element-plus'
 import {projectFlowApi} from './api'
-import type {
-  FeedbackResponse,
-  MemoResponse,
-  PagedResult,
-  ReportResponse,
-  ReportSummaryItem,
-  TeamSubordinateItem,
-} from './types'
+import {formatDateTime as formatTime} from '@/shared/utils/format'
+import type {FeedbackResponse, MemoResponse, ReportResponse, ReportSummaryItem, TeamSubordinateItem,} from './types'
 
 const {t} = useI18n()
 const router = useRouter()
@@ -188,7 +182,7 @@ async function loadSubs(page: number) {
       keyword: subKeyword.value.trim() || undefined,
       pageIndex: page,
       pageSize: SUB_PAGE_SIZE,
-    })) as PagedResult<TeamSubordinateItem[]>
+    }))
     subordinates.value = r?.list ?? []
     subTotal.value = r?.total ?? 0
   } catch (err) {
@@ -205,9 +199,9 @@ async function onSelect(userId: string) {
     const reports = (await projectFlowApi.listSubReports(userId, {
       pageIndex: 1,
       pageSize: 20
-    })) as PagedResult<ReportSummaryItem[]>
+    }))
     subReports.value = reports?.list ?? []
-    subMemos.value = ((await projectFlowApi.listSubMemos(userId)) as MemoResponse[]) ?? []
+    subMemos.value = await projectFlowApi.listSubMemos(userId)
   } catch (err) {
     ElMessage.error((err as Error).message)
   }
@@ -244,8 +238,8 @@ async function openReport(row: ReportSummaryItem) {
   loadingReport.value = true
   feedbackText.value = ''
   try {
-    reportDetail.value = (await projectFlowApi.getReport(row.reportId)) as ReportResponse
-    feedbacks.value = ((await projectFlowApi.listFeedbackByTarget('report', row.reportId)) as FeedbackResponse[]) ?? []
+    reportDetail.value = await projectFlowApi.getReport(row.reportId)
+    feedbacks.value = await projectFlowApi.listFeedbackByTarget('report', row.reportId)
   } catch (err) {
     ElMessage.error((err as Error).message)
     drawerVisible.value = false
@@ -266,7 +260,7 @@ async function onSendFeedback() {
       content: feedbackText.value.trim(),
     })
     feedbackText.value = ''
-    feedbacks.value = ((await projectFlowApi.listFeedbackByTarget('report', reportDetail.value.reportId)) as FeedbackResponse[]) ?? []
+    feedbacks.value = await projectFlowApi.listFeedbackByTarget('report', reportDetail.value.reportId)
     ElMessage.success(t('projectFlow.team.feedbackSent'))
   } catch (err) {
     ElMessage.error((err as Error).message)
@@ -321,10 +315,6 @@ function formatTeamSummary(contentJson: string): string {
   } catch {
     return contentJson
   }
-}
-
-function formatTime(ms?: number | null): string {
-  return ms ? new Date(ms).toLocaleString() : '-'
 }
 </script>
 

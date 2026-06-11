@@ -16,6 +16,8 @@
  */
 
 import {contextBridge, ipcRenderer} from 'electron'
+// 型別 import 編譯期擦除,sandbox 下安全;satisfies 檢查在下方擋字串 drift
+import type {ProjectFlowChannels} from '../shared/ipc-channels/project-flow'
 
 const IPC = {
     // 對齊 ProjectFlowChannels(electron/shared/ipc-channels/project-flow.ts)
@@ -31,7 +33,6 @@ const IPC = {
     PF_GET_NODE_PROGRESS: 'pf:get-node-progress',
     PF_LIST_NODE_REPORT_ITEMS: 'pf:list-node-report-items',
     PF_CREATE_EDGE: 'pf:create-edge',
-    PF_UPDATE_EDGE: 'pf:update-edge',
     PF_DELETE_EDGE: 'pf:delete-edge',
     PF_LIST_REPORTS: 'pf:list-reports',
     PF_GET_REPORT: 'pf:get-report',
@@ -58,9 +59,24 @@ const IPC = {
     PF_MY_NODES: 'pf:my-nodes',
     PF_AI_REPORT_ADVICE: 'pf:ai-report-advice',
     PF_AI_MEMO_SUGGEST: 'pf:ai-memo-suggest',
+    PF_LIST_MEMBERS: 'pf:list-members',
+    PF_UPSERT_MEMBER: 'pf:upsert-member',
+    PF_REMOVE_MEMBER: 'pf:remove-member',
+    PF_SEARCH_EMPLOYEES: 'pf:search-employees',
+    PF_TODAY_ACTIVITY: 'pf:today-activity',
 
     PUSH_PROJECT_FLOW_EVENT: 'push:project-flow-event',
 } as const
+
+/**
+ * 編譯期 drift 防護:IPC 的每個 value 必須是 ProjectFlowChannels 裡存在的字串。
+ * 任何一邊改了 channel 字串(或共用元件用到本檔漏列的方法),typecheck 直接報錯,
+ * 不會等到備忘窗 runtime 才掛。type-only,打包後零成本。
+ */
+type SharedChannelValue = (typeof ProjectFlowChannels)[keyof typeof ProjectFlowChannels]
+type _AssertChannelsExist = { [K in keyof typeof IPC]: (typeof IPC)[K] & SharedChannelValue }
+const _channelCheck: _AssertChannelsExist = IPC
+void _channelCheck
 
 const ALLOWED_PUSH_CHANNELS: readonly string[] = [IPC.PUSH_PROJECT_FLOW_EVENT]
 
@@ -94,7 +110,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
         listNodeReportItems: (_ctx: unknown, nodeId: number) => c(IPC.PF_LIST_NODE_REPORT_ITEMS, {nodeId}),
 
         createEdge: (_ctx: unknown, projectId: number, body: object) => c(IPC.PF_CREATE_EDGE, {projectId, body}),
-        updateEdge: (_ctx: unknown, edgeId: number, body: object) => c(IPC.PF_UPDATE_EDGE, {edgeId, body}),
         deleteEdge: (_ctx: unknown, edgeId: number) => c(IPC.PF_DELETE_EDGE, {edgeId}),
 
         listReports: (_ctx: unknown, query: object) => c(IPC.PF_LIST_REPORTS, {query}),
@@ -117,7 +132,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         countMyUnread: (_ctx: unknown) => c(IPC.PF_COUNT_MY_UNREAD, {}),
         markFeedbackRead: (_ctx: unknown, feedbackId: number) => c(IPC.PF_MARK_FEEDBACK_READ, {feedbackId}),
 
-        listSubordinates: (_ctx: unknown) => c(IPC.PF_LIST_SUBORDINATES, {}),
+        listSubordinates: (_ctx: unknown, query: object = {}) => c(IPC.PF_LIST_SUBORDINATES, {query}),
         listSubReports: (_ctx: unknown, userId: string, query: object) =>
             c(IPC.PF_LIST_SUB_REPORTS, {userId, query}),
         listSubMemos: (_ctx: unknown, userId: string) => c(IPC.PF_LIST_SUB_MEMOS, {userId}),
@@ -128,6 +143,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         listMyNodes: (_ctx: unknown) => c(IPC.PF_MY_NODES, {}),
         aiReportAdvice: (_ctx: unknown, body: object) => c(IPC.PF_AI_REPORT_ADVICE, {body}),
         aiMemoSuggest: (_ctx: unknown, body: object) => c(IPC.PF_AI_MEMO_SUGGEST, {body}),
+
+        // Members / 員工搜尋 / 今日活動 — 共用元件(EmployeeSelectDialog 等)在備忘窗也要能用
+        listMembers: (_ctx: unknown, projectId: number) => c(IPC.PF_LIST_MEMBERS, {projectId}),
+        upsertMember: (_ctx: unknown, projectId: number, body: object) => c(IPC.PF_UPSERT_MEMBER, {projectId, body}),
+        removeMember: (_ctx: unknown, projectId: number, memberUserId: string) =>
+            c(IPC.PF_REMOVE_MEMBER, {projectId, memberUserId}),
+        searchEmployees: (_ctx: unknown, query: object) => c(IPC.PF_SEARCH_EMPLOYEES, {query}),
+        todayActivity: () => c(IPC.PF_TODAY_ACTIVITY, {}),
     },
 
     /** 訂閱主進程推送(目前只白名單 project-flow 事件) */

@@ -72,6 +72,7 @@ import {useI18n} from 'vue-i18n'
 import {useProjectFlowStore} from './store'
 import {projectFlowApi} from './api'
 import type {ProjectListItem} from './types'
+import {formatDateTime as formatTime} from '@/shared/utils/format'
 
 const router = useRouter()
 const store = useProjectFlowStore()
@@ -134,12 +135,6 @@ async function confirmDelete(row: ProjectListItem) {
     if (err === 'cancel') return
     ElMessage.error((err as Error).message ?? String(err))
   }
-}
-
-function formatTime(ms: number): string {
-  if (!ms) return '-'
-  const d = new Date(ms)
-  return d.toLocaleString()
 }
 </script>
 
