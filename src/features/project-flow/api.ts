@@ -9,6 +9,7 @@
  */
 
 import {useAuthStore} from '@/stores/auth.store'
+import {plain} from '@/shared/utils/ipc-clone'
 import type {
     AiQuotaInfo,
     AiReportAdvice,
@@ -65,15 +66,6 @@ async function unwrap<T>(promise: Promise<{ ok: true; data: unknown } | { ok: fa
     const r = await promise
     if (r.ok) return r.data as T
     throw new Error(r.error)
-}
-
-/**
- * 出境參數淨化 — Vue 的 reactive/ref 是 Proxy,Electron IPC 的 structured clone
- * 不能序列化 Proxy(報「An object could not be cloned」)。
- * 所有 body / query 過 IPC 前先 JSON 走一圈轉成純物件(順帶剝掉 undefined / function)。
- */
-function plain<T extends object>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj)) as T
 }
 
 const pf = () => window.electronAPI.projectFlow

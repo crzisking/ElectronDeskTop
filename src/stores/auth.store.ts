@@ -11,6 +11,12 @@ import {authApi} from '@/api/auth.api'
 import {parseUserFromJwt} from '@/shared/utils/jwt'
 import {logger, newTraceId} from '@/shared/utils/logger'
 
+// 後端 base URL — 跟 work-collect / project-flow 同一個 env 變數(編譯期注入 renderer)。
+// 必須在 renderer 取值後透過 IPC 帶給主進程:主進程 process.env 運行時讀不到 VITE_*,
+// 不帶就會 fallback localhost,子視窗(備忘/日誌)連不上正式後端。
+const BACKEND_BASE_URL: string =
+    (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
+
 export const useAuthStore = defineStore('auth', () => {
 
   // ─── State ────────────────────────────────────────────────
@@ -245,8 +251,9 @@ export const useAuthStore = defineStore('auth', () => {
         }).catch((err) => {
             logger.warn('啟動 NotificationClient 異常', {module: 'auth.store', traceId}, err as Error)
         })
-        // 推主進程 authContext,讓 Memos / LogViewer 等子窗有身分可用
-        window.electronAPI.auth.setContext(userName, accessToken.value ?? '').catch((err) => {
+        // 推主進程 authContext,讓 Memos / LogViewer 等子窗有身分可用。
+        // baseUrl 一併帶上:主進程讀不到 VITE_* env,不帶會 fallback localhost 導致子窗連不上。
+        window.electronAPI.auth.setContext(userName, accessToken.value ?? '', BACKEND_BASE_URL).catch((err) => {
             logger.warn('AUTH_SET_CONTEXT 失敗', {module: 'auth.store', traceId}, err as Error)
         })
     }

@@ -69,6 +69,46 @@ const viewMode = ref<'day' | 'week'>('day')
 /** 折疊面板:圖表 / 採集明細 — 進頁預設都收起,要看再展開 */
 const openPanels = ref<string[]>([])
 
+// ── 採集時間自助調整 ──────────────────────────────────────────
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+const scheduleDialogVisible = ref(false)
+const scheduleSaving = ref(false)
+const scheduleForm = ref({workStartHour: 8, workEndHour: 17, intervalMinutes: 5})
+
+/** 開彈窗時帶入當前生效值 */
+function openScheduleDialog() {
+  scheduleForm.value = {
+    workStartHour: store.workHours.start,
+    workEndHour: store.workHours.end,
+    intervalMinutes: store.intervalMinutes,
+  }
+  scheduleDialogVisible.value = true
+}
+
+async function onSaveSchedule() {
+  const f = scheduleForm.value
+  if (f.workEndHour <= f.workStartHour) {
+    ElMessage.warning(t('workCollect.schedule.invalidRange'))
+    return
+  }
+  scheduleSaving.value = true
+  try {
+    await store.updateSchedule({
+      workStartHour: f.workStartHour,
+      workEndHour: f.workEndHour,
+      intervalMinutes: f.intervalMinutes,
+    })
+    scheduleDialogVisible.value = false
+    ElMessage.success(t('workCollect.schedule.saved'))
+  } catch (err) {
+    ElMessage.error((err as Error).message)
+  } finally {
+    scheduleSaving.value = false
+  }
+}
+
 /** 根據視圖模式過濾的數據 */
 const filteredRecords = computed(() => {
   if (viewMode.value === 'day') {
@@ -217,6 +257,10 @@ const quotaTooltip = computed(() =>
           <el-icon><Monitor /></el-icon>
           <!-- eslint-disable-next-line vue/no-v-html -- 內容來自應用內 i18n 字典(我方控制) + 受控的 workHoursLabel 字串,無外部輸入 -->
           <span v-html="t('workCollect.ruleHours', { hours: workHoursLabel })"></span>
+          <!-- 採集時間用戶可自助調整(寫 server,UpdatedBy='self',管理端可見) -->
+          <el-button link size="small" type="primary" @click="openScheduleDialog">
+            {{ t('workCollect.schedule.editBtn') }}
+          </el-button>
         </div>
         <div class="rule">
           <el-icon><Monitor /></el-icon>
@@ -224,6 +268,36 @@ const quotaTooltip = computed(() =>
         </div>
       </div>
     </el-card>
+
+    <!-- ── 採集時間自助調整彈窗 ──────────────────────────────
+         保存路徑:PATCH /my-config(server 唯一真源)→ 回最新配置 →
+         applyRemoteConfig 寫本地 + 重啟排程 — 跟管理端改完拉取走同一條路,天然不衝突 -->
+    <el-dialog v-model="scheduleDialogVisible" :title="t('workCollect.schedule.title')" width="420px">
+      <el-form label-width="90px">
+        <el-form-item :label="t('workCollect.schedule.hours')">
+          <div class="hours-row">
+            <el-select v-model="scheduleForm.workStartHour" style="width: 120px">
+              <el-option v-for="h in 24" :key="h - 1" :label="`${pad2(h - 1)}:00`" :value="h - 1"/>
+            </el-select>
+            <span class="hours-sep">—</span>
+            <el-select v-model="scheduleForm.workEndHour" style="width: 120px">
+              <el-option v-for="h in 24" :key="h" :label="`${pad2(h)}:00`" :value="h"/>
+            </el-select>
+          </div>
+        </el-form-item>
+        <el-form-item :label="t('workCollect.schedule.interval')">
+          <el-input-number v-model="scheduleForm.intervalMinutes" :max="60" :min="1"/>
+          <span class="interval-unit">{{ t('workCollect.unitMinutes') }}</span>
+        </el-form-item>
+      </el-form>
+      <p class="schedule-hint">{{ t('workCollect.schedule.hint') }}</p>
+      <template #footer>
+        <el-button @click="scheduleDialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button :loading="scheduleSaving" type="primary" @click="onSaveSchedule">
+          {{ t('common.confirm') }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <!-- 統計卡常駐(一眼看數字);圖表與明細收進折疊,進頁不被長頁面淹沒 -->
     <StatCards v-if="viewMode === 'day'" :records="filteredRecords"/>
@@ -397,6 +471,30 @@ const quotaTooltip = computed(() =>
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* 採集時間自助調整彈窗 */
+.hours-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hours-sep {
+  color: var(--el-text-color-secondary);
+}
+
+.interval-unit {
+  margin-left: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.schedule-hint {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin: 4px 0 0;
+  line-height: 1.6;
 }
 
 /* 折疊區:圖表 / 採集明細收納;面板內容自帶 padding,標題加粗易點 */

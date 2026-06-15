@@ -93,6 +93,11 @@ export default defineConfig({
     // electron-vite 默認 renderer root 為 src/renderer/，
     // 本項目所有渲染源碼在 src/，顯式覆蓋以確保 HTML 入口路徑正確
     root: resolve('src'),
+      // ⚠️ Vite 預設從 root(=src/)讀 .env.*,但我們的 .env.production / .env.development
+      // 放在「項目根目錄」。不指 envDir 的話,生產打包讀不到 VITE_WORK_COLLECT_API_URL 等變數,
+      // 程式 fallback 到 localhost:5247 → 正式環境連不上後端(ECONNREFUSED)。
+      // 顯式把 envDir 指回項目根,讓 .env.* 正確注入。
+      envDir: resolve(__dirname),
     resolve: {
       alias: {
         // @ 指向 src 目錄，所有渲染進程代碼通用

@@ -133,15 +133,17 @@ export function registerAuthHandlers(): void {
    * 主窗 renderer 登入完成 / 登出時推進來,主進程持作子視窗的身分來源。
    * payload: {userId, token?} 或 {userId: ''} 表示清空。
    */
-  ipcMain.handle(IpcChannels.AUTH_SET_CONTEXT, (_e, payload: { userId?: string; token?: string }) => {
+  ipcMain.handle(IpcChannels.AUTH_SET_CONTEXT, (_e, payload: { userId?: string; token?: string; baseUrl?: string }) => {
     const userId = (payload?.userId ?? '').trim()
     if (!userId) {
       authContext.clear()
       logger.info('AUTH_SET_CONTEXT cleared', 'Auth')
       return {ok: true}
     }
-    authContext.set(userId, payload?.token ?? '')
-    logger.info(`AUTH_SET_CONTEXT set userId=${userId}`, 'Auth')
+      // baseUrl 必須由 renderer 帶上:VITE_* 只注入 renderer 編譯期,主進程 process.env 讀不到,
+      // 不帶就會 fallback 到 localhost:5247,導致子視窗(備忘/日誌)連不上正式後端。
+      authContext.set(userId, payload?.token ?? '', payload?.baseUrl)
+      logger.info(`AUTH_SET_CONTEXT set userId=${userId} baseUrl=${payload?.baseUrl ?? '(default)'}`, 'Auth')
     return {ok: true}
   })
 }

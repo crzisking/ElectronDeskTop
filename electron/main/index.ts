@@ -14,6 +14,7 @@ import {registerAllHandlers} from './ipc-handlers'
 import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
 import {DailyAdviceService} from './db/features/daily-advice/service'
 import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
+import {MemoReminderScheduler} from './services/memo-reminder/scheduler'
 import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
@@ -58,6 +59,7 @@ let llmClient: LlmClient | null = null
 let workAnalysisService: WorkAnalysisService | null = null
 let dailyAdviceService: DailyAdviceService | null = null
 let dailyAdviceScheduler: DailyAdviceScheduler | null = null
+let memoReminderScheduler: MemoReminderScheduler | null = null
 let workCollector: WorkCollectorScheduler
 /** 遠程通知 WebSocket 客戶端(docs/18)。登入後由 renderer IPC NOTIFICATION_START 觸發實際連線 */
 let notificationClient: NotificationClient
@@ -114,6 +116,7 @@ function gracefulShutdown(): void {
   updateMgr?.dispose()
   workCollector?.dispose()
     dailyAdviceScheduler?.dispose()
+    memoReminderScheduler?.dispose()
     // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
     notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
@@ -295,6 +298,10 @@ app.whenReady().then(async () => {
         dailyAdviceScheduler.start()
     }
     registerDailyAdviceHandlers(dailyAdviceScheduler)
+
+    // 備忘到期提醒(純桌面端):每 30 分鐘檢查 pending 備忘,快到期/逾期發系統通知
+    memoReminderScheduler = new MemoReminderScheduler(windowManager)
+    memoReminderScheduler.start()
 
   // 在 IPC handler 註冊後才 init，托盤菜單點擊才能正確觸發處理器
   trayManager.init()

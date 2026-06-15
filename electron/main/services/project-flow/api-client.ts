@@ -11,6 +11,7 @@
  */
 
 import {logger} from '../../utils/logger'
+import {appendUserId, buildQuery, fetchCause, isRetryableCause, joinUrl} from './http-utils'
 
 const TAG = 'project-flow.api'
 
@@ -197,7 +198,7 @@ export const projectFlowApi = {
     },
 }
 
-// ─── 內部 HTTP helper ───────────────────────────────────────
+// ─── 內部 HTTP helper(URL 拼接 / 錯誤歸類純函數已抽到 http-utils.ts)───
 
 async function req<T>(
     ctx: ProjectFlowApiContext,
@@ -208,60 +209,61 @@ async function req<T>(
 ): Promise<T> {
     // 自動注入 userId 到 query — 後端 [AllowAnonymous] + [FromQuery] string userId
     const url = appendUserId(joinUrl(ctx.baseUrl, path), ctx.userId)
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-    try {
-        const headers: Record<string, string> = {'Content-Type': 'application/json'}
-        if (ctx.token) headers.Authorization = `Bearer ${ctx.token}`
-        const res = await fetch(url, {
-            method,
-            headers,
-            body: body == null ? undefined : JSON.stringify(body),
-            signal: ctrl.signal,
-        })
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status} ${res.statusText} ${path}`)
+
+    // 第一次失敗且是「連線層可重試」錯誤 → 換新連線立刻重打一次
+    for (let attempt = 0; ; attempt++) {
+        const ctrl = new AbortController()
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+        try {
+            const headers: Record<string, string> = {'Content-Type': 'application/json'}
+            if (ctx.token) headers.Authorization = `Bearer ${ctx.token}`
+            const res = await fetch(url, {
+                method,
+                headers,
+                body: body == null ? undefined : JSON.stringify(body),
+                signal: ctrl.signal,
+            })
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status} ${res.statusText} ${path}`)
+            }
+            const env = await res.json() as Envelope<T>
+            if (env.code !== 200) {
+                throw new Error(env.message || `code=${env.code}`)
+            }
+            return env.data as T
+        } catch (err) {
+            const e = err as Error
+            const cause = fetchCause(e)
+
+            // 殭屍 keep-alive 連線:重試一次(新請求會建新 socket)
+            if (attempt === 0 && cause && isRetryableCause(cause)) {
+                logger.warn(`${method} ${path} 連線層失敗(${cause.text}),重試一次`, TAG)
+                clearTimeout(timer)
+                continue
+            }
+
+            // AbortController 砍掉的訊息是「This operation was aborted」→ 翻成超時;
+            // 「fetch failed」附上 cause,日誌才查得到真因(ECONNRESET / EAI_AGAIN / ...)
+            let friendly = e
+            if (e.name === 'AbortError' || /abort/i.test(e.message)) {
+                friendly = new Error(`請求超時(${Math.round(timeoutMs / 1000)}s):${path}`)
+            } else if (cause) {
+                friendly = new Error(`網路錯誤(${cause.text}):${path}`)
+            }
+            logger.warn(`${method} ${path} 失敗: ${friendly.message}`, TAG)
+            throw friendly
+        } finally {
+            clearTimeout(timer)
         }
-        const env = await res.json() as Envelope<T>
-        if (env.code !== 200) {
-            throw new Error(env.message || `code=${env.code}`)
-        }
-        return env.data as T
-    } catch (err) {
-        // AbortController 砍掉的 fetch 訊息是「This operation was aborted」,對使用者沒資訊量 → 翻成超時
-        const e = err as Error
-        const friendly = e.name === 'AbortError' || /abort/i.test(e.message)
-            ? new Error(`請求超時(${Math.round(timeoutMs / 1000)}s):${path}`)
-            : e
-        logger.warn(`${method} ${path} 失敗: ${friendly.message}`, TAG)
-        throw friendly
-    } finally {
-        clearTimeout(timer)
     }
 }
 
 function get<T>(ctx: ProjectFlowApiContext, path: string, params: Record<string, unknown>): Promise<T> {
-    const q = Object.entries(params)
-        .filter(([, v]) => v != null && v !== '')
-        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-        .join('&')
+    const q = buildQuery(params)
     const full = q ? `${path}?${q}` : path
     return req<T>(ctx, 'GET', full, null)
 }
 
 function post<T>(ctx: ProjectFlowApiContext, path: string, body: unknown): Promise<T> {
     return req<T>(ctx, 'POST', path, body)
-}
-
-function joinUrl(base: string, path: string): string {
-    const b = base.endsWith('/') ? base.slice(0, -1) : base
-    const p = path.startsWith('/') ? path : '/' + path
-    return b + p
-}
-
-/** 把 userId 加到 query string(自動判斷 ? / & 分隔) */
-function appendUserId(url: string, userId: string): string {
-    if (!userId) return url
-    const sep = url.includes('?') ? '&' : '?'
-    return `${url}${sep}userId=${encodeURIComponent(userId)}`
 }

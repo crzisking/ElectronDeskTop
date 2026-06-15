@@ -89,6 +89,19 @@ export const workCollectApi = {
     )
   },
 
+  /**
+   * 使用者自助調整自己的採集時間(僅 interval / workStartHour / workEndHour)。
+   * 與管理端寫同一行 Work_User_Configs(UpdatedBy='self');回最新完整配置,
+   * caller 直接拿去走 applyRemoteConfig,跟「拉 my-config」同一條生效路徑。
+   */
+  async updateMySchedule(
+      userName: string,
+      patch: { intervalMinutes?: number; workStartHour?: number; workEndHour?: number },
+  ): Promise<WorkConfigResponse> {
+    // 用戶手動操作,單發不需要削峰窗口,直接打
+    return await getClient().patch<WorkConfigResponse>('/api/WorkCollect/my-config', patch, {params: {userName}})
+  },
+
   // syncDaily 已搬至主進程(electron/main/work-collect/sync-service.ts)。
   // renderer 不再直接打 /sync-daily HTTP — 走 electronAPI.workCollect.runSync 即可。
 }

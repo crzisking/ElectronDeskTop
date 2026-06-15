@@ -24,6 +24,7 @@ import {
 } from './category-colors'
 import type {
     WorkCollectTickPayload,
+    WorkConfigResponse,
     WorkRecord,
     WorkResultPayload,
     WorkTemplateDetail,
@@ -236,6 +237,32 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
      *
      * 失敗只 log;網路不通就等下次觸發(啟動 / 第二天 8 點)。
      */
+    /**
+     * 把 server 回的完整配置套到本地(main 寫 KV + 視變更重啟排程 + 模板入 cache)。
+     * 拉取(onConfigRequest)與自助修改(updateSchedule)共用同一條生效路徑。
+     */
+    async function applyRemote(remote: WorkConfigResponse): Promise<void> {
+        const result = await window.electronAPI.workCollect.applyRemoteConfig({
+            enabled: remote.enabled,
+            intervalMinutes: remote.intervalMinutes,
+            workStartHour: remote.workStartHour,
+            workEndHour: remote.workEndHour,
+            version: remote.version,
+            categoryTemplateId: remote.categoryTemplateId ?? null,
+            templateName: remote.templateName ?? null,
+            // 整份 templateDetail 透傳到 main → 落 work_template_cache,後續 tick 本地組 prompt
+            templateDetail: remote.templateDetail ?? null,
+        })
+        // 配置變了 → 重新 load 一次,讓 configStore.appConfig 對齊本地剛寫的 DB
+        if (result.changed) {
+            await useConfigStore().loadConfig()
+            logger.info(`已套用 server 配置 v${remote.version}`, 'WorkCollectStore')
+        }
+        // 不管 config 有沒有「變」,template 都該以 server 最新值為準同步進 reactive map
+        // (例如管理員只改 label / color 沒動 enabled/interval,result.changed 會是 false 但要更新)
+        setCategoryMetaFromTemplate(remote.templateDetail ?? null)
+    }
+
     async function onConfigRequest() {
         const userName = currentUserName()
         if (!userName) {
@@ -243,29 +270,25 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
             return
         }
         try {
-            const remote = await workCollectApi.getMyConfig(userName)
-            const result = await window.electronAPI.workCollect.applyRemoteConfig({
-                enabled: remote.enabled,
-                intervalMinutes: remote.intervalMinutes,
-                workStartHour: remote.workStartHour,
-                workEndHour: remote.workEndHour,
-                version: remote.version,
-                categoryTemplateId: remote.categoryTemplateId ?? null,
-                templateName: remote.templateName ?? null,
-                // 整份 templateDetail 透傳到 main → 落 work_template_cache,後續 tick 本地組 prompt
-                templateDetail: remote.templateDetail ?? null,
-            })
-            // 配置變了 → 重新 load 一次,讓 configStore.appConfig 對齊本地剛寫的 DB
-            if (result.changed) {
-                await useConfigStore().loadConfig()
-                logger.info(`已套用 server 配置 v${remote.version}`, 'WorkCollectStore')
-            }
-            // 不管 config 有沒有「變」,template 都該以 server 最新值為準同步進 reactive map
-            // (例如管理員只改 label / color 沒動 enabled/interval,result.changed 會是 false 但要更新)
-            setCategoryMetaFromTemplate(remote.templateDetail ?? null)
+            await applyRemote(await workCollectApi.getMyConfig(userName))
         } catch (err) {
             logger.warn('拉取 server 配置失敗,等下次觸發', 'WorkCollectStore', err)
         }
+    }
+
+    /**
+     * 使用者自助調整採集時間 — 寫 server(唯一真源,UpdatedBy='self'),
+     * 用回傳的最新配置立即套用本地 + 重啟排程。失敗拋出讓 UI 顯示原因。
+     */
+    async function updateSchedule(patch: {
+        intervalMinutes?: number
+        workStartHour?: number
+        workEndHour?: number
+    }): Promise<void> {
+        const userName = currentUserName()
+        if (!userName) throw new Error('未登入,無法調整採集時間')
+        const remote = await workCollectApi.updateMySchedule(userName, patch)
+        await applyRemote(remote)
     }
 
     /**
@@ -349,7 +372,7 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     return {
         enabled, intervalMinutes, workHours, records, loading,
         categoryLabels, categoryColors, labelOf, colorOf,
-        toggle, refresh, bootstrap, syncDailyRecords,
+        toggle, refresh, bootstrap, syncDailyRecords, updateSchedule,
     }
 })
 
