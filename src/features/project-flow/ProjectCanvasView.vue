@@ -46,6 +46,27 @@
       <el-button size="small" @click="membersDialogVisible = true">
         👥 {{ $t('projectFlow.members.title') }}
       </el-button>
+
+      <!-- AI 改圖:只給可編輯者;直接套用,旁邊「回退」一鍵還原(有快照才出現) -->
+      <el-button
+          v-if="canEdit && viewMode === 'canvas'"
+          :loading="aiLoading"
+          size="small"
+          type="primary"
+          @click="aiDialogVisible = true"
+      >
+        ✨ {{ $t('projectFlow.canvas.aiEdit') }}
+      </el-button>
+      <el-button
+          v-if="canEdit && undoSnapshot"
+          :disabled="aiLoading"
+          :icon="RefreshLeft"
+          size="small"
+          @click="onUndo"
+      >
+        {{ $t('projectFlow.canvas.aiUndo') }}
+      </el-button>
+
       <span class="hint">{{ $t('projectFlow.canvas.hint') }}</span>
     </header>
 
@@ -53,6 +74,13 @@
         v-model="membersDialogVisible"
         :can-manage="canManageMembers"
         :project-id="currentProjectId()"
+    />
+
+    <AiGraphChatDialog
+        ref="aiDialogRef"
+        v-model="aiDialogVisible"
+        :loading="aiLoading"
+        @submit="onAiSubmit"
     />
 
     <div class="body">
@@ -107,14 +135,17 @@ import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useRoute} from 'vue-router'
 import {Graph, Shape} from '@antv/x6'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {FullScreen, ZoomIn, ZoomOut} from '@element-plus/icons-vue'
+import {FullScreen, RefreshLeft, ZoomIn, ZoomOut} from '@element-plus/icons-vue'
 import {useI18n} from 'vue-i18n'
 import {logger} from '@/shared/utils/logger'
 import {projectFlowApi} from './api'
 import type {EdgeResponse, NodeResponse, ProjectDetailResponse} from './types'
+import {applyAiPlan, reconcileToSnapshot} from './ai-graph-apply'
+import type {GraphSnapshot} from './ai-graph-engine'
 import NodeInspector from './components/NodeInspector.vue'
 import ProjectTimeline from './components/ProjectTimeline.vue'
 import ProjectMembersDialog from './components/ProjectMembersDialog.vue'
+import AiGraphChatDialog from './components/AiGraphChatDialog.vue'
 
 const TAG = 'ProjectCanvasView'
 const route = useRoute()
@@ -133,6 +164,13 @@ const canEdit = computed(() => detail.value?.myRole === 'owner' || detail.value?
 /** 成員管理:owner 才開放(管理員後端會放行,但桌面入口只給 owner 保持簡單) */
 const canManageMembers = computed(() => detail.value?.myRole === 'owner')
 const membersDialogVisible = ref(false)
+
+// ── AI 改圖狀態 ──
+const aiDialogVisible = ref(false)
+const aiLoading = ref(false)
+const aiDialogRef = ref<InstanceType<typeof AiGraphChatDialog> | null>(null)
+/** 上一批 AI 改動前的整圖快照;非 null = 「回退」鈕可用。手動編輯不影響它(回退仍以此為準) */
+const undoSnapshot = ref<GraphSnapshot | null>(null)
 
 // ── 節點 shape 註冊 ────────────────────────────────────────
 
@@ -543,6 +581,92 @@ async function onDeleteSelected() {
     selectedNode.value = null
   } catch (err) {
     ElMessage.error((err as Error).message)
+  }
+}
+
+// ─── AI 改圖 ───────────────────────────────────────────────
+
+/** 深拷貝當前整圖作快照(回退基準);detail 是真相源,x6 圖由 renderProject 從它重繪 */
+function snapshotGraph(): GraphSnapshot {
+  return {
+    nodes: JSON.parse(JSON.stringify(detail.value?.nodes ?? [])),
+    edges: JSON.parse(JSON.stringify(detail.value?.edges ?? [])),
+  }
+}
+
+/** 重新從後端拉整圖 + 重繪(套用/回退後同步畫布到後端真實狀態,避免本地拼接出錯) */
+async function reloadAndRender() {
+  await loadProject()
+  renderProject()
+}
+
+/**
+ * AI 改圖:呼 LLM 取操作清單 → 直接套用 → 存快照供回退。
+ * 任何套用步驟失敗 → 自動回滾到套用前快照(refetch 真實狀態再對賬),不留半套用爛狀態。
+ */
+async function onAiSubmit(instruction: string) {
+  if (!detail.value || aiLoading.value) return
+  const projectId = currentProjectId()
+  aiLoading.value = true
+  const snapshot = snapshotGraph()
+  try {
+    const plan = await projectFlowApi.aiGraphPlan({
+      instruction,
+      nodes: snapshot.nodes.map((n) => ({nodeId: n.nodeId, title: n.title, nodeType: n.nodeType, status: n.status})),
+      edges: snapshot.edges.map((e) => ({
+        edgeId: e.edgeId,
+        sourceNodeId: e.sourceNodeId,
+        targetNodeId: e.targetNodeId
+      })),
+    })
+    if (!plan.ops.length) {
+      ElMessage.info(t('projectFlow.aiGraph.empty'))
+      return
+    }
+    try {
+      const r = await applyAiPlan(projectId, plan.ops, snapshot)
+      await reloadAndRender()
+      undoSnapshot.value = snapshot // 套用成功 → 開放回退
+      selectedNode.value = null
+      aiDialogVisible.value = false
+      aiDialogRef.value?.reset()
+      const note = r.dropped ? ' ' + t('projectFlow.aiGraph.droppedNote', {n: r.dropped}) : ''
+      ElMessage.success((plan.summary || t('projectFlow.aiGraph.done')) + note)
+    } catch (applyErr) {
+      // 套用中途失敗 → 拉真實狀態,對賬回滾到套用前
+      try {
+        const cur = await projectFlowApi.getProject(projectId)
+        await reconcileToSnapshot(projectId, {nodes: cur.nodes ?? [], edges: cur.edges ?? []}, snapshot)
+      } catch (rbErr) {
+        logger.warn(`AI 改圖回滾失敗: ${(rbErr as Error).message}`, TAG)
+      }
+      await reloadAndRender()
+      undoSnapshot.value = null
+      ElMessage.error(t('projectFlow.aiGraph.failed', {msg: (applyErr as Error).message}))
+    }
+  } catch (err) {
+    ElMessage.error((err as Error).message)
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+/** 回退:把當前圖對賬還原到上一批 AI 改動前的快照 */
+async function onUndo() {
+  if (!undoSnapshot.value || aiLoading.value) return
+  const projectId = currentProjectId()
+  aiLoading.value = true
+  try {
+    const cur = await projectFlowApi.getProject(projectId)
+    await reconcileToSnapshot(projectId, {nodes: cur.nodes ?? [], edges: cur.edges ?? []}, undoSnapshot.value)
+    await reloadAndRender()
+    undoSnapshot.value = null
+    selectedNode.value = null
+    ElMessage.success(t('projectFlow.aiGraph.undone'))
+  } catch (err) {
+    ElMessage.error(t('projectFlow.aiGraph.undoFailed', {msg: (err as Error).message}))
+  } finally {
+    aiLoading.value = false
   }
 }
 

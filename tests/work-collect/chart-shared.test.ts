@@ -32,14 +32,14 @@ describe('countByCategory(按類別計數)', () => {
     })
 })
 
-describe('countByDay(按天計數)', () => {
-    it('同一天的記錄累加,key 為 YYYY-MM-DD', () => {
+describe('countByDay(按天計數,回 Map,key 為 M/D)', () => {
+    it('同一天的記錄累加', () => {
         const d1 = new Date(2026, 4, 19, 9).getTime()
         const d1b = new Date(2026, 4, 19, 15).getTime()
         const d2 = new Date(2026, 4, 20, 9).getTime()
         const m = countByDay([rec('A', d1), rec('A', d1b), rec('A', d2)])
-        expect(m['2026-05-19']).toBe(2)
-        expect(m['2026-05-20']).toBe(1)
+        expect(m.get('5/19')).toBe(2)
+        expect(m.get('5/20')).toBe(1)
     })
 })
 
@@ -61,8 +61,8 @@ describe('時間區間(把現在凍結在 2026-06-11 週四 15:00)', () => {
     it('buildWeekDayLabels 給週一到週日共 7 天', () => {
         const labels = buildWeekDayLabels()
         expect(labels).toHaveLength(7)
-        expect(labels[0]).toBe('2026-06-08')
-        expect(labels[6]).toBe('2026-06-14')
+        expect(labels[0]).toBe('6/8')
+        expect(labels[6]).toBe('6/14')
     })
 
     it('filterTodayRecords 只留今天的,昨天的濾掉', () => {

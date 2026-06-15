@@ -77,7 +77,7 @@
             <el-tooltip
                 v-for="(c, i) in activity.categories"
                 :key="c.category"
-                :content="`${c.category} · ${distPercent(c.minutes)}`"
+                :content="`${c.category} · ${distPercent(c.minutes, totalMinutes)}`"
                 placement="top"
             >
               <div :style="{width: distWidth(c.minutes), background: distColor(i)}" class="dist-seg"/>
@@ -86,7 +86,7 @@
           <div class="dist-legend">
                         <span v-for="(c, i) in activity.categories.slice(0, 6)" :key="c.category" class="legend-item">
                             <i :style="{background: distColor(i)}" class="dot"/>
-                            <b>{{ c.category }}</b>&nbsp;{{ distPercent(c.minutes) }}
+                            <b>{{ c.category }}</b>&nbsp;{{ distPercent(c.minutes, totalMinutes) }}
                         </span>
           </div>
         </template>
@@ -182,6 +182,7 @@ import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useI18n} from 'vue-i18n'
 import {formatClock as formatTime} from '@/shared/utils/format'
+import {distPercent, dueDays, dueLevel, heatStyle, paceLevel} from './dashboard-utils'
 import {projectFlowApi} from '@/features/project-flow/api'
 import type {MemoResponse, TodayActivitySummary} from '@/features/project-flow/types'
 import type {DailyAdviceContent, DailyAdviceRow, DailyAdviceStatus} from '@/types/electron/daily-advice'
@@ -211,29 +212,13 @@ const activity = ref<TodayActivitySummary>({categories: [], hourly: new Array(24
 
 const totalMinutes = computed(() => activity.value.categories.reduce((s, c) => s + c.minutes, 0))
 
-/** 不直接亮時長數字 — 換成質性「節奏」描述,氛圍感 > 監控感 */
-const paceText = computed(() => {
-  const m = totalMinutes.value
-  if (m <= 0) return t('home.pace0')
-  if (m < 60) return t('home.pace1')
-  if (m < 240) return t('home.pace2')
-  return t('home.pace3')
-})
+/** 不直接亮時長數字 — 換成質性「節奏」描述,氛圍感 > 監控感(閾值在 dashboard-utils.paceLevel) */
+const paceText = computed(() => t(`home.pace${paceLevel(totalMinutes.value)}`))
 
-/** 分佈圖例 / tooltip 用佔比,不露原始分鐘 */
-const distPercent = (minutes: number) =>
-    `${Math.round((minutes / Math.max(1, totalMinutes.value)) * 100)}%`
 const topCategory = computed(() => activity.value.categories[0]?.category ?? '—')
 const activeHours = computed(() => activity.value.hourly.filter((m) => m > 0).length)
 
 const pad = (n: number) => String(n).padStart(2, '0')
-
-/** 熱力格:強度 → 藍色深淺(0 給淡灰) */
-function heatStyle(minutes: number) {
-  if (minutes <= 0) return {background: '#eef1f6'}
-  const alpha = 0.25 + (minutes / 60) * 0.75
-  return {background: `rgba(48, 90, 158, ${alpha.toFixed(2)})`}
-}
 
 const DIST_COLORS = ['#3a5d96', '#5b8bc9', '#74a8e0', '#9cc2ec', '#c4d9f4', '#8492a6', '#b37feb', '#36cfc9']
 const distColor = (i: number) => DIST_COLORS[i % DIST_COLORS.length]
@@ -250,7 +235,6 @@ async function loadActivity() {
 // ─── 待辦備忘(到期近的在前;主進程另有 30 分鐘級系統通知) ──
 
 const MEMO_SHOW_LIMIT = 4
-const DAY = 86_400_000
 
 const memos = ref<MemoResponse[]>([])
 
@@ -265,22 +249,18 @@ async function loadMemos() {
   }
 }
 
-/** 到期文案:逾期 N 天 / 今天到期 / N 天後 / 無期限 */
+/** 到期文案:逾期 N 天 / 今天到期 / N 天後 / 無期限(按日曆日,見 dashboard-utils.dueDays) */
 function dueText(due?: number | null): string {
-  if (!due) return t('home.memoNoDue')
-  const diff = Math.ceil((due - Date.now()) / DAY)
-  if (diff < 0) return t('home.memoOverdue', {n: -diff})
-  if (diff === 0) return t('home.memoDueToday')
-  return t('home.memoDueDays', {n: diff})
+  const d = dueDays(due, Date.now())
+  if (d === null) return t('home.memoNoDue')
+  if (d < 0) return t('home.memoOverdue', {n: -d})
+  if (d === 0) return t('home.memoDueToday')
+  return t('home.memoDueDays', {n: d})
 }
 
-/** 顏色等級:逾期紅 / 24h 內橙 / 其餘灰 */
+/** 顏色等級 class:逾期紅 / 24h 內橙 / 其餘灰(等級判斷在 dashboard-utils.dueLevel) */
 function dueClass(due?: number | null): string {
-  if (!due) return 'lv-none'
-  const diff = due - Date.now()
-  if (diff < 0) return 'lv-overdue'
-  if (diff <= DAY) return 'lv-soon'
-  return 'lv-normal'
+  return `lv-${dueLevel(due, Date.now())}`
 }
 
 function openMemosWindow() {

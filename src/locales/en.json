@@ -382,7 +382,25 @@
       "viewTimeline": "Timeline",
       "deleteEdgeConfirm": "Delete this edge (dependency)?",
       "groupPhases": "Phases",
-      "groupElements": "Elements"
+      "groupElements": "Elements",
+      "aiEdit": "AI Edit",
+      "aiUndo": "Undo"
+    },
+    "aiGraph": {
+      "title": "AI Edit Flowchart",
+      "hint": "Describe the change in plain language; AI applies it to the chart directly. You can undo it in one click afterward.",
+      "placeholder": "e.g. Add a test node after \"Design\" and connect them",
+      "submit": "Send",
+      "examplesTitle": "Examples",
+      "ex1": "Add Test and Review nodes after Design and chain them",
+      "ex2": "Set all not-started tasks to in-progress",
+      "ex3": "Add a risk node linked to Requirement",
+      "empty": "AI proposed no actionable changes",
+      "done": "AI changes applied",
+      "droppedNote": "(skipped {n} invalid ops)",
+      "failed": "AI edit failed, reverted: {msg}",
+      "undone": "Reverted to before the AI edit",
+      "undoFailed": "Undo failed: {msg}"
     },
     "nodeType": {
       "start": "Kickoff",

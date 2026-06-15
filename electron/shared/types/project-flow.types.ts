@@ -291,6 +291,52 @@ export interface AiMemoSuggestion {
     suggestedNodeId?: number
 }
 
+// ─── AI 改圖(自然語言 → 操作清單;桌面端逐操作套用 + 快照回退) ───
+
+/**
+ * AI 改圖的單一操作 — 一條 = 一個原子改動,對應現有逐操作後端 API。
+ * 主進程 ai-graph 服務從 LLM 產出,渲染端引擎逐條套用。
+ *
+ * id 約定:
+ *  - nodeId / edgeId:既有元素的「後端真實 id」(數字)。
+ *  - tempId:本批新增節點的「臨時引用」(字串,如 "n1")。addEdge 端點可引用它,
+ *    讓「新增節點 + 連到它」在同一批完成;套用時引擎換成真實 nodeId。
+ */
+export type AiGraphOp =
+    | {
+    op: 'addNode'
+    /** 本批內唯一的臨時引用,供同批 addEdge 端點指向 */
+    tempId: string
+    title: string
+    nodeType: NodeType
+    description?: string
+    /** 放置提示:接在哪個節點之後(既有 nodeId 數字 / 本批 tempId 字串);引擎據此排版,LLM 不算座標 */
+    after?: number | string
+}
+    | {
+    op: 'updateNode'
+    nodeId: number
+    title?: string
+    status?: NodeStatus
+    description?: string
+    assigneeUserId?: string
+    priority?: number
+}
+    | { op: 'deleteNode'; nodeId: number }
+    | {
+    op: 'addEdge'
+    /** 端點:既有 nodeId(數字)或本批 addNode 的 tempId(字串) */
+    source: number | string
+    target: number | string
+}
+    | { op: 'deleteEdge'; edgeId: number }
+
+/** LLM 改圖計劃:一句話總結(給使用者看)+ 操作清單 */
+export interface AiGraphPlan {
+    summary: string
+    ops: AiGraphOp[]
+}
+
 // ─── SignalR Push payload(對齊後端 INotificationSender.SendTaskToConnectionsAsync) ─
 
 export interface ProjectFlowEventPayload {

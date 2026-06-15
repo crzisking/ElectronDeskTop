@@ -45,6 +45,8 @@ export const ProjectFlowChannels = {
     PROJECT_FLOW_AI_REPORT_ADVICE: 'pf:ai-report-advice',
     /** AI 備忘建議 — 本地 LlmClient;輸入是項目節點進度 + 現有待辦,不看原始活動記錄 */
     PROJECT_FLOW_AI_MEMO_SUGGEST: 'pf:ai-memo-suggest',
+    /** AI 改圖 — 本地 LlmClient;自然語言需求 + 當前圖 → 操作清單(渲染端套用 + 快照回退) */
+    PROJECT_FLOW_AI_GRAPH_PLAN: 'pf:ai-graph-plan',
 
     // ── Memos ───────────────────────────────────────────────
     PROJECT_FLOW_LIST_MEMOS: 'pf:list-memos',

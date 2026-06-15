@@ -11,6 +11,7 @@
 import {useAuthStore} from '@/stores/auth.store'
 import {plain} from '@/shared/utils/ipc-clone'
 import type {
+    AiGraphPlan,
     AiQuotaInfo,
     AiReportAdvice,
     EmployeeItem,
@@ -150,4 +151,7 @@ export const projectFlowApi = {
     aiMemoSuggest: (body: object) =>
         unwrap<{ suggestions: { title: string; description?: string; priority?: number; reasoning?: string }[] }>(
             pf().aiMemoSuggest(ctx(), plain(body))),
+    /** AI 改圖:自然語言需求 + 當前圖 → 操作清單(渲染端再 sanitize + 套用) */
+    aiGraphPlan: (body: { instruction: string; nodes: object[]; edges: object[] }) =>
+        unwrap<AiGraphPlan>(pf().aiGraphPlan(ctx(), plain(body))),
 }

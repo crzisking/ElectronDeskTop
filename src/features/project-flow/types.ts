@@ -28,6 +28,8 @@ export type {
     TodayActivitySummary,
     AiReportAdvice,
     AiMemoSuggestion,
+    AiGraphOp,
+    AiGraphPlan,
 } from '@shared/types/project-flow.types'
 
 /** 客戶端 viewport 狀態(只給畫布記錄,不上報後端) */

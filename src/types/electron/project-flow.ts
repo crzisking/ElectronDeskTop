@@ -67,4 +67,5 @@ export interface ProjectFlowAPI {
     getQuota: (ctx: Ctx) => Promise<Result<unknown>>
     aiReportAdvice: (ctx: Ctx, body: object) => Promise<Result<unknown>>
     aiMemoSuggest: (ctx: Ctx, body: object) => Promise<Result<unknown>>
+    aiGraphPlan: (ctx: Ctx, body: object) => Promise<Result<unknown>>
 }

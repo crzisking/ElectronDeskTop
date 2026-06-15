@@ -13,12 +13,13 @@ describe('stripJsonFence(剝掉模型加的 ```json 圍欄)', () => {
     })
 })
 
-describe('safeParseJson(安全解析,壞了不崩)', () => {
+describe('safeParseJson(剝圍欄後解析,壞了拋清楚的錯)', () => {
     it('合法 JSON(帶圍欄)→ 解析成物件', () => {
         expect(safeParseJson('```json\n{"x":[1,2]}\n```')).toEqual({x: [1, 2]})
     })
-    it('非法 JSON → 回 null,不拋錯', () => {
-        expect(safeParseJson('not json')).toBeNull()
+    it('非法 JSON → 拋錯(不是回 null;呼叫端用 safeRun 接成 {ok:false})', () => {
+        // 設計上故意 throw:回 null 會讓 AI 功能把 null 當正常數據用,錯誤被吞掉更難查
+        expect(() => safeParseJson('not json')).toThrow(/非合法 JSON/)
     })
 })
 

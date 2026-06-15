@@ -384,7 +384,25 @@
       "viewTimeline": "時間線",
       "deleteEdgeConfirm": "刪除這條連線(依賴關係)?",
       "groupPhases": "階段",
-      "groupElements": "元素"
+      "groupElements": "元素",
+      "aiEdit": "AI 改圖",
+      "aiUndo": "回退"
+    },
+    "aiGraph": {
+      "title": "AI 改流程圖",
+      "hint": "用自然語言描述想怎麼改,AI 會直接套用到流程圖;完成後可一鍵回退。",
+      "placeholder": "例如:在「設計」後面加一個測試節點並連起來",
+      "submit": "送出",
+      "examplesTitle": "例如",
+      "ex1": "在設計後面加測試和驗收兩個節點並串起來",
+      "ex2": "把所有未開始的任務改成進行中",
+      "ex3": "加一個風險節點,連到需求",
+      "empty": "AI 沒有提出可執行的改動",
+      "done": "已套用 AI 改動",
+      "droppedNote": "(略過 {n} 個無效操作)",
+      "failed": "AI 改圖失敗,已還原:{msg}",
+      "undone": "已回退到 AI 改動前",
+      "undoFailed": "回退失敗:{msg}"
     },
     "nodeType": {
       "start": "項目啟動",

@@ -16,7 +16,12 @@
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {projectFlowApi, type ProjectFlowApiContext} from '../services/project-flow/api-client'
-import {generateMemoSuggestions, generateReportAdvice, summarizeTodayActivity,} from '../services/project-flow/ai-local'
+import {
+    generateMemoSuggestions,
+    generateReportAdvice,
+    summarizeTodayActivityFromService,
+} from '../services/project-flow/ai-local'
+import {generateGraphPlan, type GraphPlanInput} from '../services/project-flow/ai-graph'
 import {authContext} from '../services/auth-context'
 import type {LlmClient} from '../services/llm'
 import type {WorkRecordService} from '../db/features/work-collect/service'
@@ -98,7 +103,7 @@ export function registerProjectFlowHandlers(
     ipcMain.handle(ch.PROJECT_FLOW_TODAY_ACTIVITY, async () =>
         safeRun(async () => {
             if (!deps.workRecordService) throw new Error('工作採集服務未就緒')
-            return summarizeTodayActivity(deps.workRecordService)
+            return summarizeTodayActivityFromService(deps.workRecordService)
         }))
 
     // ── Edges ───────────────────────────────────────────────
@@ -145,4 +150,8 @@ export function registerProjectFlowHandlers(
 
     ipcMain.handle(ch.PROJECT_FLOW_AI_REPORT_ADVICE, async (_e, p: InvokePayload) =>
         safeRun(() => generateReportAdvice(deps.llmClient, deps.workRecordService, (p?.body as object) ?? {})))
+
+    // AI 改圖 — 自然語言需求 + 當前圖 → 操作清單;不打後端,純本地 LLM
+    ipcMain.handle(ch.PROJECT_FLOW_AI_GRAPH_PLAN, async (_e, p: InvokePayload) =>
+        safeRun(() => generateGraphPlan(deps.llmClient, (p?.body as GraphPlanInput))))
 }

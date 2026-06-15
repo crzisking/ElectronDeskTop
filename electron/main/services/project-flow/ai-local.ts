@@ -25,17 +25,26 @@ export interface TodayActivitySummary {
     hourly: number[]
 }
 
-/**
- * 取今日 00:00 到此刻的 work-collect 紀錄,一趟掃描同時聚合:
- *   - categories:類別 → 估算分鐘 + 主要應用(每筆 ≈ 5 分鐘採集間隔)
- *   - hourly:24 小時熱力(每小時工作分鐘數,首頁熱力圖)
- * 只回聚合,不回每筆原始紀錄(prompt 長度 + 隱私)。
- */
-export function summarizeTodayActivity(workRecordService: WorkRecordService): TodayActivitySummary {
-    const now = new Date()
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    const records = workRecordService.listByRange(startOfDay, Date.now(), false)
+/** 聚合輸入的最小記錄形狀(純函式不綁完整 WorkRecord 型別,方便測試與複用) */
+export interface ActivityRecordLike {
+    category?: string | null
+    activeApp?: string | null
+    capturedAt: number
+}
 
+/**
+ * 把一批工作紀錄聚合成「類別分鐘 + 24h 熱力」。純函式:不碰 DB、不讀 Date.now,只做聚合 → 可單測。
+ *   - categories:類別 → 估算分鐘(筆數 × 採集間隔)+ 主要應用,按筆數降序
+ *   - hourly:24 格,每格累加採集間隔(封頂 60)
+ * 範圍過濾(今日)交給呼叫端(見 summarizeTodayActivityFromService)。
+ *
+ * @param records 已篩好範圍的紀錄
+ * @param intervalMinutes 每筆代表的分鐘數(= 採集間隔,預設 5)
+ */
+export function summarizeTodayActivity(
+    records: ActivityRecordLike[],
+    intervalMinutes = 5,
+): TodayActivitySummary {
     const byCategory = new Map<string, { apps: Set<string>; count: number }>()
     const hourly = new Array<number>(24).fill(0)
     for (const r of records) {
@@ -46,23 +55,33 @@ export function summarizeTodayActivity(workRecordService: WorkRecordService): To
         byCategory.set(cat, entry)
 
         const hour = new Date(r.capturedAt).getHours()
-        hourly[hour] = Math.min(60, hourly[hour] + 5)
+        hourly[hour] = Math.min(60, hourly[hour] + intervalMinutes)
     }
 
     const categories = Array.from(byCategory.entries())
         .sort((a, b) => b[1].count - a[1].count)
         .map(([category, info]) => ({
             category,
-            minutes: info.count * 5,
+            minutes: info.count * intervalMinutes,
             apps: Array.from(info.apps).slice(0, 5),
         }))
 
     return {categories, hourly}
 }
 
+/** 取今日 00:00 到此刻的紀錄再聚合(service 版;IPC handler / report-advice 用) */
+export function summarizeTodayActivityFromService(
+    workRecordService: WorkRecordService,
+    intervalMinutes = 5,
+): TodayActivitySummary {
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    return summarizeTodayActivity(workRecordService.listByRange(startOfDay, Date.now(), false), intervalMinutes)
+}
+
 /** 只要類別聚合時的便捷入口(AI prompt 用) */
 export function aggregateTodayActivity(workRecordService: WorkRecordService): TodayActivityCategory[] {
-    return summarizeTodayActivity(workRecordService).categories
+    return summarizeTodayActivityFromService(workRecordService).categories
 }
 
 /** 聚合結果 → prompt 用文字 */

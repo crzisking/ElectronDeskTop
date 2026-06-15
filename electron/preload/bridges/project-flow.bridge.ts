@@ -124,5 +124,8 @@ export function createProjectFlowBridge(ipc: IpcRenderer, ch: ProjectFlowChannel
             c(ch.PROJECT_FLOW_AI_REPORT_ADVICE, {ctx, body}) as Promise<Result<unknown>>,
         aiMemoSuggest: (ctx: Ctx, body: object) =>
             c(ch.PROJECT_FLOW_AI_MEMO_SUGGEST, {ctx, body}) as Promise<Result<unknown>>,
+        // AI 改圖:自然語言 + 當前圖 → 操作清單
+        aiGraphPlan: (ctx: Ctx, body: object) =>
+            c(ch.PROJECT_FLOW_AI_GRAPH_PLAN, {ctx, body}) as Promise<Result<unknown>>,
     }
 }
