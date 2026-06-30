@@ -1,6 +1,6 @@
 {
   "name": "ichiaDesktop",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "ichiaDesktop",
   "main": "out/main/index.js",
   "scripts": {

@@ -7,7 +7,7 @@
  * 狀態機:主窗顯示 ←→ 主窗隱藏 + 浮球顯示。
  *
  * 設計變更紀錄:
- *   原本有 AgentWindow,Agent 功能整套移除後(改規劃由 Claude Agent SDK 重寫,
+ *   原本有 AgentWindow,Agent 功能整套移除後(改規劃由 pi/piagent 重寫,
  *   見 docs/19),這層也跟著拿掉。Agent v2 上線時會再加回來。
  */
 

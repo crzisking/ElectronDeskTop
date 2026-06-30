@@ -2,7 +2,7 @@
  * LLM provider 共用型別 — 跨進程契約。
  *
  * 命名為 `llm.*` 而非 `agent.*`:
- *   Agent UI v1 已移除(改 Claude Agent SDK 重寫,見 docs/19);這份「provider 列表 +
+ *   Agent UI v1 已移除(改用 pi/piagent 重寫,見 docs/19);這份「provider 列表 +
  *   active 切換」的配置語意更通用,工作分析、未來各種「會打 LLM API」的功能都會用。
  *   Agent v2 上線時若需擴充 thinking/reasoning 等欄位再延伸 LlmConfig 即可。
  *
