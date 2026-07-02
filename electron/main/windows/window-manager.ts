@@ -53,7 +53,7 @@ export class WindowManager {
 
     /** 開啟 AI Agent 獨立窗(docs/19);已開過就 focus,不重建 */
     createAgentWindow(): BrowserWindow {
-        return this.agent.open(this.main.instance)
+        return this.agent.open()
     }
 
     /** AI Agent 子視窗(串流 push 廣播 / focus 用) */

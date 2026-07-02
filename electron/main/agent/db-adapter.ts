@@ -8,7 +8,7 @@
  */
 
 import {randomUUID} from 'crypto'
-import {and, asc, desc, eq, lt} from 'drizzle-orm'
+import {and, asc, desc, eq, gt, lt} from 'drizzle-orm'
 import {logger} from '../utils/logger'
 import type {DatabaseManager} from '../db/database-manager'
 import {type AgentMessageRow, agentMessages, type NewAgentMessage} from '../db/features/agent/schema'
@@ -28,11 +28,13 @@ export class AgentDbAdapter {
      * 某對話的訊息,按時間升序。
      *  - 不給 limit:回全部(resume 灌歷史給 LLM 用)
      *  - 給 limit:回「最近 limit 則」(懶加載;beforeTimestamp 給定時,取該時間點之前的一頁)
+     *  - afterTimestamp 給定時:只取該時間點之後的訊息(auto-compaction:摘要水位之後的)
      */
-    listMessages(conversationId: string, limit?: number, beforeTimestamp?: number): AgentMessage[] {
+    listMessages(conversationId: string, limit?: number, beforeTimestamp?: number, afterTimestamp?: number): AgentMessage[] {
         if (!this.dbManager.isReady()) return []
         const conds = [eq(agentMessages.conversationId, conversationId)]
         if (beforeTimestamp !== undefined) conds.push(lt(agentMessages.timestamp, beforeTimestamp))
+        if (afterTimestamp !== undefined) conds.push(gt(agentMessages.timestamp, afterTimestamp))
         const where = conds.length > 1 ? and(...conds) : conds[0]
 
         if (limit && limit > 0) {

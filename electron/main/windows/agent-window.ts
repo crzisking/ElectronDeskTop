@@ -2,7 +2,9 @@
  * AI Agent 獨立視窗(docs/19)— 跟主窗平行的獨立 BrowserWindow。
  *
  * 從側邊欄「aiAgent」入口開啟。設計沿用 MemosWindow:
- *   - 不持久化,關閉即銷毀;主窗為 parent
+ *   - 不持久化,關閉即銷毀
+ *   - ⚠️ **不設 parent**:設 parent 會變成子視窗,主窗最小化時它會跟著一起最小化。
+ *     Agent 要能獨立最小化 / 有自己的工作列按鈕,故做成 top-level 視窗。
  *   - 獨立 preload(agent.preload.js)只暴露 electronAPI.agent + on/off(AGENT_PUSH_* 白名單)
  */
 
@@ -19,7 +21,7 @@ export class AgentWindow {
     }
 
     /** 開啟。已開過就拉到前台 + 聚焦,不重建 */
-    open(parent: BrowserWindow | null): BrowserWindow {
+    open(): BrowserWindow {
         if (this.window && !this.window.isDestroyed()) {
             this.window.show()
             this.window.focus()
@@ -37,7 +39,7 @@ export class AgentWindow {
             autoHideMenuBar: true,
             show: false,
             backgroundColor: '#fafbfc',
-            parent: parent ?? undefined,
+            // 不設 parent —— 獨立 top-level 視窗,才能跟主窗各自最小化(見檔頂註解)
             webPreferences: {
                 preload: join(__dirname, '../preload/agent.preload.js'),
                 contextIsolation: true,

@@ -53,44 +53,57 @@
       <div ref="scrollEl" class="msg-scroll" @scroll="onScroll">
         <div v-if="loadingMore" class="load-more">載入更早的訊息…</div>
         <div class="msg-wrap">
-          <div v-for="m in messages" :key="m.id" :class="`msg--${m.kind}`" class="msg">
+          <template v-for="item in displayItems" :key="item.id">
             <!-- 使用者 / 助理 氣泡 -->
-            <template v-if="m.kind === 'user' || m.kind === 'assistant'">
+            <div v-if="item.kind === 'user' || item.kind === 'assistant'" :class="`msg--${item.kind}`" class="msg">
               <div class="bubble">
-                <div v-if="m.reasoning" class="reasoning-box">
-                  <button class="reasoning-toggle" type="button" @click="m.reasoningOpen = !m.reasoningOpen">
+                <div v-if="item.reasoning" class="reasoning-box">
+                  <button class="reasoning-toggle" type="button" @click="item.reasoningOpen = !item.reasoningOpen">
                     <el-icon :size="12">
-                      <component :is="m.reasoningOpen ? ArrowDown : ArrowRight"/>
+                      <component :is="item.reasoningOpen ? ArrowDown : ArrowRight"/>
                     </el-icon>
-                    思考過程{{ m.reasoningOpen ? '' : '(點擊展開)' }}
+                    思考過程{{ item.reasoningOpen ? '' : '(點擊展開)' }}
                   </button>
-                  <div v-show="m.reasoningOpen" class="reasoning">{{ m.reasoning }}</div>
+                  <div v-show="item.reasoningOpen" class="reasoning">{{ item.reasoning }}</div>
                 </div>
                 <!-- assistant 完成後渲染 markdown;串流中 / user 用純文字 -->
-                <div v-if="m.kind === 'assistant' && !m.streaming" class="content markdown" v-html="render(m.content)"/>
-                <div v-else class="content">{{ m.content }}<span v-if="m.streaming" class="caret">▋</span></div>
+                <div v-if="item.kind === 'assistant' && !item.streaming" class="content markdown"
+                     v-html="render(item.content)"/>
+                <div v-else class="content">{{ item.content }}<span v-if="item.streaming" class="caret">▋</span></div>
               </div>
-            </template>
-            <!-- 工具卡:預設折疊,只顯示一行摘要;點擊展開看 input/output -->
-            <div v-else-if="m.kind === 'tool'" class="tool-card">
-              <button class="tool-head" type="button" @click="m.open = !m.open">
-                <el-icon :size="12" class="tool-chevron">
-                  <component :is="m.open ? ArrowDown : ArrowRight"/>
-                </el-icon>
-                <el-icon>
-                  <Tools/>
-                </el-icon>
-                <b>{{ m.name }}</b>
-                <el-tag v-if="m.running" size="small" type="info">執行中</el-tag>
-                <el-tag v-else-if="m.isError" size="small" type="danger">失敗</el-tag>
-                <el-tag v-else size="small" type="success">完成</el-tag>
-              </button>
-              <template v-if="m.open">
-                <pre class="tool-io">{{ shorten(stringify(m.input)) }}</pre>
-                <pre v-if="m.output !== undefined" class="tool-io out">{{ shorten(stringify(m.output)) }}</pre>
-              </template>
             </div>
-          </div>
+            <!-- 工具組:連續的工具呼叫折成一塊,預設折疊只顯示一行摘要;展開才逐一列出 -->
+            <div v-else-if="item.kind === 'tool-group'" class="msg msg--tool">
+              <div class="tool-group">
+                <button class="tg-head" type="button" @click="toggleGroup(item.id)">
+                  <el-icon :size="12" class="tool-chevron">
+                    <component :is="isGroupOpen(item.id) ? ArrowDown : ArrowRight"/>
+                  </el-icon>
+                  <el-icon :size="13">
+                    <Tools/>
+                  </el-icon>
+                  <span class="tg-summary">{{ groupSummary(item) }}</span>
+                  <el-tag v-if="groupRunning(item)" size="small" type="info">執行中</el-tag>
+                  <el-tag v-else-if="groupError(item)" size="small" type="danger">部分失敗</el-tag>
+                </button>
+                <div v-if="isGroupOpen(item.id)" class="tg-body">
+                  <div v-for="t in item.tools" :key="t.id" class="tool-line">
+                    <button class="tool-head" type="button" @click="t.open = !t.open">
+                      <el-icon :size="11" class="tool-chevron">
+                        <component :is="t.open ? ArrowDown : ArrowRight"/>
+                      </el-icon>
+                      <span class="tool-name">{{ t.name }}</span>
+                      <span :class="statusClass(t)" class="tool-dot"/>
+                    </button>
+                    <template v-if="t.open">
+                      <pre class="tool-io">{{ shorten(stringify(t.input)) }}</pre>
+                      <pre v-if="t.output !== undefined" class="tool-io out">{{ shorten(stringify(t.output)) }}</pre>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
           <div v-if="!messages.length" class="chat-empty">
             {{ activeConvId ? '開始跟 AI 對話吧' : '點「新對話」選一個工作資料夾開始' }}
           </div>
@@ -182,6 +195,16 @@ interface ToolMsg {
 
 type ViewMsg = ChatMsg | ToolMsg
 
+/** 顯示用:連續的工具訊息折成一組(整組預設折疊) */
+interface ToolGroup {
+  kind: 'tool-group'
+  /** 組 id = 該組第一則工具的 id(串流追加同組時保持穩定) */
+  id: string
+  tools: ToolMsg[]
+}
+
+type DisplayItem = ChatMsg | ToolGroup
+
 const api = () => window.electronAPI.agent
 
 const ready = ref(false)
@@ -191,6 +214,51 @@ const messages = ref<ViewMsg[]>([])
 const input = ref('')
 const sending = ref(false)
 const scrollEl = ref<HTMLDivElement | null>(null)
+
+// ── 工具組:把 messages 裡連續的 tool 訊息折成一塊(整組預設折疊,少一堆卡片) ──
+const groupOpen = ref<Record<string, boolean>>({})
+
+const displayItems = computed<DisplayItem[]>(() => {
+  const out: DisplayItem[] = []
+  let buf: ToolMsg[] = []
+  const flush = () => {
+    if (buf.length) {
+      out.push({kind: 'tool-group', id: buf[0].id, tools: buf})
+      buf = []
+    }
+  }
+  for (const m of messages.value) {
+    if (m.kind === 'tool') buf.push(m)
+    else {
+      flush()
+      out.push(m)
+    }
+  }
+  flush()
+  return out
+})
+
+const isGroupOpen = (id: string) => !!groupOpen.value[id]
+const toggleGroup = (id: string) => {
+  groupOpen.value[id] = !groupOpen.value[id]
+}
+const groupRunning = (g: ToolGroup) => g.tools.some((t) => t.running)
+const groupError = (g: ToolGroup) => g.tools.some((t) => t.isError)
+
+/** 折疊時的一行摘要:1 個顯示工具名,多個顯示「N 個工具:name…」 */
+function groupSummary(g: ToolGroup): string {
+  const names = g.tools.map((t) => t.name)
+  if (names.length === 1) return names[0]
+  const uniq = [...new Set(names)]
+  const head = uniq.slice(0, 3).join('、')
+  return `${names.length} 個工具:${head}${uniq.length > 3 ? '…' : ''}`
+}
+
+/** 單一工具狀態小圓點 class */
+function statusClass(t: ToolMsg): string {
+  if (t.running) return 'dot-running'
+  return t.isError ? 'dot-error' : 'dot-ok'
+}
 
 // ── 權限彈框(Stage 2)──
 interface PermReq {
@@ -836,32 +904,92 @@ body,
   }
 }
 
-/* 工具卡 */
-.tool-card {
+/* 工具組(連續工具呼叫折成一塊,整組預設折疊) */
+.msg--tool {
+  justify-content: flex-start;
+}
+
+.tool-group {
   width: 100%;
-  background: #fff;
-  border: 1px solid #e4e7ed;
-  border-left: 3px solid #a0cfff;
-  border-radius: 8px;
-  padding: 8px 12px;
+}
+
+.tg-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 0;
+  text-align: left;
+  color: #909399;
+  font-size: 12.5px;
+}
+
+.tg-head:hover {
+  color: #606266;
+}
+
+.tg-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tg-body {
+  margin-top: 4px;
+  padding-left: 6px;
+  border-left: 2px solid #ebeef5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tool-line {
+  padding: 2px 0;
 }
 
 .tool-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 12.5px;
   width: 100%;
   border: none;
   background: transparent;
   cursor: pointer;
   padding: 0;
   text-align: left;
-  color: inherit;
+  color: #606266;
+}
+
+.tool-name {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.tool-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-ok {
+  background: #67c23a;
+}
+
+.dot-error {
+  background: #f56c6c;
+}
+
+.dot-running {
+  background: #e6a23c;
+  animation: blink 1s step-start infinite;
 }
 
 .tool-chevron {
-  color: #909399;
+  color: #c0c4cc;
 }
 
 .tool-io {

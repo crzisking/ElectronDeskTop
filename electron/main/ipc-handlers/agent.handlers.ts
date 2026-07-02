@@ -104,6 +104,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
         if (p?.conversationId) {
             deps.db.deleteConversation(p.conversationId)
             deps.configStore?.clearConversationWorkspace(p.conversationId)
+            deps.configStore?.clearConversationSummary(p.conversationId)
         }
         return {ok: true, data: true}
     })

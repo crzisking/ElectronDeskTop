@@ -11,7 +11,7 @@
  */
 
 import {randomUUID} from 'crypto'
-import {stepCountIs, streamText} from 'ai'
+import {generateText, type LanguageModel, type ModelMessage, stepCountIs, streamText} from 'ai'
 import {logger} from '../utils/logger'
 import type {AgentConfigStore} from './config-store'
 import type {AgentDbAdapter} from './db-adapter'
@@ -21,6 +21,15 @@ import {buildTools} from './tools'
 import {responseMessagesToRows, rowsToModelMessages} from './message-mapper'
 import {buildSystemPrompt, BUILTIN_BASE, gatherEnv, readRules} from './prompts'
 import {type AskRequest, type UserDecision, wrapToolsWithPermission} from './permission'
+import {
+    COMPACT_INSTRUCTION,
+    estimateRowsTokens,
+    estimateTokens,
+    shouldCompact,
+    SUMMARY_SYSTEM_PROMPT,
+    summaryContextPrefix,
+    usageInputTokens,
+} from './compaction'
 import type {PermissionVerdict} from '../../shared/types/agent.types'
 import type {AgentService} from '../db/features/agent/service'
 
@@ -88,6 +97,43 @@ export class AgentRuntime {
         this.configStore.write({permission: perm})
     }
 
+    /**
+     * 評估上下文用量,逼近 contextLimit 就把先前對話壓縮成摘要(對齊 opencode auto-compaction)。
+     * 用量取「端點回報的 input tokens」與「字元粗估」的較大者(端點沒回報時純靠估計)。
+     * 壓縮失敗只記 log,不影響本輪結果。
+     */
+    private async maybeCompact(
+        conversationId: string,
+        model: LanguageModel,
+        system: string,
+        reportedInputTokens: number,
+        contextLimit: number,
+        abortSignal: AbortSignal,
+    ): Promise<void> {
+        try {
+            const prev = this.configStore.getConversationSummary(conversationId)
+            const rows = this.db.listMessages(conversationId, undefined, undefined, prev?.watermark)
+            const estimated = estimateTokens(system) + estimateTokens(prev?.text) + estimateRowsTokens(rows)
+            const used = Math.max(reportedInputTokens, estimated)
+            if (!shouldCompact(used, contextLimit)) return
+
+            // 把「先前摘要 + 水位後訊息」交給模型濃縮成新摘要
+            const transcript: ModelMessage[] = [
+                ...(prev ? [{role: 'user' as const, content: summaryContextPrefix(prev.text)}] : []),
+                ...rowsToModelMessages(rows),
+                {role: 'user' as const, content: COMPACT_INSTRUCTION},
+            ]
+            const {text} = await generateText({model, system: SUMMARY_SYSTEM_PROMPT, messages: transcript, abortSignal})
+            if (!text.trim()) return
+
+            const watermark = rows.length ? rows[rows.length - 1].timestamp : (prev?.watermark ?? Date.now())
+            this.configStore.setConversationSummary(conversationId, {text: text.trim(), watermark})
+            logger.info(`對話 ${conversationId} 已壓縮(用量≈${used} / 上限 ${contextLimit},水位=${watermark})`, TAG)
+        } catch (err) {
+            if (!abortSignal.aborted) logger.warn(`壓縮失敗(不影響本輪):${(err as Error).message}`, TAG)
+        }
+    }
+
     private async run(opts: StartOpts, messageId: string, abort: AbortController): Promise<void> {
         const cfg = this.configStore.read()
         const conn = resolveActiveProvider(this.agentService)
@@ -101,7 +147,9 @@ export class AgentRuntime {
 
         try {
             const model = buildModel(conn)
-            const history = this.db.listMessages(opts.conversationId)
+            // auto-compaction:若先前已壓縮,只帶「摘要 + 摘要水位之後的訊息」,不整段重送(對齊 opencode)。
+            const summary = this.configStore.getConversationSummary(opts.conversationId)
+            const history = this.db.listMessages(opts.conversationId, undefined, undefined, summary?.watermark)
 
             // 該對話綁定的工作資料夾清單(可多個,第一個為主目錄);沒綁走預設。
             const bound = this.configStore.getConversationWorkspaces(opts.conversationId)
@@ -140,10 +188,16 @@ export class AgentRuntime {
                 role: 'user', content: opts.userMessage, timestamp: userTs,
             })
 
+            // 摘要(若有)當作前置上下文注入;maxTurns 只是防失控保險絲,非功能性輪數限制。
+            const messages: ModelMessage[] = [
+                ...(summary ? [{role: 'user' as const, content: summaryContextPrefix(summary.text)}] : []),
+                ...rowsToModelMessages(history),
+                {role: 'user' as const, content: opts.userMessage},
+            ]
             const result = streamText({
                 model,
                 system,
-                messages: [...rowsToModelMessages(history), {role: 'user', content: opts.userMessage}],
+                messages,
                 tools,
                 stopWhen: stepCountIs(cfg.maxTurns),
                 abortSignal: abort.signal,
@@ -157,6 +211,17 @@ export class AgentRuntime {
             const resp = await result.response
             const rows = responseMessagesToRows(opts.conversationId, resp.messages, userTs + 1)
             for (const r of rows) this.db.append(r)
+
+            // 本輪結束後評估上下文用量,逼近視窗就壓縮(下一輪起改帶摘要)。中斷則跳過。
+            if (!abort.signal.aborted) {
+                let usage: unknown = null
+                try {
+                    usage = await result.totalUsage
+                } catch {
+                    // 端點沒回報 usage:交給字元估計後備
+                }
+                await this.maybeCompact(opts.conversationId, model, system, usageInputTokens(usage), cfg.contextLimit, abort.signal)
+            }
         } catch (err) {
             if (!abort.signal.aborted) {
                 logger.error('agent run 失敗', TAG, err)

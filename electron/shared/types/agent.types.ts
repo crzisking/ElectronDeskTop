@@ -36,8 +36,18 @@ export type PermissionConfig = Record<string, PermissionRule>
 export interface AgentConfig {
     /** 自訂 system prompt;空走內建 default */
     systemPrompt?: string
-    /** 單次對話最多 agentic 步數(stopWhen: stepCountIs(n)) */
+    /**
+     * agentic 步數的「防失控上限」(stopWhen: stepCountIs(n))。
+     * ⚠️ 這不是功能性的輪數限制 —— 對齊 opencode,agent 應能跑到自然結束為止。
+     * 設一個很大的值當保險絲(防打轉燒錢的最後防線;真正的重複偵測靠 doomLoopLimit)。
+     */
     maxTurns: number
+    /**
+     * 模型上下文視窗大小(tokens)。用量逼近此值 * 門檻(0.9)時觸發自動壓縮:
+     * 把先前對話濃縮成摘要,之後只帶「摘要 + 摘要後的訊息」,對齊 opencode 的 auto-compaction。
+     * ⚠️ 我們沒有 per-model 的 context 資料庫(不像 opencode 的 models.dev),故做成可配置值。
+     */
+    contextLimit: number
     /** 啟動是否進 plan 模式(只讀工具) */
     planMode: boolean
     /** 檔案工具相對路徑錨點 + external_directory 判界基準 */
