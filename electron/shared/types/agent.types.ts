@@ -81,4 +81,6 @@ export interface ConversationSummary {
     title: string
     updatedAt: number
     messageCount: number
+    /** 該對話綁定的工作資料夾清單(可多個,第一個為主目錄);沒綁走預設 */
+    workspaces?: string[]
 }

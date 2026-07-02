@@ -23,8 +23,15 @@ export function createAgentBridge(ipc: IpcRenderer, ch: AgentChannelMap) {
             c(ch.AGENT_LIST_MESSAGES, {conversationId, limit, before}) as Promise<Result<unknown>>,
         listConversations: () =>
             c(ch.AGENT_LIST_CONVERSATIONS) as Promise<Result<unknown>>,
-        newConversation: () =>
-            c(ch.AGENT_NEW_CONVERSATION) as Promise<Result<{ conversationId: string }>>,
+        newConversation: (workspace?: string) =>
+            c(ch.AGENT_NEW_CONVERSATION, {workspace}) as Promise<Result<{
+                conversationId: string;
+                workspaces: string[]
+            }>>,
+        pickWorkspace: () =>
+            c(ch.AGENT_PICK_WORKSPACE) as Promise<Result<{ path: string | null }>>,
+        setWorkspaces: (conversationId: string, workspaces: string[]) =>
+            c(ch.AGENT_SET_WORKSPACES, {conversationId, workspaces}) as Promise<Result<{ workspaces: string[] }>>,
         forkConversation: (conversationId: string, uptoMessageId: string) =>
             c(ch.AGENT_FORK_CONVERSATION, {conversationId, uptoMessageId}) as Promise<Result<{
                 conversationId: string
@@ -39,7 +46,7 @@ export function createAgentBridge(ipc: IpcRenderer, ch: AgentChannelMap) {
             c(ch.AGENT_LIST_MODELS, {baseUrl, apiKey}) as Promise<Result<string[]>>,
         testConnection: () =>
             c(ch.AGENT_TEST_CONNECTION) as Promise<Result<{ model: string }>>,
-        permissionRespond: (payload: object) =>
-            c(ch.AGENT_PERMISSION_RESPOND, payload) as Promise<Result<boolean>>,
+        permissionRespond: (approvalId: string, decision: string, pattern?: string) =>
+            c(ch.AGENT_PERMISSION_RESPOND, {approvalId, decision, pattern}) as Promise<Result<boolean>>,
     }
 }

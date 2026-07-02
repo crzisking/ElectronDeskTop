@@ -43,6 +43,9 @@ export function defaultPermission(): PermissionConfig {
         websearch: 'allow',
         edit: 'ask',
         write: 'ask',
+        clipboard_read: 'allow',
+        clipboard_write: 'ask',
+        open_app: 'ask',
         external_directory: 'ask',
         bash: {
             '*': 'ask',
@@ -102,6 +105,50 @@ export class AgentConfigStore {
         }
     }
 
+    /** 預設 workspace(對話未指定時的 fallback) */
+    getDefaultWorkspace(): string {
+        return this.defaultWorkspace()
+    }
+
+    /**
+     * 取某對話綁定的工作資料夾「清單」(可多個;第一個為主目錄)。沒有回 []。
+     * 對齊 Claude Code:每對話可加多個資料夾當工作區。相容舊格式(單一字串 → 包成 [字串])。
+     */
+    getConversationWorkspaces(conversationId: string): string[] {
+        if (!this.dbManager.isReady() || !conversationId) return []
+        const row = this.dbManager.getDb().select().from(agentConfigs)
+            .where(eq(agentConfigs.key, convKey(conversationId))).get()
+        const v = row ? parseValue(row.value) : null
+        if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string' && !!x)
+        if (typeof v === 'string' && v) return [v] // 舊格式
+        return []
+    }
+
+    /** 綁定某對話的工作資料夾清單 */
+    setConversationWorkspaces(conversationId: string, workspaces: string[]): void {
+        if (!this.dbManager.isReady()) return
+        const now = Date.now()
+        const clean = [...new Set(workspaces.filter((w) => !!w))] // 去重去空
+        try {
+            this.dbManager.getDb().insert(agentConfigs)
+                .values({key: convKey(conversationId), value: JSON.stringify(clean), updatedAt: now})
+                .onConflictDoUpdate({target: agentConfigs.key, set: {value: JSON.stringify(clean), updatedAt: now}})
+                .run()
+        } catch (err) {
+            logger.error('setConversationWorkspaces 失敗', TAG, err)
+        }
+    }
+
+    /** 刪對話時一併清掉它的 workspace 綁定 */
+    clearConversationWorkspace(conversationId: string): void {
+        if (!this.dbManager.isReady()) return
+        try {
+            this.dbManager.getDb().delete(agentConfigs).where(eq(agentConfigs.key, convKey(conversationId))).run()
+        } catch (err) {
+            logger.error('clearConversationWorkspace 失敗', TAG, err)
+        }
+    }
+
     /** 寫入部分配置;回 true 成功 / false 失敗。只寫傳入的欄位。 */
     write(partial: Partial<AgentConfig>): boolean {
         if (!this.dbManager.isReady()) {
@@ -152,6 +199,11 @@ export class AgentConfigStore {
     private defaultWorkspace(): string {
         return join(app.getPath('userData'), 'agent-workspace')
     }
+}
+
+/** 每對話 workspace 的 KV key(與固定 KEYS 不重疊,read()/write() 不會碰它) */
+function convKey(conversationId: string): string {
+    return `conv:${conversationId}:workspace`
 }
 
 function parseValue(s: string): unknown {

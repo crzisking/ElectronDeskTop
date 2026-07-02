@@ -16,12 +16,14 @@ export interface AgentAPI {
     interrupt: (conversationId: string) => Promise<Result<boolean>>
     listMessages: (conversationId: string, limit?: number, before?: number) => Promise<Result<AgentMessage[]>>
     listConversations: () => Promise<Result<ConversationSummary[]>>
-    newConversation: () => Promise<Result<{ conversationId: string }>>
+    newConversation: (workspace?: string) => Promise<Result<{ conversationId: string; workspaces: string[] }>>
+    pickWorkspace: () => Promise<Result<{ path: string | null }>>
+    setWorkspaces: (conversationId: string, workspaces: string[]) => Promise<Result<{ workspaces: string[] }>>
     forkConversation: (conversationId: string, uptoMessageId: string) => Promise<Result<{ conversationId: string }>>
     deleteConversation: (conversationId: string) => Promise<Result<boolean>>
     configRead: () => Promise<Result<AgentConfigView>>
     configWrite: (partial: Partial<AgentConfig>) => Promise<Result<boolean>>
     listModels: (baseUrl: string, apiKey?: string) => Promise<Result<string[]>>
     testConnection: () => Promise<Result<{ model: string }>>
-    permissionRespond: (payload: object) => Promise<Result<boolean>>
+    permissionRespond: (approvalId: string, decision: string, pattern?: string) => Promise<Result<boolean>>
 }

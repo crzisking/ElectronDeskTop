@@ -34,6 +34,21 @@
         ⚠️ 尚未配置模型 —— 請到主視窗的「模型設定」配置 provider(URL + model),再回來重開此窗。
       </div>
 
+      <!-- 當前對話的工作資料夾:chip 條(可多個,➕ 加、× 移除) -->
+      <div v-if="activeConvId" class="ws-bar">
+        <span v-for="w in activeWorkspaces" :key="w" :title="w" class="ws-chip">
+          <el-icon :size="13"><Folder/></el-icon>
+          <span class="ws-name">{{ folderName(w) }}</span>
+          <el-icon :size="12" class="ws-x" @click="removeWorkspace(w)"><Close/></el-icon>
+        </span>
+        <span v-if="!activeWorkspaces.length" class="ws-empty">(預設工作目錄)</span>
+        <button class="ws-add" title="加入工作資料夾" type="button" @click="addWorkspace">
+          <el-icon :size="14">
+            <Plus/>
+          </el-icon>
+        </button>
+      </div>
+
       <!-- 原生滾動容器(不用 el-scrollbar):往上滾觸發懶加載更舊訊息 -->
       <div ref="scrollEl" class="msg-scroll" @scroll="onScroll">
         <div v-if="loadingMore" class="load-more">載入更早的訊息…</div>
@@ -76,7 +91,9 @@
               </template>
             </div>
           </div>
-          <div v-if="!messages.length" class="chat-empty">開始跟 AI 對話吧</div>
+          <div v-if="!messages.length" class="chat-empty">
+            {{ activeConvId ? '開始跟 AI 對話吧' : '點「新對話」選一個工作資料夾開始' }}
+          </div>
         </div>
       </div>
 
@@ -96,13 +113,46 @@
         <el-button v-else :icon="CircleClose" type="danger" @click="stop">停止</el-button>
       </div>
     </main>
+
+    <!-- 權限彈框:工具要執行時,依 ask 規則問使用者 -->
+    <el-dialog
+        :close-on-click-modal="false"
+        :model-value="!!pendingPerm"
+        :show-close="false"
+        title="Agent 要執行操作"
+        width="500"
+        @update:model-value="(v) => { if (!v) respondPerm('deny-once') }"
+    >
+      <template v-if="pendingPerm">
+        <p class="perm-desc">Agent 想使用工具 <b>{{ pendingPerm.tool }}</b>:</p>
+        <pre class="perm-body">{{ pendingPerm.subject || stringify(pendingPerm.input) }}</pre>
+      </template>
+      <template #footer>
+        <div class="perm-btns">
+          <el-button type="primary" @click="respondPerm('allow-once')">允許本次</el-button>
+          <el-button @click="respondPerm('allow-always')">永遠允許 {{ alwaysLabel }}</el-button>
+          <el-button @click="respondPerm('deny-once')">拒絕本次</el-button>
+          <el-button plain type="danger" @click="respondPerm('deny-always')">永遠拒絕 {{ alwaysLabel }}</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {nextTick, onMounted, onUnmounted, ref} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import {ArrowDown, ArrowRight, CircleClose, Delete, Plus, Promotion, Tools} from '@element-plus/icons-vue'
+import {
+  ArrowDown,
+  ArrowRight,
+  CircleClose,
+  Close,
+  Delete,
+  Folder,
+  Plus,
+  Promotion,
+  Tools
+} from '@element-plus/icons-vue'
 import {IpcChannels} from '@shared/ipc-channels'
 import type {ConversationSummary} from '@shared/types/agent.types'
 import {renderMarkdown as render} from './markdown'
@@ -141,6 +191,31 @@ const messages = ref<ViewMsg[]>([])
 const input = ref('')
 const sending = ref(false)
 const scrollEl = ref<HTMLDivElement | null>(null)
+
+// ── 權限彈框(Stage 2)──
+interface PermReq {
+  conversationId: string
+  approvalId: string
+  tool: string
+  subject: string
+  input: unknown
+  suggestedPattern: string
+}
+
+const pendingPerm = ref<PermReq | null>(null)
+const alwaysLabel = computed(() => {
+  const p = pendingPerm.value
+  if (!p) return ''
+  return p.tool === 'bash' ? p.suggestedPattern : p.tool
+})
+/** 當前對話綁定的工作資料夾清單(可多個,第一個為主目錄);顯示成 header 的 chip 條 */
+const activeWorkspaces = ref<string[]>([])
+
+/** 路徑 → 顯示用的資料夾名(最後一段) */
+function folderName(p: string): string {
+  const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/)
+  return parts[parts.length - 1] || p
+}
 
 // ── 懶加載:先載最近 PAGE 則,往上滾再載更舊(上下文長也不卡)──
 const PAGE = 30
@@ -190,6 +265,7 @@ async function loadConversations() {
 
 async function selectConversation(id: string) {
   activeConvId.value = id
+  activeWorkspaces.value = conversations.value.find((c) => c.conversationId === id)?.workspaces ?? []
   try {
     const rows = await call<RawRow[]>(api().listMessages(id, PAGE))
     messages.value = mapRows(rows)
@@ -235,9 +311,44 @@ function onScroll() {
 
 async function newChat() {
   try {
-    const {conversationId} = await call<{ conversationId: string }>(api().newConversation())
-    activeConvId.value = conversationId
+    // opencode 式:新對話先選工作資料夾;取消就不建
+    const picked = await call<{ path: string | null }>(api().pickWorkspace())
+    if (!picked.path) return
+    const r = await call<{ conversationId: string; workspaces: string[] }>(api().newConversation(picked.path))
+    activeConvId.value = r.conversationId
+    activeWorkspaces.value = r.workspaces
     messages.value = []
+    oldestTs = null
+    hasMore.value = false
+    await loadConversations()
+  } catch (err) {
+    ElMessage.error((err as Error).message)
+  }
+}
+
+/** 加一個工作資料夾(chip 條的「+」) */
+async function addWorkspace() {
+  if (!activeConvId.value) return
+  try {
+    const picked = await call<{ path: string | null }>(api().pickWorkspace())
+    if (!picked.path || activeWorkspaces.value.includes(picked.path)) return
+    const next = [...activeWorkspaces.value, picked.path]
+    const r = await call<{ workspaces: string[] }>(api().setWorkspaces(activeConvId.value, next))
+    activeWorkspaces.value = r.workspaces
+    await loadConversations()
+  } catch (err) {
+    ElMessage.error((err as Error).message)
+  }
+}
+
+/** 移除一個工作資料夾(chip 的 ×) */
+async function removeWorkspace(path: string) {
+  if (!activeConvId.value) return
+  try {
+    const next = activeWorkspaces.value.filter((w) => w !== path)
+    const r = await call<{ workspaces: string[] }>(api().setWorkspaces(activeConvId.value, next))
+    activeWorkspaces.value = r.workspaces
+    await loadConversations()
   } catch (err) {
     ElMessage.error((err as Error).message)
   }
@@ -260,7 +371,10 @@ async function removeConversation(id: string) {
 async function send() {
   const text = input.value.trim()
   if (!text || !ready.value || sending.value) return
-  if (!activeConvId.value) await newChat()
+  if (!activeConvId.value) {
+    ElMessage.info('請先點「新對話」選擇工作資料夾')
+    return
+  }
   input.value = ''
   sending.value = true
   messages.value.push({id: `u-${Date.now()}`, kind: 'user', content: text})
@@ -334,6 +448,19 @@ function onError(...args: unknown[]) {
   ElMessage.error(p.message)
 }
 
+function onPermissionAsk(...args: unknown[]) {
+  pendingPerm.value = args[0] as PermReq
+}
+
+/** decision: allow-once / allow-always / deny-once / deny-always */
+function respondPerm(decision: string) {
+  const p = pendingPerm.value
+  if (!p) return
+  const pattern = decision.endsWith('always') ? p.suggestedPattern : undefined
+  void api().permissionRespond(p.approvalId, decision, pattern)
+  pendingPerm.value = null
+}
+
 // ── 工具函式 ──
 function stringify(v: unknown): string {
   if (typeof v === 'string') return v
@@ -363,10 +490,11 @@ onMounted(async () => {
   window.electronAPI.on(C.AGENT_PUSH_TOOL_RESULT, onToolResult)
   window.electronAPI.on(C.AGENT_PUSH_END, onEnd)
   window.electronAPI.on(C.AGENT_PUSH_ERROR, onError)
+  window.electronAPI.on(C.AGENT_PUSH_PERMISSION_ASK, onPermissionAsk)
   await loadConfig()
   await loadConversations()
+  // 有舊對話就選第一個;沒有就留空,由使用者點「新對話」選工作資料夾(不自動彈資料夾框)
   if (conversations.value.length) await selectConversation(conversations.value[0].conversationId)
-  else await newChat()
 })
 
 onUnmounted(() => {
@@ -375,6 +503,7 @@ onUnmounted(() => {
   window.electronAPI.off(C.AGENT_PUSH_TOOL_RESULT, onToolResult)
   window.electronAPI.off(C.AGENT_PUSH_END, onEnd)
   window.electronAPI.off(C.AGENT_PUSH_ERROR, onError)
+  window.electronAPI.off(C.AGENT_PUSH_PERMISSION_ASK, onPermissionAsk)
 })
 </script>
 
@@ -479,6 +608,68 @@ body,
   padding: 10px 16px;
   font-size: 13px;
   border-bottom: 1px solid #faecd8;
+}
+
+.ws-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: #606266;
+  background: #f5f7fa;
+  border-bottom: 1px solid #ebeef5;
+  flex-shrink: 0;
+}
+
+.ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  padding: 3px 6px 3px 8px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+}
+
+.ws-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-x {
+  cursor: pointer;
+  color: #c0c4cc;
+  border-radius: 3px;
+}
+
+.ws-x:hover {
+  color: #f56c6c;
+}
+
+.ws-empty {
+  color: #909399;
+}
+
+.ws-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px dashed #c0c4cc;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #606266;
+}
+
+.ws-add:hover {
+  border-color: #409eff;
+  color: #409eff;
 }
 
 .msg-scroll {
@@ -707,5 +898,33 @@ body,
 
 .input-bar .el-textarea {
   flex: 1;
+}
+
+/* 權限彈框 */
+.perm-desc {
+  margin: 0 0 8px;
+}
+
+.perm-body {
+  margin: 0;
+  background: #f6f8fa;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.perm-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.perm-btns .el-button {
+  margin: 0;
+  width: 100%;
 }
 </style>

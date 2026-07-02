@@ -6,8 +6,8 @@
  *   配置就緒判斷 → 灌歷史 messages(resume)→ 落 user 訊息 → 跑串流(fullStream → EventBridge)
  *   → 用 response.messages 一次落庫 assistant / tool 訊息。
  *
- * 同一時間單一 run:新請求會 abort 舊的。Stage 1 用最小工具集(read + bash),
- * 權限 gate(§5)/ plan mode(§6.2)/ 完整工具(§6.1 移植 opencode)留待 Stage 2/3。
+ * 同一時間單一 run:新請求會 abort 舊的。工具經權限 gate 包裹(§5:allow/ask/deny +
+ * doom_loop + external_directory),依對話綁定的工作資料夾清單運作。
  */
 
 import {randomUUID} from 'crypto'
@@ -19,13 +19,12 @@ import type {AgentEventBridge} from './event-bridge'
 import {buildModel, resolveActiveProvider} from './model-provider'
 import {buildTools} from './tools'
 import {responseMessagesToRows, rowsToModelMessages} from './message-mapper'
+import {buildSystemPrompt, BUILTIN_BASE, gatherEnv, readRules} from './prompts'
+import {type AskRequest, type UserDecision, wrapToolsWithPermission} from './permission'
+import type {PermissionVerdict} from '../../shared/types/agent.types'
 import type {AgentService} from '../db/features/agent/service'
 
 const TAG = 'AgentRuntime'
-
-const DEFAULT_SYSTEM_PROMPT =
-    '你是內部桌面工具的 AI 助理,運行在使用者的 Windows 電腦上。' +
-    '你可以讀檔案、執行 shell 命令來完成任務。回答精簡、實事求是;不確定就說不確定。'
 
 export interface StartOpts {
     conversationId: string
@@ -35,6 +34,8 @@ export interface StartOpts {
 
 export class AgentRuntime {
     private current: { conversationId: string; abort: AbortController } | null = null
+    /** 待回應的權限彈框:approvalId → resolve;由 respondPermission 解決 */
+    private readonly pending = new Map<string, (d: UserDecision) => void>()
 
     constructor(
         private readonly configStore: AgentConfigStore,
@@ -65,6 +66,28 @@ export class AgentRuntime {
         return true
     }
 
+    /** renderer 回應權限彈框(decision: allow-once / allow-always / deny-once / deny-always) */
+    respondPermission(approvalId: string, decision: string, pattern?: string): boolean {
+        const resolve = this.pending.get(approvalId)
+        if (!resolve) return false
+        this.pending.delete(approvalId)
+        resolve({allow: decision.startsWith('allow'), always: decision.endsWith('always'), pattern})
+        return true
+    }
+
+    /** 把 always 規則寫回 permission 配置(bash 進 bash 子表;其餘設整個工具) */
+    private persistRule(tool: string, pattern: string, verdict: PermissionVerdict): void {
+        const perm = {...this.configStore.read().permission}
+        if (tool === 'bash') {
+            const b = perm.bash && typeof perm.bash === 'object' ? {...perm.bash} : {}
+            b[pattern] = verdict
+            perm.bash = b
+        } else {
+            perm[tool] = verdict
+        }
+        this.configStore.write({permission: perm})
+    }
+
     private async run(opts: StartOpts, messageId: string, abort: AbortController): Promise<void> {
         const cfg = this.configStore.read()
         const conn = resolveActiveProvider(this.agentService)
@@ -80,6 +103,36 @@ export class AgentRuntime {
             const model = buildModel(conn)
             const history = this.db.listMessages(opts.conversationId)
 
+            // 該對話綁定的工作資料夾清單(可多個,第一個為主目錄);沒綁走預設。
+            const bound = this.configStore.getConversationWorkspaces(opts.conversationId)
+            const workspaces = bound.length ? bound : [cfg.workspace]
+
+            // 組系統提示:基礎(可被 cfg.systemPrompt 覆蓋)+ 環境注入 + AGENTS.md 專案規則(讀主目錄的)
+            const [env, rules] = await Promise.all([gatherEnv(workspaces), readRules(workspaces[0])])
+            const system = buildSystemPrompt(cfg.systemPrompt || BUILTIN_BASE, env, rules)
+
+            // 權限 gate:包住工具 execute;ask 走 IPC 彈框等使用者,always 寫回配置(§5)
+            const ask = (req: AskRequest): Promise<UserDecision> =>
+                new Promise((resolve) => {
+                    const approvalId = randomUUID()
+                    this.pending.set(approvalId, resolve)
+                    this.events.pushPermissionAsk(opts.conversationId, {
+                        approvalId,
+                        tool: req.tool,
+                        subject: req.subject,
+                        input: req.input,
+                        suggestedPattern: req.suggestedPattern,
+                    })
+                })
+            const tools = wrapToolsWithPermission(buildTools(workspaces), {
+                config: cfg.permission,
+                workspaces,
+                planMode: cfg.planMode || !!opts.planMode,
+                doomLoopLimit: cfg.doomLoopLimit,
+                ask,
+                persist: (tool, pattern, verdict) => this.persistRule(tool, pattern, verdict),
+            })
+
             // 落 user 訊息
             const userTs = Date.now()
             this.db.append({
@@ -89,9 +142,9 @@ export class AgentRuntime {
 
             const result = streamText({
                 model,
-                system: cfg.systemPrompt || DEFAULT_SYSTEM_PROMPT,
+                system,
                 messages: [...rowsToModelMessages(history), {role: 'user', content: opts.userMessage}],
-                tools: buildTools(cfg),
+                tools,
                 stopWhen: stepCountIs(cfg.maxTurns),
                 abortSignal: abort.signal,
             })
@@ -110,6 +163,11 @@ export class AgentRuntime {
                 this.events.pushError(opts.conversationId, err)
             }
         } finally {
+            // run 結束 / 中斷:未回應的彈框一律當拒絕,避免 promise 懸掛
+            for (const [id, resolve] of this.pending) {
+                resolve({allow: false, always: false})
+                this.pending.delete(id)
+            }
             if (this.current?.abort === abort) this.current = null
         }
     }

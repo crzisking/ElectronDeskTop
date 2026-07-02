@@ -139,8 +139,14 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerNotificationHandlers(notificationClient, configManager)
     // AI 本地端點(memo-suggest / report-generate)需要 LlmClient + workRecordService
     registerProjectFlowHandlers({llmClient, workRecordService})
-    // Agent v2(docs/19);agentService 提供模型連線(現有模型設定的 active provider)
-    registerAgentHandlers({runtime: agentRuntime, configStore: agentConfigStore, db: agentDbAdapter, agentService})
+    // Agent v2(docs/19);agentService 提供模型連線,windowManager 給資料夾選擇器當 parent
+    registerAgentHandlers({
+        runtime: agentRuntime,
+        configStore: agentConfigStore,
+        db: agentDbAdapter,
+        agentService,
+        windowManager
+    })
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

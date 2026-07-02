@@ -9,6 +9,10 @@ export const AgentChannels = {
     AGENT_LIST_MESSAGES: 'agent:list-messages',
     AGENT_LIST_CONVERSATIONS: 'agent:list-conversations',
     AGENT_NEW_CONVERSATION: 'agent:new-conversation',
+    /** 開資料夾選擇器,回選中的工作目錄(新對話綁定用) */
+    AGENT_PICK_WORKSPACE: 'agent:pick-workspace',
+    /** 設定某對話的工作資料夾清單(加 / 移除資料夾後持久化) */
+    AGENT_SET_WORKSPACES: 'agent:set-workspaces',
     AGENT_FORK_CONVERSATION: 'agent:fork-conversation',
     AGENT_DELETE_CONVERSATION: 'agent:delete-conversation',
     AGENT_CONFIG_READ: 'agent:config-read',

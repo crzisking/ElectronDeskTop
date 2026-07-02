@@ -18,6 +18,8 @@ const IPC = {
     AGENT_LIST_MESSAGES: 'agent:list-messages',
     AGENT_LIST_CONVERSATIONS: 'agent:list-conversations',
     AGENT_NEW_CONVERSATION: 'agent:new-conversation',
+    AGENT_PICK_WORKSPACE: 'agent:pick-workspace',
+    AGENT_SET_WORKSPACES: 'agent:set-workspaces',
     AGENT_FORK_CONVERSATION: 'agent:fork-conversation',
     AGENT_DELETE_CONVERSATION: 'agent:delete-conversation',
     AGENT_CONFIG_READ: 'agent:config-read',
@@ -62,7 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         listMessages: (conversationId: string, limit?: number, before?: number) =>
             c(IPC.AGENT_LIST_MESSAGES, {conversationId, limit, before}),
         listConversations: () => c(IPC.AGENT_LIST_CONVERSATIONS),
-        newConversation: () => c(IPC.AGENT_NEW_CONVERSATION),
+        newConversation: (workspace?: string) => c(IPC.AGENT_NEW_CONVERSATION, {workspace}),
+        pickWorkspace: () => c(IPC.AGENT_PICK_WORKSPACE),
+        setWorkspaces: (conversationId: string, workspaces: string[]) =>
+            c(IPC.AGENT_SET_WORKSPACES, {conversationId, workspaces}),
         forkConversation: (conversationId: string, uptoMessageId: string) =>
             c(IPC.AGENT_FORK_CONVERSATION, {conversationId, uptoMessageId}),
         deleteConversation: (conversationId: string) => c(IPC.AGENT_DELETE_CONVERSATION, {conversationId}),
@@ -70,7 +75,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         configWrite: (partial: object) => c(IPC.AGENT_CONFIG_WRITE, {partial}),
         listModels: (baseUrl: string, apiKey?: string) => c(IPC.AGENT_LIST_MODELS, {baseUrl, apiKey}),
         testConnection: () => c(IPC.AGENT_TEST_CONNECTION),
-        permissionRespond: (payload: object) => c(IPC.AGENT_PERMISSION_RESPOND, payload),
+        permissionRespond: (approvalId: string, decision: string, pattern?: string) =>
+            c(IPC.AGENT_PERMISSION_RESPOND, {approvalId, decision, pattern}),
     },
 
     on(channel: string, callback: (...args: unknown[]) => void) {

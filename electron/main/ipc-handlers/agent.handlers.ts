@@ -4,13 +4,14 @@
  */
 
 import {randomUUID} from 'crypto'
-import {ipcMain} from 'electron'
+import {dialog, ipcMain} from 'electron'
 import {generateText} from 'ai'
 import {IpcChannels} from '../../shared/ipc-channels'
 import type {AgentRuntime} from '../agent/runtime'
 import type {AgentConfigStore} from '../agent/config-store'
 import type {AgentDbAdapter} from '../agent/db-adapter'
 import type {AgentService} from '../db/features/agent/service'
+import type {WindowManager} from '../windows/window-manager'
 import {buildModel, isAgentReady, listModels, resolveActiveProvider} from '../agent/model-provider'
 
 export interface AgentHandlerDeps {
@@ -19,6 +20,8 @@ export interface AgentHandlerDeps {
     db: AgentDbAdapter | null
     /** 模型連線來源:現有模型設定的 active provider */
     agentService: AgentService | null
+    /** 資料夾選擇器要用(dialog 的 parent 視窗) */
+    windowManager: WindowManager | null
 }
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -58,12 +61,36 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
 
     ipcMain.handle(ch.AGENT_LIST_CONVERSATIONS, () => {
         if (!deps.db) return notReady
-        return {ok: true, data: deps.db.listConversations()}
+        const list = deps.db.listConversations().map((c) => ({
+            ...c,
+            workspaces: deps.configStore?.getConversationWorkspaces(c.conversationId) ?? [],
+        }))
+        return {ok: true, data: list}
     })
 
-    ipcMain.handle(ch.AGENT_NEW_CONVERSATION, () => {
-        // 不落庫,首條訊息才會建 row
-        return {ok: true, data: {conversationId: randomUUID()}}
+    // 新對話:綁工作資料夾(可多個,新建時先給一個);不落庫,首條訊息才建 row。
+    ipcMain.handle(ch.AGENT_NEW_CONVERSATION, (_e, p: { workspace?: string }) => {
+        const conversationId = randomUUID()
+        const picked = p?.workspace?.trim()
+        const workspaces = picked ? [picked] : []
+        if (workspaces.length && deps.configStore) deps.configStore.setConversationWorkspaces(conversationId, workspaces)
+        return {ok: true, data: {conversationId, workspaces}}
+    })
+
+    // 設定某對話的工作資料夾清單(加 / 移除後持久化);回最新清單
+    ipcMain.handle(ch.AGENT_SET_WORKSPACES, (_e, p: { conversationId?: string; workspaces?: string[] }) => {
+        if (!deps.configStore || !p?.conversationId) return {ok: false, error: '缺 conversationId'}
+        const ws = Array.isArray(p.workspaces) ? p.workspaces.filter((w) => typeof w === 'string' && w) : []
+        deps.configStore.setConversationWorkspaces(p.conversationId, ws)
+        return {ok: true, data: {workspaces: deps.configStore.getConversationWorkspaces(p.conversationId)}}
+    })
+
+    // 開資料夾選擇器,回選中的工作目錄(取消回 null)
+    ipcMain.handle(ch.AGENT_PICK_WORKSPACE, async () => {
+        const win = deps.windowManager?.getAgentWindow() ?? undefined
+        const opts = {properties: ['openDirectory' as const]}
+        const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+        return {ok: true, data: {path: r.canceled || !r.filePaths.length ? null : r.filePaths[0]}}
     })
 
     ipcMain.handle(ch.AGENT_FORK_CONVERSATION, (_e, p: { conversationId?: string; uptoMessageId?: string }) => {
@@ -74,7 +101,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
 
     ipcMain.handle(ch.AGENT_DELETE_CONVERSATION, (_e, p: { conversationId?: string }) => {
         if (!deps.db) return notReady
-        if (p?.conversationId) deps.db.deleteConversation(p.conversationId)
+        if (p?.conversationId) {
+            deps.db.deleteConversation(p.conversationId)
+            deps.configStore?.clearConversationWorkspace(p.conversationId)
+        }
         return {ok: true, data: true}
     })
 
@@ -104,6 +134,13 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
             return {model: conn!.model}
         }))
 
-    // 權限彈框回應(Stage 2 實作;先接通不報錯)
-    ipcMain.handle(ch.AGENT_PERMISSION_RESPOND, () => ({ok: true, data: true}))
+    // 權限彈框回應 → 解決 runtime 裡等待的 promise(§5)
+    ipcMain.handle(ch.AGENT_PERMISSION_RESPOND, (_e, p: {
+        approvalId?: string;
+        decision?: string;
+        pattern?: string
+    }) => {
+        if (!deps.runtime || !p?.approvalId || !p?.decision) return {ok: false, error: '缺 approvalId / decision'}
+        return {ok: true, data: deps.runtime.respondPermission(p.approvalId, p.decision, p.pattern)}
+    })
 }

@@ -99,6 +99,17 @@ export class AgentEventBridge {
         this.push(IpcChannels.AGENT_PUSH_ERROR, {conversationId, message})
     }
 
+    /** 推權限彈框請求給 renderer(§5;等使用者回 AGENT_PERMISSION_RESPOND) */
+    pushPermissionAsk(conversationId: string, payload: {
+        approvalId: string
+        tool: string
+        subject: string
+        input: unknown
+        suggestedPattern: string
+    }): void {
+        this.push(IpcChannels.AGENT_PUSH_PERMISSION_ASK, {conversationId, ...payload})
+    }
+
     private push(channel: string, payload: unknown): void {
         // Agent UI 在獨立 agent 視窗,串流推給它(不在主窗)
         const win = this.winMgr.getAgentWindow()
