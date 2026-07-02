@@ -17,6 +17,7 @@ import {MainWindow} from './main-window'
 import {FloatingBallWindow} from './floating-ball-window'
 import {LogViewerWindow} from './log-viewer-window'
 import {MemosWindow} from './memos-window'
+import {AgentWindow} from './agent-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
@@ -24,6 +25,7 @@ export class WindowManager {
     private floatingBall = new FloatingBallWindow()
     private logViewer = new LogViewerWindow()
     private memos = new MemosWindow()
+    private agent = new AgentWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -47,6 +49,16 @@ export class WindowManager {
     /** 開啟備忘錄獨立窗(docs/20 §5.5);已開過就 focus,不重建 */
     createMemosWindow(): BrowserWindow {
         return this.memos.open(this.main.instance)
+    }
+
+    /** 開啟 AI Agent 獨立窗(docs/19);已開過就 focus,不重建 */
+    createAgentWindow(): BrowserWindow {
+        return this.agent.open(this.main.instance)
+    }
+
+    /** AI Agent 子視窗(串流 push 廣播 / focus 用) */
+    getAgentWindow(): BrowserWindow | null {
+        return this.agent.instance
     }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
@@ -126,6 +138,7 @@ export class WindowManager {
 
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
+        this.agent.destroy()
         this.memos.destroy()
         this.logViewer.destroy()
         this.floatingBall.destroy()

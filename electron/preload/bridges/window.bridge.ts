@@ -12,6 +12,7 @@ export interface WindowChannelMap {
   WINDOW_IS_MAXIMIZED: string
   OPEN_CHILD_WINDOW: string
   WINDOW_OPEN_MEMOS: string
+    WINDOW_OPEN_AGENT: string
 }
 
 export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
@@ -32,5 +33,8 @@ export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
 
     /** 打開備忘錄獨立窗(docs/20 §5.5) */
     openMemos: () => ipc.invoke(ch.WINDOW_OPEN_MEMOS) as Promise<void>,
+
+      /** 打開 AI Agent 獨立窗(docs/19) */
+      openAgent: () => ipc.invoke(ch.WINDOW_OPEN_AGENT) as Promise<void>,
   }
 }

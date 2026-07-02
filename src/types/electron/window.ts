@@ -34,4 +34,7 @@ export interface WindowAPI {
 
     /** 打開備忘錄獨立窗(docs/20 §5.5);已開則 focus,未開則 create */
     openMemos: () => Promise<void>
+
+    /** 打開 AI Agent 獨立窗(docs/19);已開則 focus,未開則 create */
+    openAgent: () => Promise<void>
 }

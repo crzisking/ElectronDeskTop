@@ -41,8 +41,11 @@ export default defineConfig({
   // ─── 主進程配置 ────────────────────────────────────────────────
   main: {
     plugins: [
-      // 將所有 node_modules 依賴標記為 external（主進程直接 require，不打包進去）
-      externalizeDepsPlugin(),
+        // 將所有 node_modules 依賴標記為 external（主進程直接 require，不打包進去）。
+        // ⚠️ 例外:Vercel AI SDK(ai / @ai-sdk/*)是純 ESM,而 Electron 28 內建 Node 18 不支援
+        // require(ESM),外部化後打包/運行會 crash。故排除外部化 → 讓 vite 打包進 main(ESM→CJS)。
+        // 它們的 @ai-sdk/* 傳遞依賴不在 package.json deps,本來就會一起被打包;zod 是 CJS,留 external 無妨。
+        externalizeDepsPlugin({exclude: ['ai', '@ai-sdk/openai-compatible']}),
       // drizzle migrations 拷貝(自寫 plugin,見檔頂註解)
       copyMigrationsPlugin()
     ],
@@ -82,7 +85,9 @@ export default defineConfig({
           // 日誌查看器子視窗預加載腳本 → out/preload/log-viewer.preload.js
           'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts'),
           // 備忘錄子視窗預加載腳本 → out/preload/memos.preload.js
-          'memos.preload': resolve('electron/preload/memos.preload.ts')
+            'memos.preload': resolve('electron/preload/memos.preload.ts'),
+            // AI Agent 子視窗預加載腳本 → out/preload/agent.preload.js
+            'agent.preload': resolve('electron/preload/agent.preload.ts')
         }
       }
     }
@@ -116,7 +121,8 @@ export default defineConfig({
           index: resolve('src/windows/main/index.html'),
           floatingBall: resolve('src/windows/floating-ball/index.html'),
           logViewer: resolve('src/windows/log-viewer/index.html'),
-          memos: resolve('src/windows/memos/index.html')
+            memos: resolve('src/windows/memos/index.html'),
+            agent: resolve('src/windows/agent/index.html')
         }
       }
     },

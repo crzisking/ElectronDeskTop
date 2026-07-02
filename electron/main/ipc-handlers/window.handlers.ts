@@ -91,5 +91,11 @@ export function registerWindowHandlers(
     logger.info('打開備忘錄視窗', 'IPC:window')
   })
 
+    /** 打開 AI Agent 獨立窗(docs/19);已開則 focus,未開則 create */
+    ipcMain.handle(IpcChannels.WINDOW_OPEN_AGENT, () => {
+        windowManager.createAgentWindow()
+        logger.info('打開 AI Agent 視窗', 'IPC:window')
+    })
+
   logger.info('窗口 IPC Handlers 已註冊', 'IPC:window')
 }

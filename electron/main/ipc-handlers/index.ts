@@ -35,6 +35,10 @@ import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
 import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
 import {registerNotificationHandlers} from './notification.handlers'
 import {registerProjectFlowHandlers} from './project-flow.handlers'
+import {registerAgentHandlers} from './agent.handlers'
+import type {AgentRuntime} from '../agent/runtime'
+import type {AgentConfigStore} from '../agent/config-store'
+import type {AgentDbAdapter} from '../agent/db-adapter'
 import type {WindowManager} from '../window-manager'
 import type {ConfigManager} from '../config-manager'
 import type {FloatingBallManager} from '../floating-ball'
@@ -88,6 +92,10 @@ export interface IpcHandlerContext {
   workAnalysisService: WorkAnalysisService | null
   /** 遠程通知 WebSocket 客戶端(docs/18) */
   notificationClient: NotificationClient
+    /** Agent v2(docs/19):執行內核 + 配置 + 對話持久化;DB 未就緒時為 null */
+    agentRuntime: AgentRuntime | null
+    agentConfigStore: AgentConfigStore | null
+    agentDbAdapter: AgentDbAdapter | null
 }
 
 /**
@@ -112,6 +120,9 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
     llmClient,
     workAnalysisService,
     notificationClient,
+      agentRuntime,
+      agentConfigStore,
+      agentDbAdapter,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -128,6 +139,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerNotificationHandlers(notificationClient, configManager)
     // AI 本地端點(memo-suggest / report-generate)需要 LlmClient + workRecordService
     registerProjectFlowHandlers({llmClient, workRecordService})
+    // Agent v2(docs/19);agentService 提供模型連線(現有模型設定的 active provider)
+    registerAgentHandlers({runtime: agentRuntime, configStore: agentConfigStore, db: agentDbAdapter, agentService})
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

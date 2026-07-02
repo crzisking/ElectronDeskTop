@@ -22,6 +22,7 @@ import type {AuthAPI} from './electron/auth'
 import type {NotificationAPI} from './electron/notification'
 import type {ProjectFlowAPI} from './electron/project-flow'
 import type {DailyAdviceAPI} from './electron/daily-advice'
+import type {AgentAPI} from './electron/agent'
 
 // 確保此檔被視為模塊(避免全局聲明衝突)
 export {}
@@ -43,6 +44,7 @@ declare global {
         notification: NotificationAPI
       projectFlow: ProjectFlowAPI
       dailyAdvice: DailyAdviceAPI
+        agent: AgentAPI
 
       /**
        * 浮球右鍵原生菜單。

@@ -11,6 +11,10 @@ import {TrayManager} from './tray-manager'
 import {ConfigManager} from './config-manager'
 import {UpdateManager} from './update-manager'
 import {registerAllHandlers} from './ipc-handlers'
+import {AgentConfigStore} from './agent/config-store'
+import {AgentDbAdapter} from './agent/db-adapter'
+import {AgentEventBridge} from './agent/event-bridge'
+import {AgentRuntime} from './agent/runtime'
 import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
 import {DailyAdviceService} from './db/features/daily-advice/service'
 import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
@@ -267,6 +271,13 @@ app.whenReady().then(async () => {
         if (memos && !memos.isDestroyed()) memos.webContents.send(IpcChannels.PUSH_PROJECT_FLOW_EVENT, evt)
     })
 
+    // Agent v2(docs/19):config/db 用 dbManager,event-bridge 用 windowManager 推串流。
+    // dbManager 此處已保證非 null(上方 !dbManager 直接 throw)。
+    const agentConfigStore = new AgentConfigStore(dbManager)
+    const agentDbAdapter = new AgentDbAdapter(dbManager)
+    // 模型連線復用現有模型設定的 active provider(agentService)
+    const agentRuntime = new AgentRuntime(agentConfigStore, agentDbAdapter, new AgentEventBridge(windowManager), agentService)
+
   registerAllHandlers({
     windowManager,
     configManager,
@@ -284,6 +295,9 @@ app.whenReady().then(async () => {
     llmClient,
     workAnalysisService,
       notificationClient,
+      agentRuntime,
+      agentConfigStore,
+      agentDbAdapter,
   })
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)

@@ -27,10 +27,17 @@ function openSystemLink(link: SystemLinkItem) {
   // Electron 內 window.open 被 setWindowOpenHandler 攔截,改走 shell.openExternal
   window.open(link.url, '_blank')
 }
+
+/** aiAgent:開 AI Agent 獨立窗(docs/19),排在系統連結(文檔中心)下面 */
+function openAgent() {
+  window.electronAPI.window.openAgent().catch(() => {
+    /* 開窗失敗不擴散 */
+  })
+}
 </script>
 
 <template>
-  <div v-if="links.length > 0" class="sidebar-section">
+  <div class="sidebar-section">
     <div v-show="!collapsed" class="section-label">{{ t('sidebar.sectionSystem') }}</div>
     <nav :aria-label="t('sidebar.sectionSystem')" class="section-nav" role="menu">
       <button
@@ -54,6 +61,23 @@ function openSystemLink(link: SystemLinkItem) {
         <span v-show="!collapsed" class="nav-label">
           {{ ct(`config.systemLinks.${link.id}`, link.label) }}
         </span>
+      </button>
+
+      <!-- aiAgent:AI Agent 獨立窗入口(文檔中心下面一個) -->
+      <button
+          :class="{'is-collapsed': collapsed}"
+          :title="collapsed ? 'aiAgent' : ''"
+          class="nav-item"
+          role="menuitem"
+          type="button"
+          @click="openAgent"
+      >
+        <span class="nav-icon">
+          <el-icon :size="16">
+            <component :is="resolveIcon('MagicStick')"/>
+          </el-icon>
+        </span>
+        <span v-show="!collapsed" class="nav-label">aiAgent</span>
       </button>
     </nav>
   </div>

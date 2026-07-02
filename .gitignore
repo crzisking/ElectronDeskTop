@@ -12,6 +12,7 @@ app.db-wal
 # .env.development 和 .env.production 本身可以提交（無敏感信息）
 .env.*.local
 .env.local
+.env.production
 
 # 由 unplugin-auto-import / unplugin-vue-components 自動生成，每次構建會重寫
 src/types/auto-imports.d.ts
