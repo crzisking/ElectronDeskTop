@@ -1,53 +1,71 @@
 <!--
-  想法庫(docs/21 §回顧)。主窗頁面:我的 / 部門 tab + 篩選 + 卡片列表 + 詳情抽屜。
+  想法庫(docs/21 §回顧)。主窗頁面:我的 / 部門 + 篩選 + 卡片列表 + 詳情抽屜。
   記錄本身在速記小窗(全域快捷鍵 / 右上「＋ 速記」);本頁只做回顧 / 整理。
 -->
 <template>
   <div class="idea-lib">
+    <!-- 頁首 -->
     <header class="lib-head">
-      <el-tabs v-model="lib.tab.value" class="lib-tabs" @tab-change="onTabChange">
-        <el-tab-pane label="我的" name="my"/>
-        <el-tab-pane label="部門" name="dept"/>
-      </el-tabs>
-      <el-button :icon="Plus" type="primary" @click="openCapture">速記</el-button>
+      <div class="head-title">
+        <h2>💡 想法庫</h2>
+        <span class="head-sub">{{ lib.total.value }} 條想法</span>
+      </div>
+      <el-button :icon="Plus" round type="primary" @click="openCapture">速記</el-button>
     </header>
 
-    <div class="lib-filters">
-      <el-select v-model="lib.filters.status" clearable placeholder="狀態" style="width: 120px"
-                 @change="lib.applyFilters">
-        <el-option v-for="(l, k) in STATUS_LABEL" :key="k" :label="l" :value="k"/>
-      </el-select>
-      <el-select v-model="lib.filters.ideaType" clearable placeholder="類型" style="width: 120px"
-                 @change="lib.applyFilters">
-        <el-option v-for="(l, k) in TYPE_LABEL" :key="k" :label="l" :value="k"/>
-      </el-select>
-      <el-input
-          v-model="lib.filters.tag" clearable placeholder="標籤" style="width: 160px"
-          @clear="lib.applyFilters" @keyup.enter="lib.applyFilters"
-      />
+    <!-- 工具列:分段 tab + 篩選 -->
+    <div class="lib-toolbar">
+      <div class="seg">
+        <button :class="{on: lib.tab.value === 'my'}" type="button" @click="lib.switchTab('my')">我的</button>
+        <button :class="{on: lib.tab.value === 'dept'}" type="button" @click="lib.switchTab('dept')">部門</button>
+      </div>
+      <div class="filters">
+        <el-select v-model="lib.filters.status" clearable placeholder="狀態" size="small" style="width: 108px"
+                   @change="lib.applyFilters">
+          <el-option v-for="(l, k) in STATUS_LABEL" :key="k" :label="l" :value="k"/>
+        </el-select>
+        <el-select v-model="lib.filters.ideaType" clearable placeholder="類型" size="small" style="width: 108px"
+                   @change="lib.applyFilters">
+          <el-option v-for="(l, k) in TYPE_LABEL" :key="k" :label="l" :value="k"/>
+        </el-select>
+        <el-input v-model="lib.filters.tag" :prefix-icon="Search" clearable placeholder="標籤" size="small"
+                  style="width: 150px" @clear="lib.applyFilters" @keyup.enter="lib.applyFilters"/>
+      </div>
     </div>
 
+    <!-- 內容 -->
     <div v-loading="lib.loading.value" class="lib-body">
-      <el-empty v-if="!lib.items.value.length && !lib.loading.value" description="還沒有想法"/>
+      <el-alert v-if="lib.error.value" :closable="false" :title="lib.error.value" class="lib-error" show-icon
+                type="error"/>
+      <el-empty v-if="!lib.items.value.length && !lib.loading.value && !lib.error.value"
+                description="還沒有想法,按快捷鍵或點「速記」記一條"/>
       <div v-else class="cards">
         <button
             v-for="it in lib.items.value" :key="it.clientId"
+            :style="{ '--accent': typeColor(it.ideaType) }"
             class="card" type="button" @click="openDetail(it.clientId)"
         >
-          <div class="card-badges">
-            <el-tag size="small" type="info">{{ TYPE_LABEL[it.ideaType] }}</el-tag>
-            <el-tag :type="statusTagType(it.status)" size="small">{{ STATUS_LABEL[it.status] }}</el-tag>
-            <el-tag v-if="REFINE_LABEL[it.refineStatus]" effect="plain" size="small">{{
-                REFINE_LABEL[it.refineStatus]
-              }}
-            </el-tag>
+          <div class="card-top">
+            <span :style="{ background: typeColor(it.ideaType) }" class="type-pill">{{ TYPE_LABEL[it.ideaType] }}</span>
+            <span class="grow"/>
+            <span v-if="REFINE_LABEL[it.refineStatus]" :class="it.refineStatus" class="ai-badge">
+              {{ REFINE_LABEL[it.refineStatus] }}
+            </span>
+            <span :class="it.status" :title="STATUS_LABEL[it.status]" class="status-dot"/>
           </div>
-          <img v-if="thumbs[it.clientId]" :src="thumbs[it.clientId]" alt="" class="card-thumb"/>
+
+          <img v-if="it.thumbnailUrl" :src="it.thumbnailUrl" alt="" class="card-thumb" loading="lazy"/>
+
           <div class="card-title">{{ it.title }}</div>
+
           <div v-if="it.tags.length" class="card-tags">
-            <span v-for="t in it.tags" :key="t" class="mini-tag">#{{ t }}</span>
+            <span v-for="t in it.tags.slice(0, 4)" :key="t" class="tag">#{{ t }}</span>
           </div>
-          <div class="card-meta">{{ formatTime(it.createdAt) }} · {{ it.userName }}</div>
+
+          <div class="card-foot">
+            <span>{{ relTime(it.createdAt) }}</span>
+            <span v-if="lib.tab.value === 'dept'" class="author">· {{ it.userName }}</span>
+          </div>
         </button>
       </div>
 
@@ -59,37 +77,26 @@
       />
     </div>
 
-    <IdeaDetailDrawer
-        v-model="drawerOpen" :client-id="activeClientId"
-        @changed="lib.load" @deleted="onDeleted"
-    />
+    <IdeaDetailDrawer v-model="drawerOpen" :client-id="activeClientId" @changed="lib.load" @deleted="onDeleted"/>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {ref, watch} from 'vue'
-import {Plus} from '@element-plus/icons-vue'
-import type {IdeaStatus} from '@shared/types/idea-capture.types'
+import {ref} from 'vue'
+import {Plus, Search} from '@element-plus/icons-vue'
+import type {IdeaType} from '@shared/types/idea-capture.types'
 import {
   REFINE_LABEL,
   STATUS_LABEL,
   TYPE_LABEL,
   useIdeaLibrary
 } from '@/features/idea-capture/composables/useIdeaLibrary'
-import {ideaLibraryApi} from '@/features/idea-capture/api'
 import IdeaDetailDrawer from '@/features/idea-capture/components/IdeaDetailDrawer.vue'
 
 const lib = useIdeaLibrary()
 
 const drawerOpen = ref(false)
 const activeClientId = ref('')
-/** clientId → 縮略圖 dataURL(主進程代拉;memo 快取) */
-const thumbs = ref<Record<string, string>>({})
-
-function onTabChange() {
-  lib.pageIndex.value = 1
-  void lib.load()
-}
 
 function openCapture() {
   window.electronAPI.window.openIdeaCapture().catch(() => {/* 開窗失敗不擴散 */
@@ -106,29 +113,27 @@ function onDeleted() {
   void lib.load()
 }
 
-function statusTagType(s: IdeaStatus): 'info' | 'success' | 'warning' | 'primary' {
-  return s === 'done' ? 'success' : s === 'accepted' ? 'primary' : s === 'archived' ? 'info' : 'warning'
+const TYPE_COLOR: Record<IdeaType, string> = {
+  improve: '#409eff', issue: '#f56c6c', inspiration: '#e6a23c', todo: '#909399',
 }
 
-function formatTime(ms: number): string {
-  const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+function typeColor(t: IdeaType): string {
+  return TYPE_COLOR[t] ?? '#409eff'
 }
 
-// 懶拉縮略圖:列表回來後,對有 thumbnailUrl 的卡逐一代拉(避開 CSP)
-async function loadThumbs() {
-  for (const it of lib.items.value) {
-    if (!it.thumbnailUrl || thumbs.value[it.clientId]) continue
-    try {
-      thumbs.value[it.clientId] = await ideaLibraryApi.getAttachment(it.thumbnailUrl)
-    } catch {/* 縮略圖失敗不影響列表 */
-    }
-  }
+/** 相對時間:剛剛 / N分鐘前 / N小時前 / N天前 / 日期 */
+function relTime(ms: number): string {
+  const diff = Date.now() - ms
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return '剛剛'
+  if (m < 60) return `${m} 分鐘前`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h} 小時前`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `${d} 天前`
+  const dt = new Date(ms)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
-
-// items 變了就補縮略圖
-watch(() => lib.items.value, loadThumbs, {deep: false})
 </script>
 
 <style scoped>
@@ -136,72 +141,186 @@ watch(() => lib.items.value, loadThumbs, {deep: false})
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px 20px;
+  padding: 20px 24px;
   box-sizing: border-box;
 }
 
+/* 頁首 */
 .lib-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.head-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.head-title h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--el-text-color-primary, #303133);
+}
+
+.head-sub {
+  font-size: 13px;
+  color: var(--el-text-color-secondary, #909399);
+}
+
+/* 工具列 */
+.lib-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
-.lib-tabs {
-  flex: 1;
+.seg {
+  display: inline-flex;
+  background: var(--el-fill-color-light, #f5f7fa);
+  border-radius: 9px;
+  padding: 3px;
 }
 
-.lib-filters {
+.seg button {
+  border: none;
+  background: transparent;
+  padding: 5px 18px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--el-text-color-secondary, #909399);
+  transition: all 0.15s;
+}
+
+.seg button.on {
+  background: var(--el-bg-color, #fff);
+  color: var(--el-color-primary, #409eff);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 600;
+}
+
+.filters {
   display: flex;
   gap: 8px;
-  margin: 4px 0 12px;
 }
 
+/* 列表 */
 .lib-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   text-align: left;
-  border: 1px solid var(--el-border-color, #e4e7ed);
-  border-radius: 10px;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-left: 3px solid var(#409eff);
+  border-radius: 12px;
   background: var(--el-bg-color, #fff);
-  padding: 12px;
+  padding: 14px 16px;
   cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 
 .card:hover {
-  border-color: var(--el-color-primary, #409eff);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
-.card-badges {
+.card-top {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.type-pill {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  line-height: 1.5;
+}
+
+.grow {
+  flex: 1;
+}
+
+.ai-badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.ai-badge.done {
+  color: #626aef;
+  background: rgba(98, 106, 239, 0.1);
+}
+
+.ai-badge.pending {
+  color: #e6a23c;
+  background: rgba(230, 162, 60, 0.12);
+}
+
+.ai-badge.failed {
+  color: #f56c6c;
+  background: rgba(245, 108, 108, 0.12);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.inbox {
+  background: #e6a23c;
+}
+
+.status-dot.accepted {
+  background: #409eff;
+}
+
+.status-dot.done {
+  background: #67c23a;
+}
+
+.status-dot.archived {
+  background: #c0c4cc;
 }
 
 .card-thumb {
   width: 100%;
-  height: 96px;
+  height: 110px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .card-title {
   font-weight: 600;
-  line-height: 1.4;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--el-text-color-primary, #303133);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -211,21 +330,31 @@ watch(() => lib.items.value, loadThumbs, {deep: false})
 .card-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
 }
 
-.mini-tag {
+.tag {
   font-size: 11px;
   color: var(--el-color-primary, #409eff);
+  background: var(--el-color-primary-light-9, #ecf5ff);
+  padding: 1px 7px;
+  border-radius: 6px;
 }
 
-.card-meta {
+.card-foot {
+  display: flex;
+  gap: 4px;
   font-size: 12px;
   color: var(--el-text-color-secondary, #909399);
+  margin-top: auto;
+}
+
+.lib-error {
+  margin-bottom: 14px;
 }
 
 .lib-pager {
-  margin-top: 16px;
+  margin-top: 20px;
   justify-content: center;
 }
 </style>

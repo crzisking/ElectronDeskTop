@@ -78,7 +78,7 @@
         <h4>附件</h4>
         <div class="atts">
           <div v-for="a in detail.attachments" :key="a.id" class="att">
-            <img v-if="a.isImage && previews[a.id]" :src="previews[a.id]" alt="" class="att-img"/>
+            <img v-if="a.isImage" :src="a.fileUrl" alt="" class="att-img" loading="lazy"/>
             <span class="att-name">{{ a.fileName }}</span>
           </div>
         </div>
@@ -123,32 +123,18 @@ const detail = ref<IdeaDetail | null>(null)
 const loading = ref(false)
 const viewMode = ref<'raw' | 'ai'>('raw')
 const newTag = ref('')
-const previews = ref<Record<number, string>>({})
 
 async function onOpen() {
   if (!props.clientId) return
   loading.value = true
   detail.value = null
-  previews.value = {}
   viewMode.value = 'raw'
   try {
     detail.value = await ideaLibraryApi.detail(props.clientId)
-    void loadPreviews()
   } catch (e) {
     ElMessage.error((e as Error).message)
   } finally {
     loading.value = false
-  }
-}
-
-async function loadPreviews() {
-  if (!detail.value) return
-  for (const a of detail.value.attachments) {
-    if (!a.isImage || previews.value[a.id]) continue
-    try {
-      previews.value[a.id] = await ideaLibraryApi.getAttachment(a.fileUrl)
-    } catch {/* 忽略單張失敗 */
-    }
   }
 }
 

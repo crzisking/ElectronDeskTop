@@ -9,22 +9,13 @@
 
 import {readFile} from 'fs/promises'
 import {logger} from '../utils/logger'
-import {buildQuery, fetchCause, isRetryableCause, joinUrl} from '../services/project-flow/http-utils'
-import type {
-    IdeaAiResult,
-    IdeaCreateMeta,
-    IdeaDetail,
-    IdeaDraftAttachment,
-    IdeaListItem,
-    IdeaListQuery,
-    IdeaPatch,
-    IdeaRefineStatus,
-} from '../../shared/types/idea-capture.types'
-import type {PagedResult} from './types'
+import {fetchCause, isRetryableCause, joinUrl} from '../services/project-flow/http-utils'
+import type {IdeaCreateMeta, IdeaDraftAttachment, IdeaRefineStatus,} from '../../shared/types/idea-capture.types'
 
 const TAG = 'idea-capture.api'
 const TIMEOUT_MS = 15_000
 const UPLOAD_TIMEOUT_MS = 60_000 // create 帶附件上傳,放寬
+const REFINE_TIMEOUT_MS = 100_000 // AI 完善在後端同步跑 Qwen(後端 90s),留 buffer
 
 export interface IdeaApiContext {
     baseUrl: string
@@ -50,73 +41,32 @@ export const ideaApi = {
         for (const f of files) {
             const bytes = await toBytes(f)
             if (!bytes) continue
-            form.append('attachments', new Blob([bytes], {type: f.contentType || 'application/octet-stream'}), f.fileName)
+            // 複製進一個獨立 ArrayBuffer 再給 Blob:Uint8Array<ArrayBufferLike> 不能直接當 BlobPart
+            // (型別上底層可能是 SharedArrayBuffer),且避免 Buffer 池化的 byteOffset 帶進雜資料。
+            const ab = new ArrayBuffer(bytes.byteLength)
+            new Uint8Array(ab).set(bytes)
+            form.append('attachments', new Blob([ab], {type: f.contentType || 'application/octet-stream'}), f.fileName)
         }
         return reqRaw<{ clientId: string; id: number }>(ctx, 'POST', '/api/IdeaCapture/create', form, UPLOAD_TIMEOUT_MS)
     },
 
-    listMy(ctx: IdeaApiContext, query: IdeaListQuery): Promise<PagedResult<IdeaListItem[]>> {
-        return get(ctx, '/api/IdeaCapture/my', query as Record<string, unknown>)
-    },
-
-    listDept(ctx: IdeaApiContext, query: IdeaListQuery): Promise<PagedResult<IdeaListItem[]>> {
-        return get(ctx, '/api/IdeaCapture/dept', query as Record<string, unknown>)
-    },
-
-    detail(ctx: IdeaApiContext, clientId: string): Promise<IdeaDetail> {
-        return get(ctx, `/api/IdeaCapture/detail/${encodeURIComponent(clientId)}`, {})
-    },
-
-    patch(ctx: IdeaApiContext, clientId: string, patch: IdeaPatch): Promise<boolean> {
-        return reqJson(ctx, 'PATCH', `/api/IdeaCapture/${encodeURIComponent(clientId)}`, {
-            ...patch,
-            userName: ctx.userName
-        })
-    },
-
-    applyAi(ctx: IdeaApiContext, clientId: string, ai: IdeaAiResult, refineStatus: IdeaRefineStatus): Promise<boolean> {
-        return reqJson(ctx, 'PATCH', `/api/IdeaCapture/${encodeURIComponent(clientId)}/ai`, {
-            userName: ctx.userName,
-            title: ai.title,
-            polishedText: ai.polishedText,
-            actionItems: ai.actionItems,
-            aiQuestions: ai.aiQuestions,
-            tags: ai.tags,
-            refineStatus,
-        })
-    },
-
-    delete(ctx: IdeaApiContext, clientId: string): Promise<boolean> {
-        return reqJson(ctx, 'DELETE', appendUserId2(`/api/IdeaCapture/${encodeURIComponent(clientId)}`, ctx.userName), null)
-    },
-
-    /** 拉附件(MinIO URL)→ dataURL(base64);renderer 直接塞 img src */
-    async fetchAttachment(url: string): Promise<string> {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
-        try {
-            const res = await fetch(url, {signal: ctrl.signal})
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const type = res.headers.get('content-type') || 'application/octet-stream'
-            const buf = Buffer.from(await res.arrayBuffer())
-            return `data:${type};base64,${buf.toString('base64')}`
-        } finally {
-            clearTimeout(timer)
-        }
+    /** 觸發後端 AI 完善(後端跑 Qwen,同步等結果)。回最終 refineStatus。 */
+    async refine(ctx: IdeaApiContext, clientId: string): Promise<IdeaRefineStatus> {
+        const r = await reqJson<{ refineStatus: IdeaRefineStatus }>(
+            ctx, 'POST',
+            appendUserId2(`/api/IdeaCapture/${encodeURIComponent(clientId)}/refine`, ctx.userName),
+            null, REFINE_TIMEOUT_MS,
+        )
+        return r.refineStatus
     },
 }
 
 // ─── 內部 HTTP ────────────────────────────────────────────────
 
-/** userName 進 query(GET / DELETE) */
+/** userName 進 query */
 function appendUserId2(path: string, userName: string): string {
     const sep = path.includes('?') ? '&' : '?'
     return userName ? `${path}${sep}userName=${encodeURIComponent(userName)}` : path
-}
-
-function get<T>(ctx: IdeaApiContext, path: string, params: Record<string, unknown>): Promise<T> {
-    const q = buildQuery({...params, userName: ctx.userName})
-    return reqJson<T>(ctx, 'GET', q ? `${path}?${q}` : path, null)
 }
 
 /** JSON body 請求 */

@@ -103,15 +103,6 @@ export interface IdeaPatch {
     removeTags?: string[]
 }
 
-/** AI 完善結果(refiner 解析 LLM 輸出後回寫) */
-export interface IdeaAiResult {
-    title?: string
-    polishedText?: string
-    actionItems: string[]
-    aiQuestions: string[]
-    tags: string[]
-}
-
 /** idea-capture 桌面端配置(目前只有熱鍵) */
 export interface IdeaCaptureConfig {
     /** 全域快捷鍵(Electron accelerator 字串) */

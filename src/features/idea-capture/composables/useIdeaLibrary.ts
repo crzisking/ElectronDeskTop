@@ -43,8 +43,9 @@ export function useIdeaLibrary() {
             const res = tab.value === 'my'
                 ? await ideaLibraryApi.listMy(buildQuery())
                 : await ideaLibraryApi.listDept(buildQuery())
-            items.value = res.list ?? []
-            total.value = res.total ?? 0
+            // 攔截器對「業務碼非 200」只彈 toast 不拋錯 → res 可能是 undefined,做兜底
+            items.value = res?.list ?? []
+            total.value = res?.total ?? 0
         } catch (e) {
             error.value = (e as Error).message
             items.value = []

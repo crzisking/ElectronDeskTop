@@ -285,9 +285,9 @@ app.whenReady().then(async () => {
     const agentRuntime = new AgentRuntime(agentConfigStore, agentDbAdapter, new AgentEventBridge(windowManager), agentService)
 
     // 靈感速記(docs/21):配置(熱鍵)/ 後台完善佇列 / 熱鍵管理 / 速記小窗。
-    // 完善復用 llmClient(與 agent 同一套 active provider);dbManager 此處已保證非 null。
+  // ⚠️ AI 完善在後端跑(後端 Qwen);refiner 只負責非同步呼叫後端 + 推送,不吃桌面端本地模型。
     const ideaConfigStore = new IdeaConfigStore(dbManager)
-    const ideaRefiner = new IdeaRefiner(llmClient, windowManager)
+  const ideaRefiner = new IdeaRefiner(windowManager)
     ideaHotkey = new IdeaHotkeyManager(ideaConfigStore, windowManager)
 
   registerAllHandlers({

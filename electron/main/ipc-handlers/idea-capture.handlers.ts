@@ -1,6 +1,11 @@
 /**
- * 靈感速記 IPC handlers(docs/21)。薄轉發層:業務在 idea-capture/api-client + refiner。
- * 統一回 {ok:true,data} | {ok:false,error}。身分從 authContext 取(主窗登入後推進來)。
+ * 靈感速記 IPC handlers(docs/21)。
+ *
+ * ⚠️ 想法庫的讀取 / 快速修改(list / detail / patch / delete)已改成渲染端直連後端(axios),
+ *    不再過這裡。這裡只剩:
+ *    - 速記小窗要用的:create(獨立窗、CSP、無 authStore)、get-context、hide-capture、config
+ *    - AI 完善:refine(長任務,丟主進程背景佇列 → 完成後 push)
+ * 統一回 {ok:true,data} | {ok:false,error}。身分從 authContext 取。
  */
 
 import {ipcMain} from 'electron'
@@ -11,12 +16,7 @@ import type {IdeaConfigStore} from '../idea-capture/config-store'
 import type {IdeaRefiner} from '../idea-capture/refiner'
 import type {IdeaHotkeyManager} from '../idea-capture/hotkey-manager'
 import type {IdeaCaptureWindow} from '../windows/idea-capture-window'
-import type {
-    IdeaCreateMeta,
-    IdeaDraftAttachment,
-    IdeaListQuery,
-    IdeaPatch,
-} from '../../shared/types/idea-capture.types'
+import type {IdeaCreateMeta, IdeaDraftAttachment} from '../../shared/types/idea-capture.types'
 
 export interface IdeaCaptureHandlerDeps {
     configStore: IdeaConfigStore | null
@@ -46,7 +46,7 @@ export function registerIdeaCaptureHandlers(deps: IdeaCaptureHandlerDeps): void 
     const ch = IpcChannels
     const noAuth = {ok: false as const, error: '尚未登入,請先登入主視窗'}
 
-    // ── 建立 ──
+    // ── 建立(速記小窗)──
     ipcMain.handle(ch.IDEA_CREATE, async (_e, p: { meta?: IdeaCreateMeta; files?: IdeaDraftAttachment[] }) => {
         const c = ctx()
         if (!c) return noAuth
@@ -59,48 +59,7 @@ export function registerIdeaCaptureHandlers(deps: IdeaCaptureHandlerDeps): void 
         })
     })
 
-    // ── 列表 / 詳情 ──
-    ipcMain.handle(ch.IDEA_LIST_MY, (_e, p: { query?: IdeaListQuery }) => {
-        const c = ctx()
-        if (!c) return noAuth
-        return safe(() => ideaApi.listMy(c, p?.query ?? {}))
-    })
-
-    ipcMain.handle(ch.IDEA_LIST_DEPT, (_e, p: { query?: IdeaListQuery }) => {
-        const c = ctx()
-        if (!c) return noAuth
-        return safe(() => ideaApi.listDept(c, p?.query ?? {}))
-    })
-
-    ipcMain.handle(ch.IDEA_DETAIL, (_e, p: { clientId?: string }) => {
-        const c = ctx()
-        if (!c) return noAuth
-        if (!p?.clientId) return {ok: false, error: '缺 clientId'}
-        return safe(() => ideaApi.detail(c, p.clientId!))
-    })
-
-    // ── 修改 / 刪除 ──
-    ipcMain.handle(ch.IDEA_PATCH, (_e, p: { clientId?: string; patch?: IdeaPatch }) => {
-        const c = ctx()
-        if (!c) return noAuth
-        if (!p?.clientId) return {ok: false, error: '缺 clientId'}
-        return safe(() => ideaApi.patch(c, p.clientId!, p.patch ?? {}))
-    })
-
-    ipcMain.handle(ch.IDEA_DELETE, (_e, p: { clientId?: string }) => {
-        const c = ctx()
-        if (!c) return noAuth
-        if (!p?.clientId) return {ok: false, error: '缺 clientId'}
-        return safe(() => ideaApi.delete(c, p.clientId!))
-    })
-
-    // ── 附件(MinIO URL 代拉成 dataURL) ──
-    ipcMain.handle(ch.IDEA_GET_ATTACHMENT, (_e, p: { url?: string }) => {
-        if (!p?.url) return {ok: false, error: '缺 url'}
-        return safe(() => ideaApi.fetchAttachment(p.url!))
-    })
-
-    // ── 手動補觸發 / 重試後台完善 ──
+    // ── 觸發後台 AI 完善(想法庫手動 / 重試也走這條;長任務,立即返回)──
     ipcMain.handle(ch.IDEA_REFINE, (_e, p: { clientId?: string }) => {
         if (!deps.refiner) return {ok: false, error: '完善服務未就緒'}
         if (!p?.clientId) return {ok: false, error: '缺 clientId'}
