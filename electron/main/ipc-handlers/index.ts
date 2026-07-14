@@ -36,7 +36,12 @@ import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
 import {registerNotificationHandlers} from './notification.handlers'
 import {registerProjectFlowHandlers} from './project-flow.handlers'
 import {registerAgentHandlers} from './agent.handlers'
+import {registerIdeaCaptureHandlers} from './idea-capture.handlers'
 import type {AgentRuntime} from '../agent/runtime'
+import type {IdeaConfigStore} from '../idea-capture/config-store'
+import type {IdeaRefiner} from '../idea-capture/refiner'
+import type {IdeaHotkeyManager} from '../idea-capture/hotkey-manager'
+import type {IdeaCaptureWindow} from '../windows/idea-capture-window'
 import type {AgentConfigStore} from '../agent/config-store'
 import type {AgentDbAdapter} from '../agent/db-adapter'
 import type {WindowManager} from '../window-manager'
@@ -96,6 +101,11 @@ export interface IpcHandlerContext {
     agentRuntime: AgentRuntime | null
     agentConfigStore: AgentConfigStore | null
     agentDbAdapter: AgentDbAdapter | null
+    /** 靈感速記(docs/21):配置 / 後台完善佇列 / 熱鍵 / 速記小窗;DB 未就緒時為 null */
+    ideaConfigStore: IdeaConfigStore | null
+    ideaRefiner: IdeaRefiner | null
+    ideaHotkey: IdeaHotkeyManager | null
+    ideaCaptureWindow: IdeaCaptureWindow | null
 }
 
 /**
@@ -123,6 +133,10 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
       agentRuntime,
       agentConfigStore,
       agentDbAdapter,
+      ideaConfigStore,
+      ideaRefiner,
+      ideaHotkey,
+      ideaCaptureWindow,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -146,6 +160,13 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
         db: agentDbAdapter,
         agentService,
         windowManager
+    })
+    // 靈感速記(docs/21)
+    registerIdeaCaptureHandlers({
+        configStore: ideaConfigStore,
+        refiner: ideaRefiner,
+        hotkey: ideaHotkey,
+        captureWindow: ideaCaptureWindow,
     })
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')

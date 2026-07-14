@@ -33,6 +33,9 @@ export const WindowChannels = {
     /** 打開 AI Agent 獨立窗(docs/19)。invoke,無 payload;已開則 focus。 */
     WINDOW_OPEN_AGENT: 'window:open-agent',
 
+    /** 打開靈感速記速記小窗(docs/21)。invoke,無 payload;已開則 show+focus。 */
+    WINDOW_OPEN_IDEA_CAPTURE: 'window:open-idea-capture',
+
   /** PUSH:主視窗最大化 / 還原狀態變動推送 */
   PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
 

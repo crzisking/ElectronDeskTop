@@ -345,7 +345,8 @@
     "projectReports": "Work Reports",
     "reportEditor": "Edit Report",
     "projectMemos": "Memos",
-    "projectTeam": "Team View"
+    "projectTeam": "Team View",
+    "ideaLibrary": "Idea Library"
   },
   "projectFlow": {
     "editLevel": {

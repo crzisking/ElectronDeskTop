@@ -156,6 +156,14 @@ const routes: RouteRecordRaw[] = [
         name: 'project-team',
         component: () => import('@/features/project-flow/TeamView.vue'),
         meta: {requiresAuth: true, title: 'router.projectTeam'}
+      },
+
+        // 想法庫(docs/21)— 靈感速記的回顧頁;記錄本身走全域快捷鍵 / 速記小窗
+        {
+            path: 'idea-library',
+            name: 'idea-library',
+            component: () => import('@/views/IdeaLibrary/IdeaLibraryView.vue'),
+            meta: {requiresAuth: true, title: 'router.ideaLibrary'}
       }
 
     ]

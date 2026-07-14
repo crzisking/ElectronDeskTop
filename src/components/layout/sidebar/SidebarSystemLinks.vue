@@ -7,6 +7,7 @@
  */
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import {useI18n} from 'vue-i18n'
+import {useRouter} from 'vue-router'
 import {useConfigText} from '@/shared/composables/useConfigText'
 import type {SystemLinkItem} from '@shared/types/config'
 
@@ -17,6 +18,7 @@ defineProps<{
 
 const {t} = useI18n()
 const {ct} = useConfigText()
+const router = useRouter()
 
 function resolveIcon(name: string) {
   const icons = ElementPlusIconsVue as Record<string, unknown>
@@ -32,6 +34,12 @@ function openSystemLink(link: SystemLinkItem) {
 function openAgent() {
   window.electronAPI.window.openAgent().catch(() => {
     /* 開窗失敗不擴散 */
+  })
+}
+
+/** 想法庫(docs/21):路由頁,回顧靈感速記;記錄本身走全域快捷鍵 */
+function openIdeaLibrary() {
+  router.push({name: 'idea-library'}).catch(() => {/* 導航失敗不擴散 */
   })
 }
 </script>
@@ -78,6 +86,23 @@ function openAgent() {
           </el-icon>
         </span>
         <span v-show="!collapsed" class="nav-label">aiAgent</span>
+      </button>
+
+      <!-- 想法庫:靈感速記回顧頁(docs/21) -->
+      <button
+          :class="{'is-collapsed': collapsed}"
+          :title="collapsed ? t('router.ideaLibrary') : ''"
+          class="nav-item"
+          role="menuitem"
+          type="button"
+          @click="openIdeaLibrary"
+      >
+        <span class="nav-icon">
+          <el-icon :size="16">
+            <component :is="resolveIcon('Star')"/>
+          </el-icon>
+        </span>
+        <span v-show="!collapsed" class="nav-label">{{ t('router.ideaLibrary') }}</span>
       </button>
     </nav>
   </div>

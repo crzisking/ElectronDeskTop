@@ -33,6 +33,7 @@ import {createNotificationBridge} from './bridges/notification.bridge'
 import {createProjectFlowBridge} from './bridges/project-flow.bridge'
 import {createDailyAdviceBridge} from './bridges/daily-advice.bridge'
 import {createAgentBridge} from './bridges/agent.bridge'
+import {createIdeaCaptureBridge} from './bridges/idea-capture.bridge'
 
 // ── 推送事件白名單(渲染端 on/off 用)─────────────────────────────
 // 字串直接從 IpcChannels 取,避免兩份手動同步。
@@ -68,6 +69,8 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
     IpcChannels.AGENT_PUSH_END,
     IpcChannels.AGENT_PUSH_PERMISSION_ASK,
     IpcChannels.AGENT_PUSH_ERROR,
+    // 靈感速記:後台完善完成(docs/21)
+    IpcChannels.IDEA_PUSH_REFINED,
 ]
 
 /**
@@ -96,6 +99,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   projectFlow: createProjectFlowBridge(ipcRenderer, IpcChannels),
   dailyAdvice: createDailyAdviceBridge(ipcRenderer, IpcChannels),
     agent: createAgentBridge(ipcRenderer, IpcChannels),
+    ideaCapture: createIdeaCaptureBridge(ipcRenderer, IpcChannels),
 
   /**
    * 訂閱主進程推送事件,走白名單。

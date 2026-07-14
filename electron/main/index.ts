@@ -15,6 +15,9 @@ import {AgentConfigStore} from './agent/config-store'
 import {AgentDbAdapter} from './agent/db-adapter'
 import {AgentEventBridge} from './agent/event-bridge'
 import {AgentRuntime} from './agent/runtime'
+import {IdeaConfigStore} from './idea-capture/config-store'
+import {IdeaRefiner} from './idea-capture/refiner'
+import {IdeaHotkeyManager} from './idea-capture/hotkey-manager'
 import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
 import {DailyAdviceService} from './db/features/daily-advice/service'
 import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
@@ -69,6 +72,8 @@ let workCollector: WorkCollectorScheduler
 let notificationClient: NotificationClient
 /** 內建腳本派發器,由 NotificationClient 在收到 server task 時調用 */
 let scriptRunner: ScriptRunner
+/** 靈感速記(docs/21):全域熱鍵管理;gracefulShutdown 要 unregister,故提到模組層 */
+let ideaHotkey: IdeaHotkeyManager | null = null
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -121,6 +126,7 @@ function gracefulShutdown(): void {
   workCollector?.dispose()
     dailyAdviceScheduler?.dispose()
     memoReminderScheduler?.dispose()
+    ideaHotkey?.unregister()
     // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
     notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
@@ -278,6 +284,12 @@ app.whenReady().then(async () => {
     // 模型連線復用現有模型設定的 active provider(agentService)
     const agentRuntime = new AgentRuntime(agentConfigStore, agentDbAdapter, new AgentEventBridge(windowManager), agentService)
 
+    // 靈感速記(docs/21):配置(熱鍵)/ 後台完善佇列 / 熱鍵管理 / 速記小窗。
+    // 完善復用 llmClient(與 agent 同一套 active provider);dbManager 此處已保證非 null。
+    const ideaConfigStore = new IdeaConfigStore(dbManager)
+    const ideaRefiner = new IdeaRefiner(llmClient, windowManager)
+    ideaHotkey = new IdeaHotkeyManager(ideaConfigStore, windowManager)
+
   registerAllHandlers({
     windowManager,
     configManager,
@@ -298,7 +310,14 @@ app.whenReady().then(async () => {
       agentRuntime,
       agentConfigStore,
       agentDbAdapter,
+      ideaConfigStore,
+      ideaRefiner,
+      ideaHotkey,
+      ideaCaptureWindow: windowManager.getIdeaCaptureWindow(),
   })
+
+    // 註冊靈感速記全域快捷鍵(失敗只 log,不影響啟動)
+    ideaHotkey.register()
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
   workCollector.start()

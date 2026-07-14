@@ -347,7 +347,8 @@
     "projectReports": "工作匯報",
     "reportEditor": "編輯匯報",
     "projectMemos": "備忘錄",
-    "projectTeam": "團隊視圖"
+    "projectTeam": "團隊視圖",
+    "ideaLibrary": "想法庫"
   },
   "projectFlow": {
     "editLevel": {

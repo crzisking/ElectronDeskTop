@@ -87,7 +87,9 @@ export default defineConfig({
           // 備忘錄子視窗預加載腳本 → out/preload/memos.preload.js
             'memos.preload': resolve('electron/preload/memos.preload.ts'),
             // AI Agent 子視窗預加載腳本 → out/preload/agent.preload.js
-            'agent.preload': resolve('electron/preload/agent.preload.ts')
+            'agent.preload': resolve('electron/preload/agent.preload.ts'),
+            // 靈感速記速記小窗預加載腳本 → out/preload/idea-capture.preload.js
+            'idea-capture.preload': resolve('electron/preload/idea-capture.preload.ts')
         }
       }
     }
@@ -122,7 +124,8 @@ export default defineConfig({
           floatingBall: resolve('src/windows/floating-ball/index.html'),
           logViewer: resolve('src/windows/log-viewer/index.html'),
             memos: resolve('src/windows/memos/index.html'),
-            agent: resolve('src/windows/agent/index.html')
+            agent: resolve('src/windows/agent/index.html'),
+            ideaCapture: resolve('src/windows/idea-capture/index.html')
         }
       }
     },

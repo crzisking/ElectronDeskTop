@@ -13,6 +13,7 @@ export interface WindowChannelMap {
   OPEN_CHILD_WINDOW: string
   WINDOW_OPEN_MEMOS: string
     WINDOW_OPEN_AGENT: string
+    WINDOW_OPEN_IDEA_CAPTURE: string
 }
 
 export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
@@ -36,5 +37,8 @@ export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
 
       /** 打開 AI Agent 獨立窗(docs/19) */
       openAgent: () => ipc.invoke(ch.WINDOW_OPEN_AGENT) as Promise<void>,
+
+      /** 打開靈感速記速記小窗(docs/21) */
+      openIdeaCapture: () => ipc.invoke(ch.WINDOW_OPEN_IDEA_CAPTURE) as Promise<void>,
   }
 }

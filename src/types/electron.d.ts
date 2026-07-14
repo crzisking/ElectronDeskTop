@@ -23,6 +23,7 @@ import type {NotificationAPI} from './electron/notification'
 import type {ProjectFlowAPI} from './electron/project-flow'
 import type {DailyAdviceAPI} from './electron/daily-advice'
 import type {AgentAPI} from './electron/agent'
+import type {IdeaCaptureAPI} from './electron/idea-capture'
 
 // 確保此檔被視為模塊(避免全局聲明衝突)
 export {}
@@ -45,6 +46,7 @@ declare global {
       projectFlow: ProjectFlowAPI
       dailyAdvice: DailyAdviceAPI
         agent: AgentAPI
+        ideaCapture: IdeaCaptureAPI
 
       /**
        * 浮球右鍵原生菜單。

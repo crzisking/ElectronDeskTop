@@ -97,5 +97,11 @@ export function registerWindowHandlers(
         logger.info('打開 AI Agent 視窗', 'IPC:window')
     })
 
+    /** 打開靈感速記速記小窗(docs/21);已開則 show+focus,未開則 create */
+    ipcMain.handle(IpcChannels.WINDOW_OPEN_IDEA_CAPTURE, () => {
+        windowManager.createIdeaCaptureWindow()
+        logger.info('打開靈感速記視窗', 'IPC:window')
+    })
+
   logger.info('窗口 IPC Handlers 已註冊', 'IPC:window')
 }

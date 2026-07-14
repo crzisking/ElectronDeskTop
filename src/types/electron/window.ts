@@ -37,4 +37,7 @@ export interface WindowAPI {
 
     /** 打開 AI Agent 獨立窗(docs/19);已開則 focus,未開則 create */
     openAgent: () => Promise<void>
+
+    /** 打開靈感速記速記小窗(docs/21);已開則 show+focus */
+    openIdeaCapture: () => Promise<void>
 }
