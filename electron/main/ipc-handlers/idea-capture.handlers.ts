@@ -16,6 +16,7 @@ import type {IdeaConfigStore} from '../idea-capture/config-store'
 import type {IdeaRefiner} from '../idea-capture/refiner'
 import type {IdeaHotkeyManager} from '../idea-capture/hotkey-manager'
 import type {IdeaCaptureWindow} from '../windows/idea-capture-window'
+import type {WindowManager} from '../windows/window-manager'
 import type {IdeaCreateMeta, IdeaDraftAttachment} from '../../shared/types/idea-capture.types'
 
 export interface IdeaCaptureHandlerDeps {
@@ -23,6 +24,8 @@ export interface IdeaCaptureHandlerDeps {
     refiner: IdeaRefiner | null
     hotkey: IdeaHotkeyManager | null
     captureWindow: IdeaCaptureWindow | null
+    /** 推「列表變了」給主窗想法庫(速記小窗新增後跨窗刷新) */
+    windowManager: WindowManager | null
 }
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -53,7 +56,9 @@ export function registerIdeaCaptureHandlers(deps: IdeaCaptureHandlerDeps): void 
         if (!p?.meta) return {ok: false, error: 'meta 為必填'}
         return safe(async () => {
             const res = await ideaApi.create(c, p.meta!, p.files ?? [])
-            // wantAI → 丟進後台完善佇列(不阻塞;稍後 push 刷新)
+            // 跨窗通知主窗想法庫重載(否則新增的要跳頁才出現)
+            deps.windowManager?.sendToMainWindow(ch.IDEA_PUSH_CREATED, {clientId: res.clientId})
+            // wantAI → 丟進後台完善佇列(不阻塞;稍後再 push 刷新該卡)
             if (p.meta!.wantAI && deps.refiner) deps.refiner.enqueue(res.clientId)
             return res
         })

@@ -167,6 +167,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
         refiner: ideaRefiner,
         hotkey: ideaHotkey,
         captureWindow: ideaCaptureWindow,
+        windowManager,
     })
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')

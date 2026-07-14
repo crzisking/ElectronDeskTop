@@ -79,12 +79,19 @@ export function useIdeaLibrary() {
         if (it) it.refineStatus = p.refineStatus
     }
 
+    // 速記小窗新增了一筆(跨窗)→ 重載當前列表,不用跳頁
+    function onCreated() {
+        void load()
+    }
+
     onMounted(() => {
         window.electronAPI.on(IpcChannels.IDEA_PUSH_REFINED, onRefined)
+        window.electronAPI.on(IpcChannels.IDEA_PUSH_CREATED, onCreated)
         void load()
     })
     onUnmounted(() => {
         window.electronAPI.off(IpcChannels.IDEA_PUSH_REFINED, onRefined)
+        window.electronAPI.off(IpcChannels.IDEA_PUSH_CREATED, onCreated)
     })
 
     return {tab, items, total, pageIndex, loading, error, filters, PAGE_SIZE, load, switchTab, applyFilters, goPage}

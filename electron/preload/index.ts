@@ -69,8 +69,9 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
     IpcChannels.AGENT_PUSH_END,
     IpcChannels.AGENT_PUSH_PERMISSION_ASK,
     IpcChannels.AGENT_PUSH_ERROR,
-    // 靈感速記:後台完善完成(docs/21)
+    // 靈感速記:後台完善完成 + 速記小窗新增(docs/21)
     IpcChannels.IDEA_PUSH_REFINED,
+    IpcChannels.IDEA_PUSH_CREATED,
 ]
 
 /**

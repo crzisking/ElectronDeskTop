@@ -20,6 +20,8 @@ export const IdeaCaptureChannels = {
     /** 寫 idea-capture 配置(熱鍵) */
     IDEA_CONFIG_WRITE: 'idea:config-write',
 
-    /** PUSH:某筆後台完善完成 → 通知主窗想法庫就地刷新 */
+    /** PUSH:某筆後台完善完成 → 通知主窗想法庫就地刷新該卡 */
     IDEA_PUSH_REFINED: 'idea:push:refined',
+    /** PUSH:速記小窗新增了一筆 → 通知主窗想法庫重載列表(跨窗,否則要跳頁才出現) */
+    IDEA_PUSH_CREATED: 'idea:push:created',
 } as const
