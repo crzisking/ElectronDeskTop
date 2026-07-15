@@ -15,7 +15,7 @@
  * 若未設置環境變量，回退到 http://localhost:5247（便於本地開發）
  */
 
-import {createHttpClient} from '@/api/http-client'
+import {httpClientFor} from '@/api/http-client'
 import type {
   RepairCreateRequest,
   RepairCreateResponse,
@@ -31,15 +31,9 @@ import type {
 const REPAIR_BASE_URL: string =
   (import.meta.env.VITE_REPAIR_API_URL as string | undefined) ?? 'http://localhost:5247'
 
-// ── Axios 實例（懶創建單例） ──────────────────────────────────────────
-// 使用 createHttpClient 工廠，自動附加 Auth 攔截器（Token 注入 + 錯誤處理）
-let _client: ReturnType<typeof createHttpClient> | null = null
-function getClient() {
-  if (!_client) {
-    _client = createHttpClient(REPAIR_BASE_URL, 30000)
-  }
-  return _client
-}
+// ── Axios 實例 ────────────────────────────────────────────────────────
+// httpClientFor 依 baseURL 記憶化,自動附加 Auth 攔截器(Token 注入 + 錯誤處理)
+const getClient = () => httpClientFor(REPAIR_BASE_URL, 30000)
 
 // ── API 方法 ──────────────────────────────────────────────────────────
 export const repairApi = {

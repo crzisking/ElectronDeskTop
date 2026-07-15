@@ -44,7 +44,7 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
      * 避免打包後上線假冒身份。
      */
     const currentUserName = (): string => {
-        const real = authStore.user?.userName
+        const real = authStore.userName
         if (real) return real
         if (!import.meta.env.PROD) {
             const devUser = (import.meta.env.VITE_DEV_USERNAME as string | undefined) ?? ''

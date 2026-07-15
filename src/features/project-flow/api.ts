@@ -10,6 +10,8 @@
 
 import {useAuthStore} from '@/stores/auth.store'
 import {plain} from '@/shared/utils/ipc-clone'
+import {unwrapIpc as unwrap} from '@/shared/utils/ipc'
+import {BACKEND_BASE_URL} from '@/shared/config/backend'
 import type {
     AiGraphPlan,
     AiQuotaInfo,
@@ -38,35 +40,17 @@ export interface AiSummaryResult {
     error?: string
 }
 
-/** 後端 base URL — 跟 work-collect 共用環境變數,生產指向 IES 服器 */
-const BASE_URL: string =
-    (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
-
 /**
- * 從 authStore 取 ctx。
- *
- * 後端 ProjectFlowController 已 [AllowAnonymous],身分靠 userId(工號)直接寫進 query:
- *   - 必傳 userId — 沒登入(authStore.user 為 null)時為空字串,後端會回 "userId 必填" 之類
- *   - token 預留(非必須),其他 controller 可能仍校驗
+ * 從 authStore 取 ctx。後端 ProjectFlowController 已 [AllowAnonymous],身分靠 userId(工號)寫進 query;
+ * token 預留(其他 controller 可能仍校驗)。
  */
 function ctx(): { baseUrl: string; userId: string; token: string } {
     const auth = useAuthStore()
     return {
-        baseUrl: BASE_URL,
-        userId: auth.user?.userName ?? '',
+        baseUrl: BACKEND_BASE_URL,
+        userId: auth.userName,
         token: auth.accessToken ?? '',
     }
-}
-
-/**
- * 通用解 envelope 包裝。
- * bridge 端統一回 Result<unknown>,真實型別由本檔各 method 的 <T> 宣告 —
- * 型別斷言集中在這一層,view 不需要再 `as XxxResponse`。
- */
-async function unwrap<T>(promise: Promise<{ ok: true; data: unknown } | { ok: false; error: string }>): Promise<T> {
-    const r = await promise
-    if (r.ok) return r.data as T
-    throw new Error(r.error)
 }
 
 const pf = () => window.electronAPI.projectFlow

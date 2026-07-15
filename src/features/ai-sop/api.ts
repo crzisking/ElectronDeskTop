@@ -13,18 +13,12 @@
  * AiSop 的 data 是文件 ID（字串或數字），與報修上傳的 { fileUrl } 不同。
  */
 
-import {createHttpClient} from '@/api/http-client'
+import {httpClientFor} from '@/api/http-client'
 
 const aiSopUrl: string =
     (import.meta.env.VITE_AI_SOP_URL as string | undefined) ?? ''
 
-let _client: ReturnType<typeof createHttpClient> | null = null
-function getClient() {
-    if (!_client) {
-        _client = createHttpClient(aiSopUrl, 30000)
-    }
-    return _client
-}
+const getClient = () => httpClientFor(aiSopUrl, 30000)
 
 export const aiSopApi = {
 

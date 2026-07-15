@@ -30,3 +30,21 @@ export function formatClock(ms?: number | null): string {
     const d = new Date(ms)
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+/** 相對時間:剛剛 / N分鐘前 / N小時前 / N天前(≥7 天回退到 formatDate) */
+export function formatRelative(ms?: number | null): string {
+    if (!ms) return ''
+    const m = Math.floor((Date.now() - ms) / 60000)
+    if (m < 1) return '剛剛'
+    if (m < 60) return `${m} 分鐘前`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h} 小時前`
+    const d = Math.floor(h / 24)
+    return d < 7 ? `${d} 天前` : formatDate(ms)
+}
+
+/** 檔名安全時間戳:「YYYYMMDD_HHmmss」(匯出檔名用) */
+export function formatStamp(ms?: number | null): string {
+    const d = ms ? new Date(ms) : new Date()
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}

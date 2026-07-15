@@ -91,6 +91,7 @@ import {
   TYPE_LABEL,
   useIdeaLibrary
 } from '@/features/idea-capture/composables/useIdeaLibrary'
+import {formatRelative as relTime} from '@/shared/utils/format'
 import IdeaDetailDrawer from '@/features/idea-capture/components/IdeaDetailDrawer.vue'
 
 const lib = useIdeaLibrary()
@@ -119,20 +120,6 @@ const TYPE_COLOR: Record<IdeaType, string> = {
 
 function typeColor(t: IdeaType): string {
   return TYPE_COLOR[t] ?? '#409eff'
-}
-
-/** 相對時間:剛剛 / N分鐘前 / N小時前 / N天前 / 日期 */
-function relTime(ms: number): string {
-  const diff = Date.now() - ms
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return '剛剛'
-  if (m < 60) return `${m} 分鐘前`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h} 小時前`
-  const d = Math.floor(h / 24)
-  if (d < 7) return `${d} 天前`
-  const dt = new Date(ms)
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
 </script>
 

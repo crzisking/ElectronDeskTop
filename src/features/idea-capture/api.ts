@@ -8,25 +8,17 @@
  *
  * userName(工號)由 authStore 帶上;後端 IdeaCaptureController 是 [AllowAnonymous] + 顯式 userName。
  */
-import {createHttpClient} from '@/api/http-client'
+import {httpClientFor} from '@/api/http-client'
+import {BACKEND_BASE_URL} from '@/shared/config/backend'
+import {unwrapIpc} from '@/shared/utils/ipc'
 import {useAuthStore} from '@/stores/auth.store'
 import type {IdeaDetail, IdeaListItem, IdeaListQuery, IdeaPatch} from '@shared/types/idea-capture.types'
 import type {IdeaPaged} from '@/types/electron/idea-capture'
 
-// 後端根位址:跟 work-collect 共用同一個 tmbom 服務
-const BASE_URL: string =
-    (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
-
-let _client: ReturnType<typeof createHttpClient> | null = null
-
-function client() {
-    return (_client ??= createHttpClient(BASE_URL, 20000))
-}
+const client = () => httpClientFor(BACKEND_BASE_URL, 20000)
 
 /** 當前工號(後端認身分用) */
-function uname(): string {
-    return useAuthStore().user?.userName ?? ''
-}
+const uname = () => useAuthStore().userName
 
 export const ideaLibraryApi = {
     listMy(query: IdeaListQuery): Promise<IdeaPaged<IdeaListItem>> {
@@ -54,7 +46,6 @@ export const ideaLibraryApi = {
      * 不在渲染端同步等 30~60s。這裡轉發 IPC 並拆 envelope。
      */
     async refine(clientId: string): Promise<void> {
-        const r = await window.electronAPI.ideaCapture.refine(clientId)
-        if (!r.ok) throw new Error(r.error)
+        await unwrapIpc(window.electronAPI.ideaCapture.refine(clientId))
     },
 }

@@ -10,12 +10,8 @@ import type {UserProfile} from '@/types/api.types'
 import {authApi} from '@/api/auth.api'
 import {parseUserFromJwt} from '@/shared/utils/jwt'
 import {logger, newTraceId} from '@/shared/utils/logger'
-
-// 後端 base URL — 跟 work-collect / project-flow 同一個 env 變數(編譯期注入 renderer)。
-// 必須在 renderer 取值後透過 IPC 帶給主進程:主進程 process.env 運行時讀不到 VITE_*,
-// 不帶就會 fallback localhost,子視窗(備忘/日誌)連不上正式後端。
-const BACKEND_BASE_URL: string =
-    (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
+// 後端 base URL 單一來源;登入後透過 IPC 帶給主進程(主進程 process.env 讀不到 VITE_*)。
+import {BACKEND_BASE_URL} from '@/shared/config/backend'
 
 export const useAuthStore = defineStore('auth', () => {
 
@@ -49,6 +45,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   /** 用戶顯示名（user 為 null 時返回空字串） */
   const displayName = computed(() => user.value?.name ?? '')
+
+    /** 當前工號（後端認身分用；取代各 feature 自寫的 userName 解析） */
+    const userName = computed(() => user.value?.userName ?? '')
 
   // ─── Actions ──────────────────────────────────────────────
 
@@ -266,6 +265,7 @@ export const useAuthStore = defineStore('auth', () => {
     adLoginDisabledThisSession,
     // Getters
     displayName,
+      userName,
     // Actions
     login,
     loginByAd,

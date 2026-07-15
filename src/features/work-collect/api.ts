@@ -12,24 +12,15 @@
  * 本機 DB 的 list / 開關 toggle 走 IPC,不走 HTTP(看 store)。
  */
 
-import {createHttpClient} from '@/api/http-client'
+import {httpClientFor} from '@/api/http-client'
+import {BACKEND_BASE_URL} from '@/shared/config/backend'
 import {scheduleRequest} from './request-scheduler'
 import type {WorkAnalyzeResponse, WorkConfigResponse} from './types'
 
-// 走 VITE_WORK_COLLECT_API_URL,跟 repair 解耦(雖然當前指向同一個 tmbom 後端,
-// 但語義上 work-collect 應該有自己的環境變數,日後拆服務不必動代碼)。
 // export:集中化 sync 後 store 要把 base URL 透過 IPC 帶給 main(main 沒讀 vite env)
-export const WORK_COLLECT_BASE_URL: string =
-  (import.meta.env.VITE_WORK_COLLECT_API_URL as string | undefined) ?? 'http://localhost:5247'
-const WORK_BASE_URL = WORK_COLLECT_BASE_URL
+export const WORK_COLLECT_BASE_URL = BACKEND_BASE_URL
 
-let _client: ReturnType<typeof createHttpClient> | null = null
-function getClient() {
-  if (!_client) {
-    _client = createHttpClient(WORK_BASE_URL, 30000)
-  }
-  return _client
-}
+const getClient = () => httpClientFor(WORK_COLLECT_BASE_URL, 30000)
 
 export const workCollectApi = {
   /**

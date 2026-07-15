@@ -119,3 +119,21 @@ export function createHttpClient(baseURL: string, timeout = 15000): ApiClient {
             instance.delete<T, T>(url, config),
     }
 }
+
+// ── 記憶化工廠 ────────────────────────────────────────────────
+// 取代各 feature 自寫的 `let _client=null; function getClient(){…}` 樣板(曾在 4 個 api.ts 各一份)。
+const _clientCache = new Map<string, ApiClient>()
+
+/**
+ * 依 baseURL(+timeout)記憶化的 ApiClient。同參數只建一次、跨 feature 共用。
+ * @example const client = httpClientFor(BACKEND_BASE_URL)
+ */
+export function httpClientFor(baseURL: string, timeout = 15000): ApiClient {
+    const key = `${baseURL}|${timeout}`
+    let client = _clientCache.get(key)
+    if (!client) {
+        client = createHttpClient(baseURL, timeout)
+        _clientCache.set(key, client)
+    }
+    return client
+}
