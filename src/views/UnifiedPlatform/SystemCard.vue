@@ -6,29 +6,35 @@
  *  - 系統圖標（有 iconUrl 則加載圖片，否則顯示首字母）
  *  - 系統名稱和描述
  *  - SSO 標記（若啟用 SSO）
- *  - 打開方式標記（iframe / 外部瀏覽器）
+ *  - 右上角打開方式下拉（桌面窗口 / 瀏覽器 —— 使用者可自行選，見 effectiveMode）
  *  - "打開"按鈕
  *
  * Props：
- *  - system：SystemLink 配置對象（來自 app-config.json）
+ *  - system：SystemLink 配置對象（管理員設定，來自 DB）
+ *  - effectiveMode：合併使用者覆寫後的實際打開方式（父層用 resolveOpenMode() 算好傳入）
  *
  * Emits：
- *  - open：用戶點擊"打開"按鈕時觸發，父組件負責處理打開邏輯
+ *  - open：用戶點擊卡片時觸發，父組件負責處理打開邏輯
+ *  - change-mode：用戶切換桌面窗口/瀏覽器時觸發（iframe 系統不會觸發,見 isModeToggleable）
  */
 
 import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useConfigText} from '@/shared/composables/useConfigText'
 import type {SystemLink} from '@shared/types/config'
-import {ArrowRight} from "@element-plus/icons-vue";
+import {isModeToggleable, type UserToggleableMode} from '@/shared/utils/system-open-mode'
+import {ArrowRight, CaretBottom} from "@element-plus/icons-vue";
 
 const props = defineProps<{
   system: SystemLink
+  effectiveMode: SystemLink['openMode']
 }>()
 
 const emit = defineEmits<{
   /** 用戶請求打開系統 */
   (e: 'open', system: SystemLink): void
+  /** 用戶切換打開方式(僅非 iframe 系統) */
+  (e: 'change-mode', mode: UserToggleableMode): void
 }>()
 
 const {t} = useI18n()
@@ -40,10 +46,53 @@ const {ct} = useConfigText()
  */
 const displayName = computed(() => ct(`config.systems.${props.system.id}.name`, props.system.name))
 const displayDesc = computed(() => ct(`config.systems.${props.system.id}.description`, props.system.description))
+
+const toggleable = computed(() => isModeToggleable(props.system))
+
+/** 右上角下拉當前顯示的短標籤 */
+const modeLabel = computed(() =>
+    props.effectiveMode === 'electron-window' ? t('platform.openModeWindow') : t('platform.openModeBrowser')
+)
+
+function onModeCommand(mode: UserToggleableMode) {
+  emit('change-mode', mode)
+}
 </script>
 
 <template>
   <div class="system-card" @click="emit('open', system)">
+    <!-- 右上角:打開方式(iframe 系統顯示靜態標籤,其餘顯示下拉選擇);
+         用 el-tag 當觸發器,跟下方 SSO 標籤同一套元件,視覺才統一 -->
+    <div class="corner-mode" @click.stop>
+      <el-tag v-if="!toggleable" effect="plain" size="small" type="primary">
+        {{ t('platform.openModeIframe') }}
+      </el-tag>
+      <el-dropdown v-else popper-class="system-card-mode-menu" trigger="click" @command="onModeCommand">
+        <el-tag class="mode-trigger-tag" effect="plain" size="small" type="info">
+          <span class="mode-trigger-inner">
+            {{ modeLabel }}
+            <el-icon :size="10"><CaretBottom/></el-icon>
+          </span>
+        </el-tag>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+                :class="{'is-active': effectiveMode === 'electron-window'}"
+                command="electron-window"
+            >
+              {{ t('platform.openModeWindow') }}
+            </el-dropdown-item>
+            <el-dropdown-item
+                :class="{'is-active': effectiveMode === 'external-browser'}"
+                command="external-browser"
+            >
+              {{ t('platform.openModeBrowser') }}
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+
     <!-- 系統圖標 -->
     <div class="card-icon">
       <img
@@ -62,25 +111,10 @@ const displayDesc = computed(() => ct(`config.systems.${props.system.id}.descrip
       <div class="card-name">{{ displayName }}</div>
       <div class="card-desc">{{ displayDesc }}</div>
 
-      <!-- 標籤組 -->
       <!-- 原文：SSO 直通 -->
-      <div class="card-tags">
-        <el-tag v-if="system.ssoEnabled" size="small" type="success" effect="light">
+      <div v-if="system.ssoEnabled" class="card-tags">
+        <el-tag effect="light" size="small" type="success">
           {{ t('platform.tagSso') }}
-        </el-tag>
-        <!-- 打開方式標籤（原文：嵌入顯示 / 獨立窗口 / 外部瀏覽器） -->
-        <el-tag
-          size="small"
-          :type="system.openMode === 'iframe' ? 'primary' : system.openMode === 'electron-window' ? 'warning' : 'info'"
-          effect="light"
-        >
-          {{
-            system.openMode === 'iframe'
-              ? t('platform.openModeIframe')
-              : system.openMode === 'electron-window'
-                ? t('platform.openModeWindow')
-                : t('platform.openModeBrowser')
-          }}
         </el-tag>
       </div>
     </div>
@@ -118,6 +152,29 @@ const displayDesc = computed(() => ct(`config.systems.${props.system.id}.descrip
   transform: translateY(0);
 }
 
+/* 右上角打開方式標籤/下拉 —— 對齊卡片自身 18px 內距，跟其他角落元素同一節奏 */
+.corner-mode {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  cursor: default;
+}
+
+.mode-trigger-tag {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.mode-trigger-tag:hover {
+  opacity: 0.8;
+}
+
+.mode-trigger-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 /* 系統圖標 */
 .card-icon {
   width: 44px;
@@ -149,12 +206,18 @@ const displayDesc = computed(() => ct(`config.systems.${props.system.id}.descrip
   min-width: 0;
 }
 
+/* 只有標題這一行需要讓開右上角標籤（描述/標籤都在標籤下方，不會重疊），
+   避免整塊都預留空間把標題擠成一小段 */
 .card-name {
   font-size: 15px;
   font-weight: 600;
   color: var(--app-text-primary);
   margin-bottom: 4px;
   letter-spacing: -0.005em;
+  padding-right: 84px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-desc {
@@ -168,6 +231,7 @@ const displayDesc = computed(() => ct(`config.systems.${props.system.id}.descrip
 
 .card-tags {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
 }
@@ -182,5 +246,16 @@ const displayDesc = computed(() => ct(`config.systems.${props.system.id}.descrip
 .system-card:hover .card-action {
   color: var(--app-text-primary);
   transform: translateX(2px);
+}
+</style>
+
+<!--
+  el-dropdown 的選單是 teleport 到 body 外的 popper,不在本組件 DOM 樹內,
+  scoped 樣式碰不到;靠 popper-class="system-card-mode-menu" 掛全局樣式標記目前選中項。
+-->
+<style>
+.system-card-mode-menu .el-dropdown-menu__item.is-active {
+  color: var(--el-color-primary, #409eff);
+  font-weight: 600;
 }
 </style>

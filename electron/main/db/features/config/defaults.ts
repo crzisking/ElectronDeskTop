@@ -99,6 +99,9 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
         ssoTokenParam: 'sso_token',
       },
     ],
+      // 使用者個人覆寫(user-owned,見 unified-platform.types.ts 的欄位註解);
+      // 出廠沒有任何覆寫,全部照上面 systems 各自的 openMode 開。
+      openModeOverrides: {},
   },
   internalFunctions: {
     apiBaseUrl: 'https://api.example.com/ai/v1',

@@ -36,7 +36,7 @@ export class IdeaCaptureWindow {
             minWidth: 460,
             minHeight: 420,
             icon: appIconPath,
-            title: '靈感速記',
+            title: '靈光一閃',
             frame: false,
             resizable: true,
             alwaysOnTop: true,

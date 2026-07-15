@@ -72,6 +72,9 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
                 ssoEnabled: r.ssoEnabled === 1,
                 ssoTokenParam: r.ssoTokenParam ?? undefined,
             })),
+            openModeOverrides: getKv(
+                kv, 'unifiedPlatform.openModeOverrides', DEFAULT_CONFIG.unifiedPlatform.openModeOverrides,
+            ),
         },
         internalFunctions: {
             apiBaseUrl: getKv(kv, 'internalFunctions.apiBaseUrl', DEFAULT_CONFIG.internalFunctions.apiBaseUrl),

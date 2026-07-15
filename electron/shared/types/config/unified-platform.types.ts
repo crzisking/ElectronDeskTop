@@ -4,6 +4,19 @@
 export interface UnifiedPlatformConfig {
     /** 公司內部系統鏈接列表;UnifiedPlatformView.vue 遍歷渲染卡片 */
     systems: SystemLink[]
+
+    /**
+     * 使用者對各系統打開方式的個人覆寫:{ [systemId]: 'electron-window' | 'external-browser' }。
+     *
+     * 為什麼跟 systems 分開存:systems 是 dev-owned collection,每次啟動被 defaults.ts
+     * 強制覆寫(見 resync-dev-owned.ts),若把使用者選擇存進 SystemLink.openMode 欄位,
+     * 下次升級 / 重啟就會被沖掉。這裡獨立成 user-owned KV,系統本身的 openMode 只當預設值,
+     * 有覆寫時優先用覆寫(渲染端用 resolveOpenMode() 合併,見 shared/utils/system-open-mode.ts)。
+     *
+     * 只支援覆寫成 'electron-window' / 'external-browser' 兩種 —— 'iframe' 是嵌入體驗,
+     * 跟「獨立窗口 vs 瀏覽器」不是同個維度,管理員設 iframe 時不開放使用者覆寫。
+     */
+    openModeOverrides: Record<string, 'electron-window' | 'external-browser'>
 }
 
 /**

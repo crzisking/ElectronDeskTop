@@ -70,7 +70,7 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
             }
         }
 
-        // ── unifiedPlatform.systems ──
+        // ── unifiedPlatform.systems / openModeOverrides ──
         if (partial.unifiedPlatform?.systems !== undefined) {
             tx.delete(unifiedPlatformSystems).run()
             partial.unifiedPlatform.systems.forEach((it, ord) => {
@@ -86,6 +86,9 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
                     ord,
                 }).run()
             })
+        }
+        if (partial.unifiedPlatform?.openModeOverrides !== undefined) {
+            upsertKv(tx, 'unifiedPlatform.openModeOverrides', partial.unifiedPlatform.openModeOverrides)
         }
 
         // ── internalFunctions(散值 + tools collection)──

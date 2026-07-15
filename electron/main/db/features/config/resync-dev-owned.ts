@@ -52,6 +52,8 @@ export const USER_OWNED_KEYS: ReadonlySet<string> = new Set([
     'floatingBall.snapToEdge',
     // 自動更新:只有 autoDownload 個人可控
     'update.autoDownload',
+    // 統一平台:各系統打開方式的個人覆寫(桌面窗口 / 瀏覽器),不隨 systems collection 升級被沖掉
+    'unifiedPlatform.openModeOverrides',
     // 工作採集
     'workCollect.enabled',
     'workCollect.intervalMinutes',
@@ -154,6 +156,8 @@ export function allSingletons(c: typeof DEFAULT_CONFIG): Array<[string, unknown]
         ['floatingBall.opacity', c.floatingBall.opacity],
         ['floatingBall.defaultPosition', c.floatingBall.defaultPosition],
         ['floatingBall.snapToEdge', c.floatingBall.snapToEdge],
+        // unifiedPlatform(散值,systems 走 collection 表)
+        ['unifiedPlatform.openModeOverrides', c.unifiedPlatform.openModeOverrides],
         // internalFunctions(散值,tools 走 collection 表)
         ['internalFunctions.apiBaseUrl', c.internalFunctions.apiBaseUrl],
         ['internalFunctions.apiTimeout', c.internalFunctions.apiTimeout],

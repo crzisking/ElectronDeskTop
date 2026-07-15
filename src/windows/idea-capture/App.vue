@@ -7,7 +7,7 @@
   <div class="idea" @paste="onPaste" @dragover.prevent @drop.prevent="onDrop">
     <!-- 標題列(可拖動) -->
     <header class="bar">
-      <span class="bar-title">💡 靈感速記</span>
+      <span class="bar-title">💡 靈光一閃</span>
       <button class="bar-close" title="關閉 (Esc)" @click="close">✕</button>
     </header>
 

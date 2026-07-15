@@ -17,6 +17,7 @@ import {useConfigText} from '@/shared/composables/useConfigText'
 import SystemCard from './SystemCard.vue'
 import SystemLauncher from './SystemLauncher.vue'
 import type {SystemLink} from '@shared/types/config'
+import {resolveOpenMode, type UserToggleableMode} from '@/shared/utils/system-open-mode'
 import {Search} from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()
@@ -42,7 +43,8 @@ const filteredSystems = computed(() => {
 })
 
 function handleOpenSystem(system: SystemLink) {
-  switch (system.openMode) {
+  const mode = resolveOpenMode(system, configStore.platformOpenModeOverrides)
+  switch (mode) {
     case 'iframe':
       activeSystem.value = system
       break
@@ -58,6 +60,11 @@ function handleOpenSystem(system: SystemLink) {
 
 function handleBack() {
   activeSystem.value = null
+}
+
+/** 卡片上的桌面窗口/瀏覽器切換控件觸發;寫入使用者個人覆寫,不影響 open 點擊 */
+function handleModeChange(system: SystemLink, mode: UserToggleableMode) {
+  void configStore.setSystemOpenMode(system.id, mode)
 }
 
 </script>
@@ -95,7 +102,9 @@ function handleBack() {
         v-for="system in filteredSystems"
         :key="system.id"
         :system="system"
+        :effective-mode="resolveOpenMode(system, configStore.platformOpenModeOverrides)"
         @open="handleOpenSystem"
+        @change-mode="(mode) => handleModeChange(system, mode)"
       />
     </div>
 
@@ -134,7 +143,7 @@ function handleBack() {
 
 .systems-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 18px;
   align-content: start;
 }
