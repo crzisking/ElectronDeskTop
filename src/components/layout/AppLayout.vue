@@ -28,7 +28,6 @@ const {t} = useI18n()
 <template>
   <div class="app-layout">
     <!-- 全屏初始化加載遮罩：配置載入、會話恢復期間顯示 -->
-    <!-- 原文：應用初始化中... -->
     <LoadingSpinner v-if="uiStore.globalLoading" fullscreen :text="t('app.initializing')"/>
 
     <template v-else>

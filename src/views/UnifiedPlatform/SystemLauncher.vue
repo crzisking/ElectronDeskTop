@@ -61,20 +61,17 @@ function openInBrowser() {
   <div class="system-launcher">
     <!-- 頂部工具欄 -->
     <div class="launcher-toolbar">
-      <!-- 原文：返回系統列表 -->
       <el-button text :icon="ArrowLeft" @click="emit('back')">
         {{ t('platform.backToList') }}
       </el-button>
 
       <div class="toolbar-center">
         <span class="system-name">{{ displayName }}</span>
-        <!-- 原文：SSO 已啟用 -->
         <el-tag v-if="system.ssoEnabled" size="small" type="success" effect="light">
           {{ t('platform.tagSsoEnabled') }}
         </el-tag>
       </div>
 
-      <!-- 原文：在瀏覽器打開 -->
       <el-button text :icon="ChromeFilled" @click="openInBrowser">
         {{ t('platform.openInBrowser') }}
       </el-button>

@@ -100,7 +100,6 @@ export function useRepairForm() {
      */
     /**
      * 校驗 message 全部用函數形式 + t()，這樣語言切換後重新校驗能拿到新語言文本。
-     * 原文：請填寫工單標題 / 標題不超過 100 個字元 / 請填寫問題描述 / 描述不超過 2000 個字元
      */
     const richSubmitRules = {
         title: [

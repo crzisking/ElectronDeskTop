@@ -16,7 +16,6 @@ defineProps<{
 </script>
 
 <template>
-  <!-- 原文 fallback：加載中... -->
   <div class="loading-spinner" :class="{ 'is-fullscreen': fullscreen }">
     <el-icon :size="36" class="spin-icon"><Loading /></el-icon>
     <span class="spin-text">{{ text ?? t('loading.default') }}</span>

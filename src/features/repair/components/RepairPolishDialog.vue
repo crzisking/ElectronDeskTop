@@ -46,7 +46,6 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <!-- 原文 title：✨ 使用AI整理 -->
   <el-dialog
     :model-value="modelValue"
     :title="t('repair.polishDialogTitle')"
@@ -57,7 +56,7 @@ const emit = defineEmits<{
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="polish-content">
-      <!-- 原始描述（只讀）；原文：原始描述 -->
+      <!-- 原始描述（只讀） -->
       <div class="polish-section-label">{{ t('repair.polishOriginal') }}</div>
       <el-input
         :value="originalText"
@@ -68,11 +67,10 @@ const emit = defineEmits<{
         class="polish-original"
       />
 
-      <!-- 方向指示；原文：↓ AI 整理結果 -->
+      <!-- 方向指示 -->
       <div class="polish-arrow">{{ t('repair.polishArrow') }}</div>
 
       <!-- 整理結果（可手動微調後再採用） -->
-      <!-- 原文：整理後的版本；標籤：生成中...；placeholder：AI 正在生成中... -->
       <div class="polish-section-label">
         {{ t('repair.polishResultLabel') }}
         <el-tag v-if="loading" size="small" type="primary" effect="plain">{{ t('repair.polishGenerating') }}</el-tag>
@@ -88,7 +86,6 @@ const emit = defineEmits<{
       />
     </div>
 
-    <!-- 原文：取消 / 使用此版本 -->
     <template #footer>
       <el-button @click="emit('close')">{{ t('common.cancel') }}</el-button>
       <el-button

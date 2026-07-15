@@ -87,7 +87,6 @@ function onTabChange(name: string | number) {
     <!-- 頁面頭部：僅返回按鈕 -->
     <div class="app-page-header app-page-header--compact">
       <div class="header-row">
-        <!-- 原文 tooltip/aria：返回 -->
         <el-tooltip :content="t('repair.back')" placement="bottom">
           <button class="app-icon-btn" :aria-label="t('repair.back')" @click="handleBack">
             <el-icon :size="16"><ArrowLeft /></el-icon>
@@ -100,7 +99,6 @@ function onTabChange(name: string | number) {
     <el-tabs v-model="activeTab" class="repair-tabs" @tab-change="onTabChange">
 
       <!-- ── 提交報修 Tab ──────────────────────────────────────── -->
-      <!-- 原文：提交報修 -->
       <el-tab-pane :label="t('repair.tabSubmit')" name="submit">
         <el-form
           ref="submitFormRef"
@@ -110,7 +108,6 @@ function onTabChange(name: string | number) {
           class="submit-form"
         >
           <!-- 工單標題 -->
-          <!-- 原文 label：工單標題；placeholder：請簡短描述問題，例如：電腦無法開機 -->
           <el-form-item :label="t('repair.fieldTitle')" prop="title">
             <el-input
               v-model="submitForm.title"
@@ -125,9 +122,7 @@ function onTabChange(name: string | number) {
           <el-form-item prop="description">
             <template #label>
               <span class="desc-label-row">
-                <!-- 原文：問題描述 -->
                 <span>{{ t('repair.fieldDesc') }}</span>
-                <!-- 原文 tooltip 已達 N 次上限 / 剩餘 N 次；按鈕：使用AI整理 -->
                 <el-tooltip
                   :content="polishLimitReached
                     ? t('repair.polishLimitReached', {limit: POLISH_LIMIT})
@@ -173,7 +168,6 @@ function onTabChange(name: string | number) {
                 @ready="handleEditorReady"
                 @blur="handleEditorBlur"
               />
-              <!-- 原文 tip：Type normally or paste an image directly into the editor（本身已是英文，保持不變） -->
               <div class="editor-footer">
                 <span class="editor-tip">{{ t('repair.editorTip') }}</span>
                 <span class="editor-count">{{ descriptionWordCount }}/2000</span>
@@ -182,7 +176,6 @@ function onTabChange(name: string | number) {
           </el-form-item>
 
           <!-- 提交按鈕 -->
-          <!-- 原文：提交中... / 提交報修；hint：請等待圖片上傳完成 -->
           <el-form-item>
             <el-button
               type="primary"
@@ -200,9 +193,7 @@ function onTabChange(name: string | number) {
       </el-tab-pane>
 
       <!-- ── 我的工單 Tab ──────────────────────────────────────── -->
-      <!-- 原文：我的工單 -->
       <el-tab-pane :label="t('repair.tabHistory')" name="tickets">
-        <!-- 原文 radios：全部 / 已提交 / 已分配 / 已關閉；button：刷新 -->
         <div class="tickets-toolbar">
           <el-radio-group v-model="ticketParams.status" @change="handleStatusFilter">
             <el-radio-button :value="0">{{ t('repair.statusFilterAll') }}</el-radio-button>
@@ -213,8 +204,6 @@ function onTabChange(name: string | number) {
           <el-button :loading="ticketsLoading" @click="loadTickets">{{ t('repair.refresh') }}</el-button>
         </div>
 
-        <!-- 原文 table headers：工單號 / 標題 / 狀態 / 處理人（待分配） / 提交時間 / 操作 / 詳情 -->
-        <!-- 原文 empty：暫無工單記錄 -->
         <el-table
           :data="tickets"
           v-loading="ticketsLoading"
@@ -256,7 +245,6 @@ function onTabChange(name: string | number) {
           @current-change="handlePageChange"
         />
 
-        <!-- 原文：您還沒有提交過工單 -->
         <el-empty
           v-if="!ticketsLoading && tickets.length === 0"
           :description="t('repair.emptyMyTickets')"

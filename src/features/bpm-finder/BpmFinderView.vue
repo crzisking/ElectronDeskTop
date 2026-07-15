@@ -6,12 +6,12 @@
  * Dify embed URL 由 app-config.json → internalFunctions.tools[bpmUserFinder].url 管理，
  * 修改 URL 只需改配置文件，無需動代碼。
  */
-import { ArrowLeft, ChromeFilled } from '@element-plus/icons-vue'
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import {ArrowLeft, ChromeFilled} from '@element-plus/icons-vue'
+import {computed} from 'vue'
+import {useRouter} from 'vue-router'
 import {useI18n} from 'vue-i18n'
 import IframeContainer from '@/components/common/IframeContainer.vue'
-import { useConfigStore } from '@/stores/config.store'
+import {useConfigStore} from '@/stores/config.store'
 
 const router = useRouter()
 const configStore = useConfigStore()
@@ -34,7 +34,6 @@ function openInBrowser() {
 
 <template>
   <div class="bpm-finder-view">
-    <!-- 原文：返回 / BPM 負責人查詢 / 在瀏覽器開啟 -->
     <div class="toolbar">
       <el-button :icon="ArrowLeft" text @click="goBack">{{ t('repair.back') }}</el-button>
       <span class="toolbar-title">{{ t('ai.bpmFinder.title') }}</span>
@@ -49,7 +48,6 @@ function openInBrowser() {
         title="BPM Finder"
       />
 
-      <!-- 原文：尚未設定 Dify 網址，請在 app-config.json 的 internalFunctions.tools[bpmUserFinder].url 中填入正確的 URL -->
       <el-empty
         v-else
         :description="t('ai.bpmFinder.urlNotConfigured')"

@@ -128,7 +128,6 @@ export function useRepairSubmit(onSubmitSuccess: () => void) {
 
     // 圖片仍在上傳中，附件列表可能不完整，拒絕提交
     if (uploading.value) {
-      // 原文：請等待圖片上傳完成後再提交
       ElMessage.warning(t('repair.uploadingHint'))
       return
     }
@@ -141,7 +140,6 @@ export function useRepairSubmit(onSubmitSuccess: () => void) {
           attachments: uploadedAttachments.value
       })
 
-      // 原文：報修提交成功！工單號：{no}
       ElMessage.success(t('repair.submitOk', {no: result.requestNo}))
 
         // 重置 Quill 內部 Delta（單純賦空字串無法清除已渲染的圖片節點）

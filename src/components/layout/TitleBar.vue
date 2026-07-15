@@ -16,9 +16,9 @@
  * 由 App.vue 監聽主進程推送的 push:window-maximized 事件後更新。
  */
 
-import { computed } from 'vue'
+import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
-import { useUiStore } from '@/stores/ui.store'
+import {useUiStore} from '@/stores/ui.store'
 
 const uiStore = useUiStore()
 const {t} = useI18n()
@@ -61,7 +61,6 @@ function closeWindow() {
     <!-- 窗口控制按鈕組：no-drag 確保點擊可響應 -->
     <div class="window-controls">
       <!-- 最小化按鈕 -->
-      <!-- 原文 title：最小化 -->
       <button class="window-btn" :title="t('titleBar.minimize')" @click="minimize">
         <svg width="10" height="1" viewBox="0 0 10 1">
           <line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" stroke-width="1.5" />
@@ -69,7 +68,6 @@ function closeWindow() {
       </button>
 
       <!-- 最大化/還原按鈕（根據狀態切換圖標） -->
-      <!-- 原文 title：還原 / 最大化 -->
       <button class="window-btn" :title="isMaximized ? t('titleBar.restore') : t('titleBar.maximize')" @click="toggleMaximize">
         <!-- 還原圖標（兩個重疊的矩形） -->
         <svg v-if="isMaximized" width="10" height="10" viewBox="0 0 10 10">
@@ -83,7 +81,6 @@ function closeWindow() {
       </button>
 
       <!-- 關閉按鈕（紅色懸停） -->
-      <!-- 原文 title：關閉（最小化到浮球） -->
       <button class="window-btn close-btn" :title="t('titleBar.closeToTray')" @click="closeWindow">
         <svg width="10" height="10" viewBox="0 0 10 10">
           <line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" />

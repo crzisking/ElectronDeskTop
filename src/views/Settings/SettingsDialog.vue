@@ -61,7 +61,6 @@ function close() {
           <el-icon :size="18"><Setting /></el-icon>
         </div>
         <div class="header-text">
-          <!-- 原文 title：設定；subtitle：管理應用偏好與更新 -->
           <div class="header-title">{{ t('settings.title') }}</div>
           <div class="header-subtitle">{{ t('settings.subtitle') }}</div>
         </div>
@@ -75,26 +74,25 @@ function close() {
         <LlmSection/>
       </section>
 
-      <!-- 軟體更新分區(原文:軟體更新) -->
+      <!-- 軟體更新分區 -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.update') }}</div>
         <UpdateSection />
       </section>
 
-      <!-- 語言分區(原文:語言) -->
+      <!-- 語言分區 -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.language') }}</div>
         <LanguageSection />
       </section>
 
-      <!-- 日誌與診斷分區(原文:日誌與診斷) -->
+      <!-- 日誌與診斷分區 -->
       <section class="settings-category">
         <div class="settings-category__title">{{ t('settings.sections.log') }}</div>
         <LogSection />
       </section>
     </div>
 
-    <!-- 原文：關閉 -->
     <template #footer>
       <el-button @click="close">{{ t('common.close') }}</el-button>
     </template>

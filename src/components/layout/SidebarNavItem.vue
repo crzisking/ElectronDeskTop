@@ -30,7 +30,6 @@ const {ct} = useConfigText()
 
 /**
  * 顯示用 label：走 i18n 字典 config.sidebar.<id>，缺失時 fallback 到 JSON 的 label。
- * 原文示例：統一平台 / 內部功能
  */
 const displayLabel = computed(() => ct(`config.sidebar.${props.item.id}`, props.item.label))
 

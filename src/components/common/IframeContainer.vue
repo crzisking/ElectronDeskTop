@@ -119,14 +119,12 @@ onBeforeUnmount(() => {
 <template>
   <div class="iframe-container">
     <!-- 加載中遮罩 -->
-    <!-- 原文：正在加載頁面... -->
     <div v-if="isLoading" class="iframe-loading">
       <el-icon :size="32" class="loading-icon"><Loading /></el-icon>
       <p>{{ t('iframe.loading') }}</p>
     </div>
 
     <!-- 加載失敗提示 -->
-    <!-- 原文 title：頁面加載失敗；subtitle：網絡較慢或系統暫時無法訪問，可點擊重新加載重試；btn：重新加載 -->
     <div v-if="loadError" class="iframe-error">
       <el-result
         icon="warning"

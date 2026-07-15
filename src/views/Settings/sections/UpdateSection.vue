@@ -15,12 +15,12 @@
  * 狀態完全由 useUpdate composable 提供，本組件只是它的 UI 視圖層。
  */
 
-import { computed } from 'vue'
+import {computed} from 'vue'
 import {useI18n} from 'vue-i18n'
-import { useConfigStore } from '@/stores/config.store'
-import { useUpdate } from '@/features/update/use-update'
+import {useConfigStore} from '@/stores/config.store'
+import {useUpdate} from '@/features/update/use-update'
 import SettingsRow from '../components/SettingsRow.vue'
-import { Loading, Refresh } from '@element-plus/icons-vue'
+import {Loading, Refresh} from '@element-plus/icons-vue'
 
 const configStore = useConfigStore()
 const {t} = useI18n()
@@ -30,7 +30,6 @@ const { state, progress, availableInfo, lastError, manualCheck } = useUpdate()
 const currentVersion = computed(() => configStore.appConfig?.version ?? '—')
 
 /** 每日定時檢查時刻（讀配置裡的 update.dailyCheckTime） */
-// 原文 fallback：未啟用
 const dailyCheckTime = computed(() => {
   const time = configStore.appConfig?.update?.dailyCheckTime
   return time && time.trim() !== '' ? time : t('update.autoCheckDisabled')
@@ -52,7 +51,6 @@ const progressText = computed(() => {
 
 /**
  * 「已就緒」文字 — 含/不含版本號兩種變體。
- * 原文：v X.Y.Z 已就緒，即將自動重啟 / 已就緒，即將自動重啟
  */
 const readyText = computed(() =>
   availableInfo.value?.version
@@ -64,13 +62,11 @@ const readyText = computed(() =>
 <template>
   <div class="update-section">
     <!-- 當前版本 -->
-    <!-- 原文 title：當前版本；description：您目前使用的應用版本號 -->
     <SettingsRow :title="t('update.currentVersion')" :description="t('update.currentVersionDesc')">
       <span class="version-tag">v {{ currentVersion }}</span>
     </SettingsRow>
 
     <!-- 自動檢查時間 -->
-    <!-- 原文 title：自動檢查；description：每天定時自動檢查並下載新版本 -->
     <SettingsRow
       v-if="updateEnabled"
       :title="t('update.autoCheck')"
@@ -80,10 +76,8 @@ const readyText = computed(() =>
     </SettingsRow>
 
     <!-- 手動檢查更新（核心功能） -->
-    <!-- 原文 title：檢查更新；description：立即連線伺服器查詢是否有新版本 -->
     <SettingsRow :title="t('update.checkBtn')" :description="t('update.checkBtnDesc')">
       <!-- 下載中：顯示進度 -->
-      <!-- 原文：下載中 X% -->
       <template v-if="downloading">
         <span class="status-text downloading">
           <el-icon class="is-loading"><Loading /></el-icon>
@@ -98,14 +92,12 @@ const readyText = computed(() =>
       </template>
 
       <!-- 錯誤：顯示錯誤文字 + 重試 -->
-      <!-- 原文 button：重試 -->
       <template v-else-if="state === 'error'">
         <span class="status-text error">{{ lastError }}</span>
         <el-button size="small" :icon="Refresh" @click="manualCheck">{{ t('common.retry') }}</el-button>
       </template>
 
       <!-- 預設：顯示「檢查更新」按鈕 -->
-      <!-- 原文：檢查中… / 檢查更新 -->
       <template v-else>
         <el-button
           type="primary"

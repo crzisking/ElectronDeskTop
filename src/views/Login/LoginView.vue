@@ -65,7 +65,6 @@ onMounted(async () => {
 /**
  * 前端基礎校驗規則。
  * message 用 t() 動態讀取 → 切換語言時 form 校驗提示自動跟著變。
- * 原文：請輸入工號 / 工號格式不正確 / 請輸入密碼 / 密碼不能為空
  */
 const rules: FormRules = {
   userName: [
@@ -131,7 +130,6 @@ async function handleLogin() {
     await router.push({name: 'home'})
   } catch (err: unknown) {
     // 顯示後端返回的錯誤信息或通用提示
-    // 原文 fallback：登錄失敗，請稍後再試
     errorMsg.value = err instanceof Error
       ? err.message
       : t('login.errorFallback')
@@ -150,16 +148,12 @@ async function handleLogin() {
           <span class="brand-mark__letter">i</span>
         </div>
         <div class="brand-eyebrow">
-          <!-- 原文：ICHIA ENTERPRISE -->
           <span>{{ t('login.eyebrowEn') }}</span>
-          <!-- 原文：· 企業客戶端 -->
           <span class="brand-eyebrow__zh">{{ t('login.eyebrowZh') }}</span>
         </div>
-        <!-- 原文：歡迎回來（拆兩段給「回來」單獨的 accent 樣式） -->
         <h1 class="brand-title">
           {{ t('login.welcomeBack1') }}<span class="brand-title__accent">{{ t('login.welcomeBack2') }}</span>
         </h1>
-        <!-- 原文：統一平台 · AI 助手 · 業務管理 -->
         <p class="brand-desc">{{ t('login.desc') }}</p>
       </div>
 
@@ -172,7 +166,6 @@ async function handleLogin() {
         size="large"
         @submit.prevent="handleLogin"
       >
-        <!-- 原文 label：工號 -->
         <el-form-item :label="t('login.fieldUserName')" prop="userName">
           <el-input
             v-model="form.userName"
@@ -183,7 +176,6 @@ async function handleLogin() {
           />
         </el-form-item>
 
-        <!-- 原文 label：密碼 -->
         <el-form-item :label="t('login.fieldPassword')" prop="password">
           <el-input
             v-model="form.password"
@@ -212,7 +204,6 @@ async function handleLogin() {
           class="login-error"
         />
 
-        <!-- 原文：登錄中... / 登 錄 -->
         <el-button
           type="primary"
           native-type="submit"

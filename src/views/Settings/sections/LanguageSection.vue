@@ -65,13 +65,11 @@ async function handleChange(value: SupportedLocale) {
   // 2. 持久化到 config 文件
   try {
     await configStore.writeConfig({app: {...configStore.appConfig!.app, language: value}})
-    // 原文：語言已切換
     ElMessage.success(t('settings.language.switched'))
   } catch (_err) {
     // 寫盤失敗：回滾 UI
     setLocale(previous)
     currentLanguage.value = previous
-    // 原文：語言切換失敗
     ElMessage.error(t('settings.language.switchFailed'))
   } finally {
     switching.value = false
@@ -81,7 +79,6 @@ async function handleChange(value: SupportedLocale) {
 
 <template>
   <div class="language-section">
-    <!-- 原文 title：界面語言；description：切換應用的顯示語言 -->
     <SettingsRow
       :title="t('settings.language.label')"
       :description="t('settings.language.description')"
@@ -102,7 +99,6 @@ async function handleChange(value: SupportedLocale) {
       </el-select>
     </SettingsRow>
 
-    <!-- 原文 title：當前語言；description：目前應用顯示使用的語言 -->
     <SettingsRow :title="t('settings.language.current')" :description="t('settings.language.currentDesc')" compact>
       <span class="meta-text">{{ currentLanguageLabel }}</span>
     </SettingsRow>

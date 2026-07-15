@@ -87,12 +87,10 @@ function beforeUpload(rawFile: File): boolean {
   const ext = '.' + rawFile.name.split('.').pop()?.toLowerCase()
   const typeOk = ALLOWED_TYPES.includes(rawFile.type) || ALLOWED_EXTENSIONS.includes(ext)
   if (!typeOk) {
-    // 原文：不支援的文件類型，僅允許 PDF、Word、Excel、PPT、圖片、文字檔
     ElMessage.error(t('aiSop.unsupportedType'))
     return false
   }
   if (rawFile.size > MAX_FILE_SIZE) {
-    // 原文：{name} 超過 20MB，請壓縮後重試
     ElMessage.error(t('aiSop.fileTooLarge', {name: rawFile.name}))
     return false
   }
@@ -102,13 +100,11 @@ function beforeUpload(rawFile: File): boolean {
 /** 上傳文件至泛微 */
 async function handleUpload() {
   if (!fanWeiTitle.value.trim()) {
-    // 原文：請填寫上傳標題
     ElMessage.warning(t('aiSop.titleRequired'))
     return
   }
 
   if (!fileList.value.length) {
-    // 原文：請選擇文件
     ElMessage.warning(t('aiSop.fileRequired'))
     return
   }
@@ -123,11 +119,9 @@ async function handleUpload() {
   try {
     const res = await aiSopApi.upload(formData) as AiSopUploadResult
     const fileId = res?.data ?? res?.fileId ?? ''
-    // 原文：上傳成功！文件id：{id}
     ElMessage.success(t('aiSop.uploadOk', {id: String(fileId)}))
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
-    // 原文：上傳失敗：{msg}
     ElMessage.error(t('aiSop.uploadFailed', {msg}))
   } finally {
     fileList.value = []
@@ -139,7 +133,6 @@ async function handleUpload() {
 <template>
   <div class="bpm-finder-view">
 
-    <!-- 原文：返回 / AiSop / 在瀏覽器開啟 -->
     <div class="toolbar">
       <el-button
           :icon="ArrowLeft"
@@ -170,7 +163,6 @@ async function handleUpload() {
     <div class="content-layout">
 
       <!-- 左侧 -->
-      <!-- 原文 header：上傳文件至泛微發佈；placeholder：請輸入文檔標題；upload text：拖拽文件到這裡 或 點擊選擇；tip：支援 PDF...；button：上傳 -->
       <div class="left-panel">
         <el-card shadow="hover">
           <template #header>
@@ -226,7 +218,6 @@ async function handleUpload() {
               title="BPM Finder"
           />
 
-          <!-- 原文：尚未設定 Dify 網址 -->
           <el-empty
               v-else
               :description="t('aiSop.urlNotConfigured')"

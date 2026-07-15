@@ -18,7 +18,7 @@ const routes: RouteRecordRaw[] = [
   },
 
   // 登錄頁（不需認證的公開頁面）
-  // meta.title 改存「i18n key」，在 beforeEach 動態解析；原文：登錄
+    // meta.title 改存「i18n key」，在 beforeEach 動態解析
   {
     path: '/login',
     name: 'login',
@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
     children: [
 
-      // 首頁 — 每日學習建議儀表板;原文 title:首頁
+        // 首頁 — 每日學習建議儀表板
       {
         path: 'home',
         name: 'home',
@@ -47,7 +47,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // 統一平台；原文 title：統一平台
+        // 統一平台
       {
         path: 'unified-platform',
         name: 'unified-platform',
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // 內部功能入口；原文 title：內部功能
+        // 內部功能入口
       {
         path: 'internal-functions',
         name: 'internal-functions',
@@ -69,7 +69,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // 個人功能入口 — 跟內部功能 / 統一平台同層級的主功能;原文 title：個人功能
+        // 個人功能入口 — 跟內部功能 / 統一平台同層級的主功能
       {
         path: 'personal-functions',
         name: 'personal-functions',
@@ -80,7 +80,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // BPM 負責人查詢；原文 title：BPM 負責人查詢
+        // BPM 負責人查詢
       {
         path: 'ai-bpm-finder',
         name: 'ai-bpm-finder',
@@ -91,7 +91,7 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // IT 報修；原文 title：IT 報修
+        // IT 報修
       {
         path: 'it-repair',
         name: 'it-repair',
@@ -161,7 +161,6 @@ const router = createRouter({
  */
 router.beforeEach((to, _from) => {
   // 更新窗口標題：meta.title 是 i18n key，動態解析後拼上應用名
-  // 原文後綴：- 企業桌面客戶端
   const titleKey = to.meta.title as string | undefined
   if (titleKey) {
     const pageTitle = i18n.global.t(titleKey)

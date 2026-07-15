@@ -85,12 +85,10 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
     async function polishDescription(): Promise<void> {
         const plainDescription = opts.getPlainText(opts.normalizeEditorHtml(opts.submitForm.description))
         if (!plainDescription) {
-            // 原文：請先填寫問題描述
             ElMessage.warning(t('repair.polishNeedDesc'))
             return
         }
         if (polishLimitReached.value) {
-            // 原文：同一問題描述最多整理 N 次，請修改描述後再試
             ElMessage.warning(t('repair.polishLimitReached', {limit: POLISH_LIMIT}))
             return
         }
@@ -125,7 +123,6 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
             })
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`)
-            // 原文：響應體為空（內部錯誤訊息，不直接顯示給用戶，保持中文便於日誌追溯）
             if (!response.body) throw new Error('Empty response body')
 
             const reader = response.body.getReader()
@@ -163,7 +160,6 @@ export function useRepairPolish(opts: UseRepairPolishOptions) {
             if (e instanceof Error && e.name === 'AbortError') return
 
             logger.error('AI 潤色串流失敗', 'useRepairPolish', e)
-            // 原文：AI 整理失敗，請確認服務是否可用
             ElMessage.error(t('repair.polishFailedHint'))
             polishVisible.value = false
         } finally {

@@ -110,8 +110,6 @@ function bootstrap(): void {
     }
     notifiedAvailableVersion.value = info.version
 
-    // 原文 title：發現新版本 {version}
-    // 原文 message：正在背景下載，下載完成後會通知您重啟。
     ElNotification({
       title: t('update.notifyAvailableTitle', {version: info.version}),
       message: t('update.notifyAvailableMsg'),
@@ -126,7 +124,6 @@ function bootstrap(): void {
     clearCheckTimeout()
     state.value = 'not-available'
     if (userInitiated) {
-      // 原文：您已是最新版本
       ElMessage.success(t('update.isLatest'))
       userInitiated = false
     }
@@ -155,8 +152,6 @@ function bootstrap(): void {
     }
     notifiedDownloadedVersion.value = info.version
 
-    // 原文 title：新版本 {version} 已下載完成
-    // 原文 message：應用將在 {seconds} 秒後自動重啟以完成安裝，請保存您的工作。
     ElNotification({
       title: t('update.notifyDownloadedTitle', {version: info.version}),
       message: t('update.notifyDownloadedMsg', {seconds: Math.round(RESTART_DELAY_MS / 1000)}),
@@ -178,7 +173,6 @@ function bootstrap(): void {
     logger.warn('更新流程錯誤', 'useUpdate', err)
 
     if (userInitiated) {
-      // 原文：檢查更新失敗：{message}
       ElMessage.error(t('update.checkFailed', {message: err.message}))
       userInitiated = false
     }
@@ -207,7 +201,6 @@ async function manualCheck(): Promise<void> {
   checkTimeoutTimer = setTimeout(() => {
     if (state.value === 'checking') {
       state.value = 'error'
-      // 原文：檢查更新超時，請稍後再試或檢查網路
       lastError.value = t('update.timeout')
       if (userInitiated) {
         ElMessage.error(lastError.value)

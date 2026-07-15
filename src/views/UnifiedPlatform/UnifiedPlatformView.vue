@@ -76,7 +76,6 @@ function handleModeChange(system: SystemLink, mode: UserToggleableMode) {
     <div class="app-page-header app-page-header--compact">
       <div class="app-page-header__right">
         <div class="search-input">
-          <!-- 原文 placeholder：搜尋系統名稱或描述… -->
           <el-input
             v-model="searchKeyword"
             :placeholder="t('platform.searchPlaceholder')"
@@ -89,7 +88,6 @@ function handleModeChange(system: SystemLink, mode: UserToggleableMode) {
 
     <div class="section-bar">
       <div class="app-section-title">
-        <!-- 原文：所有系統 -->
         <span class="app-section-title__main">{{ t('platform.allSystems') }}</span>
         <span class="app-section-title__count">
           {{ String(configStore.platformSystems.length).padStart(2, '0') }} {{ t('platform.systemsLabel') }}
@@ -108,13 +106,11 @@ function handleModeChange(system: SystemLink, mode: UserToggleableMode) {
       />
     </div>
 
-    <!-- 原文：尚未配置任何系統，請編輯 app-config.json 的 unifiedPlatform.systems 字段 -->
     <el-empty
       v-if="filteredSystems.length === 0 && configStore.platformSystems.length === 0"
       :description="t('platform.emptyAll')"
       :image-size="120"
     />
-    <!-- 原文：未找到包含「{keyword}」的系統 -->
     <el-empty
       v-else-if="filteredSystems.length === 0"
       :description="t('platform.emptySearch', {keyword: searchKeyword})"

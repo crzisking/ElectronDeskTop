@@ -25,7 +25,6 @@ import type {RepairDetail, RepairListItem, RepairStatus} from '../types'
  * 工單狀態碼 → i18n key 映射。
  * 模板用法：{{ t(STATUS_LABELS[row.status]) }}
  * 對應後端 status 字段：1 = 已提交、2 = 已分配、3 = 已關閉。
- * 原文：'已提交' / '已分配' / '已關閉'
  */
 export const STATUS_LABELS: Record<number, string> = {
   1: 'repair.statusSubmitted',

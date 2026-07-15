@@ -42,7 +42,7 @@ const {ct} = useConfigText()
 
 /**
  * 顯示用名稱與描述：走 i18n config.systems.<id>.{name,description}，
- * 缺失則 fallback 到 JSON 原值。原文示例：新ERP 系統 / ERP系統
+ * 缺失則 fallback 到 JSON 原值
  */
 const displayName = computed(() => ct(`config.systems.${props.system.id}.name`, props.system.name))
 const displayDesc = computed(() => ct(`config.systems.${props.system.id}.description`, props.system.description))

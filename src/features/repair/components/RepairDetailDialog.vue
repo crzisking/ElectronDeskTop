@@ -82,7 +82,6 @@ function sanitize(html: string): string {
 </script>
 
 <template>
-  <!-- 原文 title：工單詳情 -->
   <el-dialog
     :model-value="modelValue"
     :title="t('repair.detailTitle')"
@@ -97,7 +96,6 @@ function sanitize(html: string): string {
       <template v-if="detail">
 
         <!-- ── 提問信息 ──────────────────────────────────────────── -->
-        <!-- 原文 labels：工單號 / 標題 / 提交人 / 提交時間 -->
         <el-descriptions :column="2" border size="small">
           <!-- 工單號跨兩列，使用等寬字體突出顯示 -->
           <el-descriptions-item :label="t('repair.colTicketNo')" :span="2">
@@ -114,7 +112,6 @@ function sanitize(html: string): string {
         </el-descriptions>
 
         <!-- ── 問題描述（富文本） ────────────────────────────────── -->
-        <!-- 原文 section title：問題描述 -->
         <div class="section">
           <div class="section-title">{{ t('repair.fieldDesc') }}</div>
           <!-- eslint-disable-next-line vue/no-v-html -- sanitize() 直接呼叫 DOMPurify.sanitize,見本檔 line 69 -->
@@ -122,7 +119,6 @@ function sanitize(html: string): string {
         </div>
 
         <!-- ── IT 匯報回覆（富文本） ─────────────────────────────── -->
-        <!-- 原文 title：IT 匯報回覆；empty：IT 尚未提交匯報回覆 -->
         <div class="section">
           <div class="section-title report-title">
             <span>{{ t('repair.itReply') }}</span>
@@ -138,7 +134,6 @@ function sanitize(html: string): string {
         </div>
 
         <!-- ── 匯報附件 ──────────────────────────────────────────── -->
-        <!-- 原文：匯報附件（{n} 個） -->
         <template v-if="detail.attachments.length > 0">
           <div class="attachments-title">
             {{ t('repair.attachments', {n: detail.attachments.length}) }}
@@ -165,7 +160,6 @@ function sanitize(html: string): string {
       </template>
     </div>
 
-    <!-- 原文：關閉 -->
     <template #footer>
       <el-button @click="emit('update:modelValue', false)">{{ t('common.close') }}</el-button>
     </template>

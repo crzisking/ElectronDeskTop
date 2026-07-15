@@ -74,7 +74,6 @@ export class TrayManager {
     const lang = config.app?.language ?? 'zh-TW'
 
     // 主進程小型字典，鍵約定見 ipc-handlers/index.ts 同類設計
-    // 原文：企業桌面客戶端 / 開啟主視窗 / 結束應用程式 / 統一平台 / 內部功能
     const TRAY_DICT: Record<string, Record<string, string>> = {
       'zh-TW': {},
       en: {
