@@ -53,3 +53,26 @@ export function normalizeHotkey(accel: string | undefined | null): string {
     const s = (accel ?? '').trim()
     return isValidAccelerator(s) ? s : DEFAULT_HOTKEY
 }
+
+/** Electron accelerator token → 給人看的標籤(Windows 語彙) */
+const DISPLAY_TOKEN: Record<string, string> = {
+    commandorcontrol: 'Ctrl', cmdorctrl: 'Ctrl', control: 'Ctrl', ctrl: 'Ctrl',
+    command: 'Cmd', cmd: 'Cmd', alt: 'Alt', option: 'Alt', altgr: 'AltGr',
+    shift: 'Shift', super: 'Win', meta: 'Win',
+    space: 'Space', tab: 'Tab', return: 'Enter', enter: 'Enter',
+    escape: 'Esc', esc: 'Esc', backspace: 'Backspace', delete: 'Del',
+    up: '↑', down: '↓', left: '←', right: '→', plus: '+',
+}
+
+/**
+ * 把 accelerator 格式化成使用者看得懂的字串,例如
+ * `CommandOrControl+Shift+Space` → `Ctrl + Shift + Space`。純顯示用,不影響註冊。
+ */
+export function formatHotkey(accel: string | undefined | null): string {
+    return normalizeHotkey(accel)
+        .split('+')
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => DISPLAY_TOKEN[p.toLowerCase()] ?? (p.length === 1 ? p.toUpperCase() : p))
+        .join(' + ')
+}

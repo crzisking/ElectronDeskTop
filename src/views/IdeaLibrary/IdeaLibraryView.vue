@@ -10,7 +10,15 @@
         <h2>💡 想法庫</h2>
         <span class="head-sub">{{ lib.total.value }} 條想法</span>
       </div>
-      <el-button :icon="Plus" round type="primary" @click="openCapture">速記</el-button>
+      <div class="head-actions">
+        <!-- 提示全域快捷鍵,免得使用者忘了怎麼隨手記一條 -->
+        <span :title="`在任何地方按 ${hotkeyLabel} 都能喚出速記小窗`" class="hotkey-hint">
+          <el-icon><Sunrise/></el-icon>
+          隨手記:按
+          <kbd>{{ hotkeyLabel }}</kbd>
+        </span>
+        <el-button :icon="Plus" round type="primary" @click="openCapture">速記</el-button>
+      </div>
     </header>
 
     <!-- 工具列:分段 tab + 篩選 -->
@@ -38,7 +46,7 @@
       <el-alert v-if="lib.error.value" :closable="false" :title="lib.error.value" class="lib-error" show-icon
                 type="error"/>
       <el-empty v-if="!lib.items.value.length && !lib.loading.value && !lib.error.value"
-                description="還沒有想法,按快捷鍵或點「速記」記一條"/>
+                :description="`還沒有想法,按 ${hotkeyLabel} 或點「速記」記一條`"/>
       <div v-else class="cards">
         <button
             v-for="it in lib.items.value" :key="it.clientId"
@@ -82,9 +90,11 @@
 </template>
 
 <script lang="ts" setup>
-import {ref} from 'vue'
-import {Plus, Search} from '@element-plus/icons-vue'
-import type {IdeaType} from '@shared/types/idea-capture.types'
+import {onMounted, ref} from 'vue'
+import {Plus, Search, Sunrise} from '@element-plus/icons-vue'
+import type {IdeaCaptureConfig, IdeaType} from '@shared/types/idea-capture.types'
+import {formatHotkey} from '@shared/idea-capture/hotkey'
+import {unwrapIpc} from '@/shared/utils/ipc'
 import {
   REFINE_LABEL,
   STATUS_LABEL,
@@ -98,6 +108,17 @@ const lib = useIdeaLibrary()
 
 const drawerOpen = ref(false)
 const activeClientId = ref('')
+
+// 全域快捷鍵標籤:讀主進程實際配置的熱鍵並格式化;讀不到(如舊版無此 API)兜底成預設
+const hotkeyLabel = ref(formatHotkey(null))
+onMounted(async () => {
+  try {
+    const cfg = await unwrapIpc<IdeaCaptureConfig>(window.electronAPI.ideaCapture.configRead())
+    hotkeyLabel.value = formatHotkey(cfg.hotkey)
+  } catch {
+    /* 讀失敗保留預設標籤即可 */
+  }
+})
 
 function openCapture() {
   window.electronAPI.window.openIdeaCapture().catch(() => {/* 開窗失敗不擴散 */
@@ -156,6 +177,35 @@ function typeColor(t: IdeaType): string {
 .head-sub {
   font-size: 13px;
   color: var(--el-text-color-secondary, #909399);
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 快捷鍵提示:低調的一行說明,重點在那顆 kbd */
+.hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--el-text-color-secondary, #909399);
+  cursor: default;
+}
+
+.hotkey-hint kbd {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 7px;
+  color: var(--el-text-color-primary, #303133);
+  background: var(--el-fill-color-light, #f5f7fa);
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-bottom-width: 2px;
+  border-radius: 5px;
 }
 
 /* 工具列 */

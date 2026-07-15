@@ -1,5 +1,10 @@
 import {describe, expect, it} from 'vitest'
-import {DEFAULT_HOTKEY, isValidAccelerator, normalizeHotkey} from '../../electron/shared/idea-capture/hotkey'
+import {
+    DEFAULT_HOTKEY,
+    formatHotkey,
+    isValidAccelerator,
+    normalizeHotkey
+} from '../../electron/shared/idea-capture/hotkey'
 
 describe('isValidAccelerator', () => {
     it('合法組合', () => {
@@ -31,5 +36,19 @@ describe('normalizeHotkey', () => {
         expect(normalizeHotkey('')).toBe(DEFAULT_HOTKEY)
         expect(normalizeHotkey('garbage+++')).toBe(DEFAULT_HOTKEY)
         expect(normalizeHotkey(null)).toBe(DEFAULT_HOTKEY)
+    })
+})
+
+describe('formatHotkey', () => {
+    it('CommandOrControl 折成 Ctrl,空白鍵顯示 Space', () => {
+        expect(formatHotkey('CommandOrControl+Shift+Space')).toBe('Ctrl + Shift + Space')
+    })
+    it('單字母大寫,修飾鍵正規化', () => {
+        expect(formatHotkey('ctrl+alt+i')).toBe('Ctrl + Alt + I')
+        expect(formatHotkey('Super+D')).toBe('Win + D')
+    })
+    it('不合法 / 空 → 預設熱鍵的顯示形', () => {
+        expect(formatHotkey('')).toBe('Ctrl + Shift + Space')
+        expect(formatHotkey(null)).toBe('Ctrl + Shift + Space')
     })
 })
