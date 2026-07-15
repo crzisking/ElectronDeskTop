@@ -1,6 +1,7 @@
 /**
- * 項目流程的本地 AI 能力 — 寫作教練(匯報建議)+ 備忘建議 + 今日活動聚合。
+ * 項目流程的本地 AI 能力 — 備忘建議 + 今日活動聚合(首頁儀表板用)。
  *
+ * ⚠️ 匯報功能已清退,原本的「寫作教練」(generateReportAdvice)一併移除。
  * 從 ipc-handlers/project-flow.handlers.ts 搬出:handler 檔只負責通道註冊,
  * 業務與 prompt 集中在 services(對齊 daily-advice/scheduler 的擺放)。
  *
@@ -10,7 +11,7 @@
 import type {LlmClient} from '../llm'
 import type {WorkRecordService} from '../../db/features/work-collect/service'
 
-// ─── 今日活動聚合(匯報編輯器參考面板 + AI 建議共用) ─────────
+// ─── 今日活動聚合(首頁儀表板 + AI 建議共用) ─────────
 
 export interface TodayActivityCategory {
     category: string
@@ -139,54 +140,6 @@ export async function generateMemoSuggestions(
         ],
     })
     return safeParseJson<{ suggestions: object[] }>(result.content, 'suggestions')
-}
-
-// ─── AI 寫作教練:看草稿 + 今日數據,給建議不代寫 ─────────────
-
-/** renderer 傳來的草稿(三區的現有內容) */
-export interface ReportAdviceInput {
-    work?: string[]
-    issue?: string[]
-    plan?: string[]
-}
-
-export async function generateReportAdvice(
-    llm: LlmClient | null,
-    workRecordService: WorkRecordService | null,
-    input: ReportAdviceInput,
-): Promise<object> {
-    if (!llm) throw new Error('LLM provider 尚未配置(請先到設定頁設定)')
-    if (!workRecordService) throw new Error('工作採集服務未就緒')
-
-    const activity = activityText(aggregateTodayActivity(workRecordService))
-    const sec = (label: string, items?: string[]) =>
-        `${label}:\n${(items ?? []).filter((s) => s.trim()).map((s) => `- ${s}`).join('\n') || '(還沒寫)'}`
-
-    const result = await llm.complete({
-        responseFormat: 'json_object',
-        temperature: 0.5,
-        messages: [
-            {
-                role: 'system',
-                content:
-                    '你是寫作教練,幫使用者把工作匯報寫得更好。' +
-                    '你「只給建議,絕不代寫整段內容」:指出可以寫的方向、針對已寫內容給潤色建議、提醒可能遺漏的點。' +
-                    '建議要具體可操作(例如「補上數字/結果」「拆成兩條」),不要空泛。回 JSON。',
-            },
-            {
-                role: 'user',
-                content:
-                    `我的今日活動數據(僅供參考,不要直接抄進匯報):\n${activity}\n\n` +
-                    `我目前的草稿:\n${sec('【今日工作】', input.work)}\n\n${sec('【問題與困難】', input.issue)}\n\n${sec('【明日計畫】', input.plan)}\n\n` +
-                    `回 JSON:{\n` +
-                    `  "ideas": ["可以寫什麼方向(結合活動數據提示我今天做過但沒寫的)"],\n` +
-                    `  "polish": [{"original":"我寫的某條原文","suggestion":"怎麼改更好(更具體/有結果/有數據)"}],\n` +
-                    `  "missing": ["可能遺漏的點(例如風險、需要的支援、依賴他人的事項)"]\n` +
-                    `}\n每個陣列最多 4 條;草稿是空的就 polish 給空陣列,把重點放 ideas。`,
-            },
-        ],
-    })
-    return safeParseJson<object>(result.content, 'advice')
 }
 
 /** 剝掉 LLM 回應可能包的 markdown 圍欄(daily-advice 也共用) */

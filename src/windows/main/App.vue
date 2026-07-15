@@ -13,7 +13,6 @@ import {useConfigStore} from '@/stores/config.store'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useWorkCollectStore} from '@/features/work-collect/store'
-import {useProjectFlowStore} from '@/features/project-flow/store'
 import {useUserProfileStore} from '@/features/user-profile/store'
 import {useUpdate} from '@/features/update/use-update'
 import {getElementLocale, isSupportedLocale, setLocale, type SupportedLocale} from '@/locales'
@@ -144,14 +143,6 @@ function initBackground(): void {
     logger.warn('work-collect bootstrap 異常', 'App.Vue', err)
   }
 
-  // 5.5 項目流程 SignalR 推送訂閱(docs/20):主進程收到 project-flow.* action
-  //     會走 PUSH_PROJECT_FLOW_EVENT 推上來,store 自己訂閱並更新紅點 / 列表
-  try {
-    useProjectFlowStore().bootstrap()
-  } catch (err) {
-    logger.warn('project-flow bootstrap 異常', 'App.Vue', err)
-  }
-
   // 6. 自動更新監聽 + AD 免密登入後的補一次靜默檢查
   try {
     const update = useUpdate()
@@ -174,11 +165,6 @@ onUnmounted(() => {
   window.electronAPI.off(IpcChannels.PUSH_WINDOW_MAXIMIZED, onWindowMaximized)
   window.electronAPI.off(IpcChannels.PUSH_CONFIG_CHANGED, onConfigChanged)
   window.electronAPI.off(IpcChannels.PUSH_BALL_NAVIGATE, onMenuNavigate)
-  // project-flow store 內部訂閱了 PUSH_PROJECT_FLOW_EVENT,需由 store.dispose 撤銷
-  try {
-    useProjectFlowStore().dispose()
-  } catch { /* 沒 bootstrap 過 */
-  }
 })
 </script>
 

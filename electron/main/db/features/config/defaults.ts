@@ -98,14 +98,6 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
         ssoEnabled: false,
         ssoTokenParam: 'sso_token',
       },
-      {
-        id: 'sys-it',
-        name: 'IT 服務台',
-        description: '報修工單、IT 資產、VPN 申請',
-        url: 'https://itsm.example.com',
-        openMode: 'external-browser',
-        ssoEnabled: false,
-      },
     ],
   },
   internalFunctions: {
@@ -147,34 +139,16 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
       tools: [
           {
               id: 'workCollect',
-              name: '工作自動採集',
-              description: '本機截圖 → AI 分析 → 工作分類流水線與圖表',
+              name: '工作回顧',
+              description: '記錄並回顧你每天的工作內容,自動整理成時間軸與統計',
               icon: 'Aim',
               enabled: true,
               openMode: 'page',
               routeName: 'work-collect',
           },
-          // 項目流程(docs/20)— 主入口,從這裡進列表後再導到畫布 / 匯報 / 備忘錄 / 團隊
           {
-              id: 'projectFlow',
-              name: '項目流程',
-              description: '流程圖 + 工作匯報 + 備忘錄 + 團隊視圖',
-              icon: 'Connection',
-              enabled: true,
-              openMode: 'page',
-              routeName: 'project-flow',
-          },
-          {
-              id: 'projectReports',
-              name: '工作匯報',
-              description: '撰寫並提交週 / 日報,支援 AI 草稿',
-              icon: 'Document',
-              enabled: true,
-              openMode: 'page',
-              routeName: 'project-reports',
-          },
-          {
-              // 備忘錄走獨立窗(docs/20 §5.5 + user 反饋:不要嵌在主流程內)
+              // 備忘錄走獨立窗(docs/20 §5.5 + user 反饋:不要嵌在主流程內)。
+              // ⚠️ 項目流程的專案/匯報/團隊功能已清退,備忘錄是唯一保留的部分。
               id: 'projectMemos',
               name: '備忘錄',
               description: '個人待辦,獨立窗口隨手叫出',
@@ -182,15 +156,6 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
               enabled: true,
               openMode: 'window',
               windowId: 'memos',
-          },
-          {
-              id: 'projectTeam',
-              name: '團隊視圖',
-              description: '主管查看下屬匯報與備忘錄',
-              icon: 'User',
-              enabled: true,
-              openMode: 'page',
-              routeName: 'project-team',
           },
       ],
   },

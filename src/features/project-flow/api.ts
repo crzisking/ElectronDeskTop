@@ -1,44 +1,20 @@
 /**
  * project-flow renderer ↔ main 的 API 包裝層。
  *
+ * ⚠️ 專案/畫布/匯報/反饋/團隊功能已清退(公測前瘦身),只留備忘錄獨立窗 + 首頁儀表板需要的方法。
+ *
  * 不直接走 HTTP — 全部透過 window.electronAPI.projectFlow.* 走 IPC,由 main 進程
  * 統一帶 baseUrl + JWT 打後端,renderer 不接觸 token(對齊架構文件 §內存 token)。
  *
  * 每個 method 解 envelope:{ok:true, data} 直接回 data, {ok:false, error} 拋例外。
- * Store 層只需要 try/catch,不必反覆 if (ok).
+ * Store 層只需要 try/catch,不必反覆 if (ok)。
  */
 
 import {useAuthStore} from '@/stores/auth.store'
 import {plain} from '@/shared/utils/ipc-clone'
 import {unwrapIpc as unwrap} from '@/shared/utils/ipc'
 import {BACKEND_BASE_URL} from '@/shared/config/backend'
-import type {
-    AiGraphPlan,
-    AiQuotaInfo,
-    AiReportAdvice,
-    EmployeeItem,
-    FeedbackResponse,
-    MemoResponse,
-    MyNodeItem,
-    NodeLinkedReportItem,
-    NodeProgressInfo,
-    PagedResult,
-    ProjectDetailResponse,
-    ProjectListItem,
-    ProjectMemberItem,
-    ReportResponse,
-    ReportSummaryItem,
-    TeamSubordinateItem,
-    TodayActivitySummary,
-} from './types'
-
-/** 後端 AI summary 端點的業務信封(cache / 配額語義,與 IPC 信封分離) */
-export interface AiSummaryResult {
-    ok: boolean
-    fromCache: boolean
-    contentJson?: string
-    error?: string
-}
+import type {MemoResponse, MyNodeItem, PagedResult, TodayActivitySummary} from './types'
 
 /**
  * 從 authStore 取 ctx。後端 ProjectFlowController 已 [AllowAnonymous],身分靠 userId(工號)寫進 query;
@@ -56,45 +32,10 @@ function ctx(): { baseUrl: string; userId: string; token: string } {
 const pf = () => window.electronAPI.projectFlow
 
 export const projectFlowApi = {
-    // ── Projects ──
-    listProjects: (query: object = {}) =>
-        unwrap<PagedResult<ProjectListItem[]>>(pf().listProjects(ctx(), plain(query))),
-    getProject: (id: number) => unwrap<ProjectDetailResponse>(pf().getProject(ctx(), id)),
-    createProject: (body: object) => unwrap<{ projectId: number }>(pf().createProject(ctx(), plain(body))),
-    updateProject: (id: number, body: object) => unwrap<void>(pf().updateProject(ctx(), id, plain(body))),
-    deleteProject: (id: number) => unwrap<void>(pf().deleteProject(ctx(), id)),
-
-    // ── Nodes ──
-    createNode: (projectId: number, body: object) =>
-        unwrap<{ nodeId: number }>(pf().createNode(ctx(), projectId, plain(body))),
-    updateNode: (nodeId: number, body: object) => unwrap<void>(pf().updateNode(ctx(), nodeId, plain(body))),
-    deleteNode: (nodeId: number) => unwrap<void>(pf().deleteNode(ctx(), nodeId)),
-    patchNodeStatus: (nodeId: number, body: object) =>
-        unwrap<void>(pf().patchNodeStatus(ctx(), nodeId, plain(body))),
-    getNodeProgress: (nodeId: number) => unwrap<NodeProgressInfo[]>(pf().getNodeProgress(ctx(), nodeId)),
-    listNodeReportItems: (nodeId: number) =>
-        unwrap<NodeLinkedReportItem[]>(pf().listNodeReportItems(ctx(), nodeId)),
-    /** 跨項目「我的節點」(個人時間線 / 備忘 AI 進度輸入) */
+    /** 跨項目「我的節點」(備忘 AI 進度輸入) */
     listMyNodes: () => unwrap<MyNodeItem[]>(pf().listMyNodes(ctx())),
-    /** 員工模糊搜尋(工號/姓名/電話)— 負責人選擇彈窗用 */
-    searchEmployees: (query: { keyword?: string; pageIndex?: number; pageSize?: number }) =>
-        unwrap<PagedResult<EmployeeItem[]>>(pf().searchEmployees(ctx(), plain(query))),
     /** 今日 work-collect 摘要(類別 + 24h 熱力;唯讀參考,純本地不打後端) */
     todayActivity: () => unwrap<TodayActivitySummary>(pf().todayActivity()),
-
-    // ── Edges ──
-    createEdge: (projectId: number, body: object) =>
-        unwrap<{ edgeId: number }>(pf().createEdge(ctx(), projectId, plain(body))),
-    deleteEdge: (edgeId: number) => unwrap<void>(pf().deleteEdge(ctx(), edgeId)),
-
-    // ── Reports ──
-    listReports: (query: object = {}) =>
-        unwrap<PagedResult<ReportSummaryItem[]>>(pf().listReports(ctx(), plain(query))),
-    getReport: (id: number) => unwrap<ReportResponse>(pf().getReport(ctx(), id)),
-    createReport: (body: object) => unwrap<{ reportId: number }>(pf().createReport(ctx(), plain(body))),
-    updateReport: (id: number, body: object) => unwrap<void>(pf().updateReport(ctx(), id, plain(body))),
-    submitReport: (id: number) => unwrap<void>(pf().submitReport(ctx(), id)),
-    deleteReport: (id: number) => unwrap<void>(pf().deleteReport(ctx(), id)),
 
     // ── Memos ──
     listMemos: (query: object = {}) =>
@@ -104,38 +45,8 @@ export const projectFlowApi = {
     setMemoStatus: (id: number, body: object) => unwrap<void>(pf().setMemoStatus(ctx(), id, plain(body))),
     deleteMemo: (id: number) => unwrap<void>(pf().deleteMemo(ctx(), id)),
 
-    // ── Feedback ──
-    createFeedback: (body: object) => unwrap<{ feedbackId: number }>(pf().createFeedback(ctx(), plain(body))),
-    listFeedbackByTarget: (targetType: string, targetId: number) =>
-        unwrap<FeedbackResponse[]>(pf().listFeedbackByTarget(ctx(), targetType, targetId)),
-    listMyUnread: () => unwrap<{ items: FeedbackResponse[]; count: number }>(pf().listMyUnread(ctx())),
-    countMyUnread: () => unwrap<{ count: number }>(pf().countMyUnread(ctx())),
-    markFeedbackRead: (id: number) => unwrap<void>(pf().markFeedbackRead(ctx(), id)),
-
-    // ── Team ──
-    listSubordinates: (query: { keyword?: string; pageIndex?: number; pageSize?: number } = {}) =>
-        unwrap<PagedResult<TeamSubordinateItem[]>>(pf().listSubordinates(ctx(), plain(query))),
-    listSubReports: (userId: string, query: object = {}) =>
-        unwrap<PagedResult<ReportSummaryItem[]>>(pf().listSubReports(ctx(), userId, plain(query))),
-    listSubMemos: (userId: string) => unwrap<MemoResponse[]>(pf().listSubMemos(ctx(), userId)),
-
-    // ── Members(成員制權限) ──
-    listMembers: (projectId: number) => unwrap<ProjectMemberItem[]>(pf().listMembers(ctx(), projectId)),
-    upsertMember: (projectId: number, body: { userId: string; role: 'viewer' | 'editor' }) =>
-        unwrap<void>(pf().upsertMember(ctx(), projectId, plain(body))),
-    removeMember: (projectId: number, memberUserId: string) =>
-        unwrap<void>(pf().removeMember(ctx(), projectId, memberUserId)),
-
-    // ── AI ──
-    aiProjectSummary: (body: object) => unwrap<AiSummaryResult>(pf().aiProjectSummary(ctx(), plain(body))),
-    aiTeamSummary: (body: object) => unwrap<AiSummaryResult>(pf().aiTeamSummary(ctx(), plain(body))),
-    getQuota: () => unwrap<AiQuotaInfo>(pf().getQuota(ctx())),
     // 本地 AI(教練模式):建議不代寫
-    aiReportAdvice: (body: object) => unwrap<AiReportAdvice>(pf().aiReportAdvice(ctx(), plain(body))),
     aiMemoSuggest: (body: object) =>
         unwrap<{ suggestions: { title: string; description?: string; priority?: number; reasoning?: string }[] }>(
             pf().aiMemoSuggest(ctx(), plain(body))),
-    /** AI 改圖:自然語言需求 + 當前圖 → 操作清單(渲染端再 sanitize + 套用) */
-    aiGraphPlan: (body: { instruction: string; nodes: object[]; edges: object[] }) =>
-        unwrap<AiGraphPlan>(pf().aiGraphPlan(ctx(), plain(body))),
 }

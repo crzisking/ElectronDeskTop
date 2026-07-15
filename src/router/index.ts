@@ -124,39 +124,8 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // 項目流程(docs/20)— 五個子頁面共用 AppLayout
-      {
-        path: 'project-flow',
-        name: 'project-flow',
-        component: () => import('@/features/project-flow/ProjectListView.vue'),
-        meta: {requiresAuth: true, title: 'router.projectFlow'}
-      },
-      {
-        path: 'project-flow/canvas/:projectId',
-        name: 'project-canvas',
-        component: () => import('@/features/project-flow/ProjectCanvasView.vue'),
-        meta: {requiresAuth: true, title: 'router.projectCanvas'}
-      },
-      {
-        path: 'project-flow/reports',
-        name: 'project-reports',
-        component: () => import('@/features/project-flow/ReportListView.vue'),
-        meta: {requiresAuth: true, title: 'router.projectReports'}
-      },
-      {
-        path: 'project-flow/reports/:reportId',
-        name: 'report-editor',
-        component: () => import('@/features/project-flow/ReportEditorView.vue'),
-        meta: {requiresAuth: true, title: 'router.reportEditor'}
-      },
       // 備忘錄改成獨立 BrowserWindow(electron/main/windows/memos-window.ts),
-      // 不再以路由形式嵌在主窗。FeedbackDrawer 跳轉時 fallback 到 project-flow 列表。
-      {
-        path: 'project-flow/team',
-        name: 'project-team',
-        component: () => import('@/features/project-flow/TeamView.vue'),
-        meta: {requiresAuth: true, title: 'router.projectTeam'}
-      },
+        // 不再以路由形式嵌在主窗;項目流程的專案/畫布/匯報/團隊功能已清退,無對應路由。
 
         // 想法庫(docs/21)— 靈感速記的回顧頁;記錄本身走全域快捷鍵 / 速記小窗
         {

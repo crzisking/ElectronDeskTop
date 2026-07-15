@@ -339,159 +339,10 @@
     "aiSop": "AI SOP Generator",
     "itRepair": "IT Repair",
     "home": "Home",
-    "workCollect": "Work Auto-Capture",
-    "projectFlow": "Project Flow",
-    "projectCanvas": "Flow Canvas",
-    "projectReports": "Work Reports",
-    "reportEditor": "Edit Report",
-    "projectMemos": "Memos",
-    "projectTeam": "Team View",
+    "workCollect": "Work Review",
     "ideaLibrary": "Idea Library"
   },
   "projectFlow": {
-    "editLevel": {
-      "0": "No Access",
-      "1": "Can Create Projects",
-      "2": "Admin (All Projects)",
-      "3": "Super Admin"
-    },
-    "projects": {
-      "title": "My Projects",
-      "create": "+ New Project",
-      "name": "Name",
-      "description": "Description",
-      "editLevel": "Permission",
-      "nodeCount": "Nodes",
-      "updatedAt": "Updated",
-      "progress": "Progress",
-      "open": "Open",
-      "nameRequired": "Name required",
-      "deleteConfirm": "Delete \"{name}\"? All nodes / edges / report links will be removed."
-    },
-    "canvas": {
-      "hint": "Drag node from left, hover to show ports, Ctrl+wheel to zoom, drag blank to pan",
-      "newNodeTitle": "New node",
-      "renameNode": "New node title",
-      "actionPrompt": "Action: rename / delete / status",
-      "statusPrompt": "Node status (e.g. todo / doing / done)",
-      "stencilTitle": "Node types",
-      "dragHint": "Drag to canvas",
-      "zoomIn": "Zoom in",
-      "zoomOut": "Zoom out",
-      "fit": "Fit",
-      "viewCanvas": "Canvas",
-      "viewTimeline": "Timeline",
-      "deleteEdgeConfirm": "Delete this edge (dependency)?",
-      "groupPhases": "Phases",
-      "groupElements": "Elements",
-      "aiEdit": "AI Edit",
-      "aiUndo": "Undo"
-    },
-    "aiGraph": {
-      "title": "AI Edit Flowchart",
-      "hint": "Describe the change in plain language; AI applies it to the chart directly. You can undo it in one click afterward.",
-      "placeholder": "e.g. Add a test node after \"Design\" and connect them",
-      "submit": "Send",
-      "examplesTitle": "Examples",
-      "ex1": "Add Test and Review nodes after Design and chain them",
-      "ex2": "Set all not-started tasks to in-progress",
-      "ex3": "Add a risk node linked to Requirement",
-      "empty": "AI proposed no actionable changes",
-      "done": "AI changes applied",
-      "droppedNote": "(skipped {n} invalid ops)",
-      "failed": "AI edit failed, reverted: {msg}",
-      "undone": "Reverted to before the AI edit",
-      "undoFailed": "Undo failed: {msg}"
-    },
-    "nodeType": {
-      "start": "Kickoff",
-      "requirement": "Requirement",
-      "design": "Design",
-      "task": "Task",
-      "test": "Test",
-      "review": "Review",
-      "milestone": "Milestone",
-      "finish": "Closure",
-      "decision": "Decision",
-      "risk": "Risk"
-    },
-    "node": {
-      "detailTitle": "Node Details",
-      "linkedReports": "Linked Reports",
-      "linkedEmpty": "No reports reference this node yet",
-      "needHelpTag": "Help",
-      "deleteNode": "Delete Node",
-      "deadline": "Deadline",
-      "deadlinePlaceholder": "Pick a deadline (timeline sorts by this)",
-      "assignee": "Assignee",
-      "assigneePlaceholder": "Click Select to pick an employee",
-      "priority": "Priority",
-      "description": "Description"
-    },
-    "nodeStatus": {
-      "not_started": "Not started",
-      "in_progress": "In progress",
-      "blocked": "Blocked",
-      "completed": "Completed",
-      "cancelled": "Cancelled"
-    },
-    "timeline": {
-      "empty": "No nodes yet; switch to canvas and drag nodes in",
-      "noAssignee": "No assignee",
-      "unscheduled": "Unscheduled",
-      "noDeadlineHint": "No deadline — won't appear on the timeline. Click to set one.",
-      "overdueDays": "Overdue {n} days",
-      "dueToday": "Due today",
-      "daysLeft": "{n} days left"
-    },
-    "employee": {
-      "pickTitle": "Select Employee",
-      "searchPlaceholder": "Emp No / Name / Phone",
-      "empNo": "Emp No",
-      "name": "Name",
-      "job": "Job"
-    },
-    "reports": {
-      "title": "Work Reports",
-      "create": "+ New Report",
-      "titleCol": "Title",
-      "titlePh": "Report title",
-      "defaultTitle": "Untitled Report",
-      "updatedAt": "Updated",
-      "createdAt": "Created",
-      "items": "Items",
-      "itemContentPh": "Describe progress on this item",
-      "noItems": "No items yet; click + Add or AI Generate",
-      "sectionWork": "Today's Work",
-      "sectionIssue": "Issues",
-      "sectionPlan": "Tomorrow's Plan",
-      "placeholderWork": "What did you complete / progress today?",
-      "placeholderIssue": "Any blockers or difficulties?",
-      "placeholderPlan": "What will you work on tomorrow?",
-      "emptyWork": "No work items yet",
-      "emptyIssue": "No issues — smooth day",
-      "emptyPlan": "No plans yet",
-      "needHelp": "Need supervisor help",
-      "linkNode": "Link to node (optional)",
-      "submit": "Submit",
-      "submitted": "Submitted; supervisor has been notified",
-      "submitConfirm": "Submitted reports cannot be edited. Continue?",
-      "deleteConfirm": "Delete this draft?",
-      "aiAdvice": "AI Writing Tips",
-      "aiEmpty": "No data available",
-      "todayData": "Today's Activity",
-      "todayDataHint": "Locally collected aggregate data, for reference only — never auto-filled",
-      "todayDataEmpty": "No activity collected today",
-      "minutes": "~{n} min",
-      "adviceTitle": "AI Writing Tips",
-      "adviceIdeas": "Ideas",
-      "advicePolish": "Polish",
-      "adviceMissing": "Possibly Missing",
-      "status": {
-        "draft": "Draft",
-        "submitted": "Submitted"
-      }
-    },
     "memos": {
       "title": "Memos",
       "create": "New Memo",
@@ -516,39 +367,6 @@
         "done": "Done",
         "dismissed": "Dismissed"
       }
-    },
-    "team": {
-      "subordinates": "Subordinates",
-      "noSub": "No subordinates",
-      "pickSub": "Pick a subordinate from the left",
-      "recentReports": "Recent Reports",
-      "openMemos": "Open Memos",
-      "aiSummary": "AI Summary",
-      "aiFailed": "Failed to generate AI summary",
-      "highlights": "Highlights",
-      "blockers": "Blockers",
-      "suggestedActions": "Suggested Actions",
-      "searchSub": "Search ID / name",
-      "lastReport": "Last report: {time}",
-      "neverReported": "No reports yet",
-      "feedback": "Feedback",
-      "feedbackPlaceholder": "Write feedback on this report (subordinate gets notified)",
-      "sendFeedback": "Send Feedback",
-      "feedbackSent": "Feedback sent"
-    },
-    "members": {
-      "title": "Members",
-      "add": "Add Member",
-      "role": "Role",
-      "roleOwner": "Owner",
-      "roleEditor": "Editor",
-      "roleViewer": "Viewer",
-      "readonlyTag": "Read-only",
-      "hint": "The owner can add members and change roles. Editors can modify nodes/edges; viewers are read-only. Node assignees can always view even if not listed."
-    },
-    "feedback": {
-      "title": "Unread Feedback",
-      "empty": "No unread feedback"
     }
   },
   "home": {
@@ -564,7 +382,7 @@
     "heatTitle": "Today's Activity Heat",
     "distTitle": "Work Focus",
     "minutesUnit": "min",
-    "noActivityYet": "No activity captured today",
+    "noActivityYet": "Nothing here yet today",
     "memosTitle": "Open Memos",
     "memosOpen": "Open Memos App",
     "memosEmpty": "No pending memos",
@@ -582,11 +400,11 @@
     "regenerate": "Regenerate",
     "noAdviceYet": "No tips for today yet — click \"Generate Now\", or wait for 8 AM auto-generation",
     "setupIntro": "Complete the setup below; every day at 8 AM tips will be generated from your job type and recent work:",
-    "needTemplate": "Bind a work-collect template (tells the system your job type)",
+    "needTemplate": "Bind a work review template (tells the system your job type)",
     "needLlm": "Configure an AI model ApiKey",
     "goBind": "Bind",
     "goConfig": "Configure",
-    "basedOn": "Based on {n} records from the last 7 days · Job: {job}"
+    "basedOn": "Based on {n} entries from the last 7 days · Job: {job}"
   },
 
 
@@ -618,8 +436,8 @@
     "modelPlaceholder": "Leave empty to use provider default",
     "noProviderAlert": "No AI provider configured. Please add one in Settings",
     "openSettings": "Open settings",
-    "recordHint": "Will analyze {count} records",
-    "noRecordsInRange": "No records in selected range; adjust the time range",
+    "recordHint": "Will analyze {count} entries",
+    "noRecordsInRange": "Nothing in the selected range; adjust the time range",
     "editPrompts": "View / edit prompts",
     "hidePrompts": "Hide prompts",
     "systemPrompt": "System prompt",
@@ -631,13 +449,13 @@
     "quotaTooltip": "Daily limit reached ({limit}), resets at midnight",
     "quotaExhausted": "Daily quota exhausted ({used} / {limit}), try again tomorrow",
     "noProvider": "Please configure a provider in Settings → AI Providers",
-    "noRecords": "No work records in the selected range",
+    "noRecords": "Nothing in the selected range to analyze",
     "llmCallFailed": "AI call failed: {error}",
     "dbFailed": "Failed to write report, check logs",
     "badPayload": "Invalid request parameters",
     "unstructuredWarning": "This report did not pass structure validation (JSON parse failed or missing fields). The raw AI response is shown below.",
     "reportTitle": "Work Analysis Report",
-    "recordsCount": "{count} records",
+    "recordsCount": "{count} entries",
     "today": "Today",
     "yesterday": "Yesterday",
     "timeAllocation": "Time Allocation",
@@ -682,39 +500,37 @@
 
   "workCollect": {
     "back": "Back",
-    "title": "Work Auto-Capture",
+    "title": "Work Review",
 
     "viewDay": "Day",
     "foldCharts": "Charts",
-    "foldDetail": "Capture Details",
+    "foldDetail": "Work Details",
     "schedule": {
       "editBtn": "Adjust",
-      "title": "Adjust Capture Schedule",
-      "hours": "Hours",
-      "interval": "Interval",
+      "title": "Adjust Schedule",
+      "hours": "Work Hours",
+      "interval": "Analysis Interval",
       "invalidRange": "End hour must be after start hour",
       "saved": "Schedule updated and effective immediately",
       "hint": "Changes sync to the server and take effect immediately; admins can also see and modify your settings."
     },
     "viewWeek": "Week",
-
-    "enableLabel": "Enable capture",
+    "enableLabel": "Enable Work Review",
     "enableHintBefore": "When on, every",
-    "enableHintAfter": "minutes the screen is captured and analyzed by AI. Results stay in local SQLite, **screenshots never persisted**.",
-    "ruleHours": "Capture window: {hours} (outside this range, won't capture)",
+    "enableHintAfter": "minutes AI takes a quick look at what you're working on and summarizes it. Results stay in local SQLite, **the screen view is never saved**.",
+    "ruleHours": "Work hours: {hours} (nothing happens outside this range)",
     "ruleLock": "Auto-paused when screen is locked; resumes on unlock",
-
-    "toggleOn": "Work auto-capture enabled",
-    "toggleOff": "Work auto-capture disabled",
+    "toggleOn": "Work Review enabled",
+    "toggleOff": "Work Review disabled",
     "toggleFailed": "Toggle failed, see logs",
 
     "todayCaptured": "Today",
     "coveredHours": "Hours covered",
     "topCategory": "Top category",
-    "lastCapturedAt": "Last capture",
+    "lastCapturedAt": "Last updated",
     "weekCaptured": "This week",
     "coveredDays": "Days covered",
-    "topDay": "Peak day",
+    "topDay": "Busiest day",
 
     "chartHourly": "Hourly activity",
     "chartCategory": "Category share",
@@ -723,7 +539,7 @@
     "chartAppRankTop": "Top {n} apps",
     "chartWeekDaily": "Daily total",
     "chartWeekDailyStacked": "Daily by category",
-    "chartCaptureCount": "Captures",
+    "chartCaptureCount": "Entries",
     "chartTooltipRecord": "{count}",
     "chartTooltipPercent": "{value} ({percent}%)",
     "chartHeatmapTooltip": "{day} {hour}: {count}",
@@ -735,18 +551,17 @@
     "weekdayFri": "Fri",
     "weekdaySat": "Sat",
     "weekdaySun": "Sun",
-
-    "timelineTitle": "Capture details",
-    "timelineCount": "{count} records",
-    "timelineEmpty": "No records in selected range",
+    "timelineTitle": "Work details",
+    "timelineCount": "{count} entries",
+    "timelineEmpty": "Nothing in the selected range",
     "timelineDateLabel": "Pick date",
     "timelineRangeStart": "Start date",
     "timelineRangeEnd": "End date",
     "timelineCategoryFilter": "Category",
     "timelineCategoryAll": "All categories",
     "timelineExport": "Export TXT",
-    "timelineExportEmpty": "No records to export",
-    "timelineExportSuccess": "Exported {count} records",
+    "timelineExportEmpty": "Nothing to export",
+    "timelineExportSuccess": "Exported {count} entries",
     "timelineForeground": "Foreground: {title}",
     "timelineReasonLabel": "Reason",
 
@@ -783,14 +598,19 @@
       "sys-erp":     { "name": "New ERP",       "description": "ERP system" },
       "sys-bi":      { "name": "BI Analytics",  "description": "Reports, dashboards, trend analysis" },
       "sys-fanwei":  { "name": "Fanwei",        "description": "Fanwei platform" },
-      "sys-BPM":     { "name": "BPM",           "description": "BPM system" },
-      "sys-it":      { "name": "IT Service Desk", "description": "Tickets, IT assets, VPN requests" }
+      "sys-BPM": {
+        "name": "BPM",
+        "description": "BPM system"
+      }
     },
     "tools": {
       "bpmUserFinder": { "name": "BPM Owner Lookup", "description": "Find the owner of a BPM form" },
       "AiSop":         { "name": "AI SOP Generator", "description": "Generate SOP from text" },
       "itRepair":      { "name": "IT Repair",        "description": "Submit device or IT issues, view your tickets" },
-      "workCollect":   { "name": "Work Auto-Capture", "description": "Auto-analyze your screen every 5 min (work hours only, paused when locked)" }
+      "workCollect": {
+        "name": "Work Review",
+        "description": "Record and review what you worked on each day, auto-organized into a timeline and stats"
+      }
     }
   }
 }

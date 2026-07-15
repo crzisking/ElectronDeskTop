@@ -1,46 +1,19 @@
 /**
  * electronAPI.projectFlow 子介面 — 對齊 preload/bridges/project-flow.bridge.ts。
  * 每個 method 接 ctx + 業務 args,返回統一 {ok, data} | {ok, error} envelope。
+ *
+ * ⚠️ 專案/畫布/匯報/反饋/團隊功能已清退(公測前瘦身),只留備忘錄獨立窗需要的部分
+ * + 首頁儀表板用的 listMyNodes/todayActivity。
  */
 
 // userId = 工號;信封型別統一來自 @shared/types/ipc.types
 import type {IpcCtx as Ctx, IpcResult as Result} from '@shared/types/ipc.types'
 
 export interface ProjectFlowAPI {
-    // Projects
-    listProjects: (ctx: Ctx, query: object) => Promise<Result<unknown>>
-    getProject: (ctx: Ctx, projectId: number) => Promise<Result<unknown>>
-    createProject: (ctx: Ctx, body: object) => Promise<Result<{ projectId: number }>>
-    updateProject: (ctx: Ctx, projectId: number, body: object) => Promise<Result<unknown>>
-    deleteProject: (ctx: Ctx, projectId: number) => Promise<Result<unknown>>
-
-    // Nodes
-    createNode: (ctx: Ctx, projectId: number, body: object) => Promise<Result<{ nodeId: number }>>
-    updateNode: (ctx: Ctx, nodeId: number, body: object) => Promise<Result<unknown>>
-    deleteNode: (ctx: Ctx, nodeId: number) => Promise<Result<unknown>>
-    patchNodeStatus: (ctx: Ctx, nodeId: number, body: object) => Promise<Result<unknown>>
-    getNodeProgress: (ctx: Ctx, nodeId: number) => Promise<Result<unknown>>
-    listNodeReportItems: (ctx: Ctx, nodeId: number) => Promise<Result<unknown>>
+    /** 跨項目「我的節點」(備忘 AI 建議的輸入) */
     listMyNodes: (ctx: Ctx) => Promise<Result<unknown>>
-    searchEmployees: (ctx: Ctx, query: object) => Promise<Result<unknown>>
+    /** 今日 work-collect 聚合(首頁儀表板用) */
     todayActivity: () => Promise<Result<unknown>>
-
-    // Members
-    listMembers: (ctx: Ctx, projectId: number) => Promise<Result<unknown>>
-    upsertMember: (ctx: Ctx, projectId: number, body: object) => Promise<Result<unknown>>
-    removeMember: (ctx: Ctx, projectId: number, memberUserId: string) => Promise<Result<unknown>>
-
-    // Edges
-    createEdge: (ctx: Ctx, projectId: number, body: object) => Promise<Result<{ edgeId: number }>>
-    deleteEdge: (ctx: Ctx, edgeId: number) => Promise<Result<unknown>>
-
-    // Reports
-    listReports: (ctx: Ctx, query: object) => Promise<Result<unknown>>
-    getReport: (ctx: Ctx, reportId: number) => Promise<Result<unknown>>
-    createReport: (ctx: Ctx, body: object) => Promise<Result<{ reportId: number }>>
-    updateReport: (ctx: Ctx, reportId: number, body: object) => Promise<Result<unknown>>
-    submitReport: (ctx: Ctx, reportId: number) => Promise<Result<unknown>>
-    deleteReport: (ctx: Ctx, reportId: number) => Promise<Result<unknown>>
 
     // Memos
     listMemos: (ctx: Ctx, query: object) => Promise<Result<unknown>>
@@ -49,23 +22,6 @@ export interface ProjectFlowAPI {
     setMemoStatus: (ctx: Ctx, memoId: number, body: object) => Promise<Result<unknown>>
     deleteMemo: (ctx: Ctx, memoId: number) => Promise<Result<unknown>>
 
-    // Feedback
-    createFeedback: (ctx: Ctx, body: object) => Promise<Result<{ feedbackId: number }>>
-    listFeedbackByTarget: (ctx: Ctx, targetType: string, targetId: number) => Promise<Result<unknown>>
-    listMyUnread: (ctx: Ctx) => Promise<Result<unknown>>
-    countMyUnread: (ctx: Ctx) => Promise<Result<{ count: number }>>
-    markFeedbackRead: (ctx: Ctx, feedbackId: number) => Promise<Result<unknown>>
-
-    // Team
-    listSubordinates: (ctx: Ctx, query?: object) => Promise<Result<unknown>>
-    listSubReports: (ctx: Ctx, userId: string, query: object) => Promise<Result<unknown>>
-    listSubMemos: (ctx: Ctx, userId: string) => Promise<Result<unknown>>
-
-    // AI
-    aiProjectSummary: (ctx: Ctx, body: object) => Promise<Result<unknown>>
-    aiTeamSummary: (ctx: Ctx, body: object) => Promise<Result<unknown>>
-    getQuota: (ctx: Ctx) => Promise<Result<unknown>>
-    aiReportAdvice: (ctx: Ctx, body: object) => Promise<Result<unknown>>
+    /** AI 備忘建議 — 本地 LlmClient */
     aiMemoSuggest: (ctx: Ctx, body: object) => Promise<Result<unknown>>
-    aiGraphPlan: (ctx: Ctx, body: object) => Promise<Result<unknown>>
 }
