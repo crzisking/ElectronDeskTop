@@ -60,123 +60,91 @@ function onModeCommand(mode: UserToggleableMode) {
 </script>
 
 <template>
-  <div class="system-card" @click="emit('open', system)">
-    <!-- 右上角:打開方式(iframe 系統顯示靜態標籤,其餘顯示下拉選擇);
-         用 el-tag 當觸發器,跟下方 SSO 標籤同一套元件,視覺才統一 -->
-    <div class="corner-mode" @click.stop>
-      <el-tag v-if="!toggleable" effect="plain" size="small" type="primary">
-        {{ t('platform.openModeIframe') }}
-      </el-tag>
-      <el-dropdown v-else popper-class="system-card-mode-menu" trigger="click" @command="onModeCommand">
-        <el-tag class="mode-trigger-tag" effect="plain" size="small" type="info">
-          <span class="mode-trigger-inner">
-            {{ modeLabel }}
-            <el-icon :size="10"><CaretBottom/></el-icon>
-          </span>
+  <!-- 竖版磁贴,与「內部功能」ToolCard 同款尺寸/结构;右上角保留打開方式選擇 -->
+  <div class="app-card app-card--interactive system-card" @click="emit('open', system)">
+    <!-- 頂部:系統圖標 + 右上打開方式(iframe 系統為靜態標籤,其餘為下拉) -->
+    <div class="system-card__top">
+      <div class="system-card__icon">
+        <img
+            v-if="system.iconUrl"
+            :alt="displayName"
+            :src="system.iconUrl"
+            class="icon-img"
+            @error="($event.target as HTMLImageElement).style.display = 'none'"
+        />
+        <!-- 圖標加載失敗或無圖標時顯示首字母 -->
+        <span v-else class="icon-text">{{ displayName.charAt(0) }}</span>
+      </div>
+
+      <div class="corner-mode" @click.stop>
+        <el-tag v-if="!toggleable" class="mode-tag" effect="plain" type="primary">
+          {{ t('platform.openModeIframe') }}
         </el-tag>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item
-                :class="{'is-active': effectiveMode === 'electron-window'}"
-                command="electron-window"
-            >
-              {{ t('platform.openModeWindow') }}
-            </el-dropdown-item>
-            <el-dropdown-item
-                :class="{'is-active': effectiveMode === 'external-browser'}"
-                command="external-browser"
-            >
-              {{ t('platform.openModeBrowser') }}
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
-
-    <!-- 系統圖標 -->
-    <div class="card-icon">
-      <img
-        v-if="system.iconUrl"
-        :src="system.iconUrl"
-        :alt="displayName"
-        class="icon-img"
-        @error="($event.target as HTMLImageElement).style.display = 'none'"
-      />
-      <!-- 圖標加載失敗或無圖標時顯示首字母 -->
-      <span v-else class="icon-text">{{ displayName.charAt(0) }}</span>
-    </div>
-
-    <!-- 系統信息 -->
-    <div class="card-info">
-      <div class="card-name">{{ displayName }}</div>
-      <div class="card-desc">{{ displayDesc }}</div>
-
-      <!-- 原文：SSO 直通 -->
-      <div v-if="system.ssoEnabled" class="card-tags">
-        <el-tag effect="light" size="small" type="success">
-          {{ t('platform.tagSso') }}
-        </el-tag>
+        <el-dropdown v-else popper-class="system-card-mode-menu" trigger="click" @command="onModeCommand">
+          <el-tag class="mode-tag mode-trigger-tag" effect="plain" type="info">
+            <span class="mode-trigger-inner">
+              {{ modeLabel }}
+              <el-icon :size="13"><CaretBottom/></el-icon>
+            </span>
+          </el-tag>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                  :class="{'is-active': effectiveMode === 'electron-window'}"
+                  command="electron-window"
+              >
+                {{ t('platform.openModeWindow') }}
+              </el-dropdown-item>
+              <el-dropdown-item
+                  :class="{'is-active': effectiveMode === 'external-browser'}"
+                  command="external-browser"
+              >
+                {{ t('platform.openModeBrowser') }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
-    <!-- 打開按鈕（懸停時顯示） -->
-    <div class="card-action">
-      <el-icon><ArrowRight /></el-icon>
+    <!-- 系統名稱 + 描述 -->
+    <div class="system-card__body">
+      <h3 class="system-card__title">{{ displayName }}</h3>
+      <p class="system-card__desc">{{ displayDesc }}</p>
+    </div>
+
+    <!-- 底部:SSO 標記(啟用時)/ 描述 + 箭頭 -->
+    <div class="system-card__footer">
+      <el-tag v-if="system.ssoEnabled" class="sso-tag" effect="light" size="small" type="success">
+        {{ t('platform.tagSso') }}
+      </el-tag>
+      <span v-else class="system-card__meta">{{ displayDesc }}</span>
+      <el-icon :size="16" class="system-card__arrow">
+        <ArrowRight/>
+      </el-icon>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 尺寸/節奏對齊 components/common/ToolCard.vue,兩頁卡片視覺統一 */
 .system-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  background: var(--app-bg-surface);
-  border: 1px solid var(--app-border-subtle);
-  border-radius: var(--app-radius-lg);
-  box-shadow: var(--app-shadow-sm);
-  cursor: pointer;
-  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
-  position: relative;
-  overflow: hidden;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 22px 18px;
+  min-height: 200px;
 }
 
-.system-card:hover {
-  border-color: var(--app-border-default);
-  box-shadow: var(--app-shadow-card-hover);
-  transform: translateY(-2px);
+/* 頂部:圖標(左) + 打開方式(右) */
+.system-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.system-card:active {
-  transform: translateY(0);
-}
-
-/* 右上角打開方式標籤/下拉 —— 對齊卡片自身 18px 內距，跟其他角落元素同一節奏 */
-.corner-mode {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  cursor: default;
-}
-
-.mode-trigger-tag {
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.mode-trigger-tag:hover {
-  opacity: 0.8;
-}
-
-.mode-trigger-inner {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-/* 系統圖標 */
-.card-icon {
+.system-card__icon {
   width: 44px;
   height: 44px;
   border-radius: 10px;
@@ -200,50 +168,96 @@ function onModeCommand(mode: UserToggleableMode) {
   color: var(--app-text-primary);
 }
 
-/* 系統信息 */
-.card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 只有標題這一行需要讓開右上角標籤（描述/標籤都在標籤下方，不會重疊），
-   避免整塊都預留空間把標題擠成一小段 */
-.card-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--app-text-primary);
-  margin-bottom: 4px;
-  letter-spacing: -0.005em;
-  padding-right: 84px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-desc {
-  font-size: 12px;
-  color: var(--app-text-secondary);
-  margin-bottom: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.card-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-/* 箭頭圖標（懸停時顯示） */
-.card-action {
-  color: var(--app-text-muted);
-  transition: color 0.2s ease, transform 0.2s ease;
+/* 打開方式標籤/下拉 —— 放大一號,更好點按 */
+.corner-mode {
+  cursor: default;
   flex-shrink: 0;
 }
 
-.system-card:hover .card-action {
+.mode-tag {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 28px;
+}
+
+.mode-trigger-tag {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.mode-trigger-tag:hover {
+  opacity: 0.8;
+}
+
+.mode-trigger-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 系統名稱 + 描述 */
+.system-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.system-card__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+  margin: 0;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.system-card__desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--app-text-secondary);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 底部:SSO 標記 / 描述 + 箭頭 */
+.system-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.system-card__meta {
+  font-size: 12px;
+  color: var(--app-text-muted);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.sso-tag {
+  flex-shrink: 0;
+}
+
+.system-card__arrow {
+  color: var(--app-text-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.system-card:hover .system-card__arrow {
   color: var(--app-text-primary);
   transform: translateX(2px);
 }
@@ -254,6 +268,13 @@ function onModeCommand(mode: UserToggleableMode) {
   scoped 樣式碰不到;靠 popper-class="system-card-mode-menu" 掛全局樣式標記目前選中項。
 -->
 <style>
+/* 下拉選單本身也放大一號,跟觸發器一致 */
+.system-card-mode-menu .el-dropdown-menu__item {
+  font-size: 13px;
+  padding: 8px 18px;
+  line-height: 1.4;
+}
+
 .system-card-mode-menu .el-dropdown-menu__item.is-active {
   color: var(--el-color-primary, #409eff);
   font-weight: 600;
