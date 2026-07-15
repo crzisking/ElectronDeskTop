@@ -9,7 +9,7 @@
 
 import {readFile} from 'fs/promises'
 import {logger} from '../utils/logger'
-import {fetchCause, isRetryableCause, joinUrl} from '../services/project-flow/http-utils'
+import {sendMain} from '../services/http/main-http'
 import type {IdeaCreateMeta, IdeaDraftAttachment, IdeaRefineStatus,} from '../../shared/types/idea-capture.types'
 
 const TAG = 'idea-capture.api'
@@ -22,12 +22,6 @@ export interface IdeaApiContext {
     /** 工號;後端 [AllowAnonymous] 靠這個認身分 */
     userName: string
     token?: string
-}
-
-interface Envelope<T> {
-    code: number
-    message?: string
-    data?: T
 }
 
 export const ideaApi = {
@@ -69,55 +63,19 @@ function appendUserId2(path: string, userName: string): string {
     return userName ? `${path}${sep}userName=${encodeURIComponent(userName)}` : path
 }
 
-/** JSON body 請求 */
+/** JSON body 請求(核心走共用 sendMain) */
 function reqJson<T>(ctx: IdeaApiContext, method: string, path: string, body: unknown, timeoutMs = TIMEOUT_MS): Promise<T> {
     const init: RequestInit = {method}
     if (body != null) {
         init.headers = {'Content-Type': 'application/json'}
         init.body = JSON.stringify(body)
     }
-    return send<T>(ctx, method, path, init, timeoutMs)
+    return sendMain<T>(ctx, method, path, init, timeoutMs, TAG)
 }
 
-/** 原始 body(multipart FormData)請求 */
+/** 原始 body(multipart FormData)請求(核心走共用 sendMain) */
 function reqRaw<T>(ctx: IdeaApiContext, method: string, path: string, body: FormData, timeoutMs = TIMEOUT_MS): Promise<T> {
-    return send<T>(ctx, method, path, {method, body}, timeoutMs)
-}
-
-/** 共用發送:注入 Authorization、超時、連線層重試一次、拆後端 envelope */
-async function send<T>(ctx: IdeaApiContext, method: string, path: string, init: RequestInit, timeoutMs: number): Promise<T> {
-    const url = joinUrl(ctx.baseUrl, path)
-    for (let attempt = 0; ; attempt++) {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-        try {
-            const headers = new Headers(init.headers)
-            if (ctx.token) headers.set('Authorization', `Bearer ${ctx.token}`)
-            const res = await fetch(url, {...init, headers, signal: ctrl.signal})
-            if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} ${path}`)
-            const env = (await res.json()) as Envelope<T>
-            if (env.code !== 200) throw new Error(env.message || `code=${env.code}`)
-            return env.data as T
-        } catch (err) {
-            const e = err as Error
-            const cause = fetchCause(e)
-            if (attempt === 0 && cause && isRetryableCause(cause)) {
-                logger.warn(`${method} ${path} 連線層失敗(${cause.text}),重試一次`, TAG)
-                clearTimeout(timer)
-                continue
-            }
-            let friendly = e
-            if (e.name === 'AbortError' || /abort/i.test(e.message)) {
-                friendly = new Error(`請求超時(${Math.round(timeoutMs / 1000)}s):${path}`)
-            } else if (cause) {
-                friendly = new Error(`網路錯誤(${cause.text}):${path}`)
-            }
-            logger.warn(`${method} ${path} 失敗: ${friendly.message}`, TAG)
-            throw friendly
-        } finally {
-            clearTimeout(timer)
-        }
-    }
+    return sendMain<T>(ctx, method, path, {method, body}, timeoutMs, TAG)
 }
 
 /** 附件轉 bytes:base64(貼圖)或讀本機檔(選檔) */

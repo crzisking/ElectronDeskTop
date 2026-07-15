@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest'
-import {appendUserId, buildQuery, fetchCause, isRetryableCause, joinUrl,} from '@main/services/project-flow/http-utils'
+import {appendUserId, buildQuery, fetchCause, isRetryableCause, joinUrl,} from '@main/services/http/http-utils'
 
 describe('joinUrl(拼接 base + path,不出現雙斜線/缺斜線)', () => {
     it('base 有尾斜線 + path 有首斜線', () => {

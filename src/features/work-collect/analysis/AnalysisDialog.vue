@@ -1,31 +1,19 @@
 <script lang="ts" setup>
 /**
- * 工作分析 Dialog — 三階段 UI:配置 → 流式 → 報告。
+ * 工作分析 Dialog — 三階段 UI:配置 → 流式 → 報告(階段切換在本元件內)。
  *
- * 階段切換完全在本元件內,不靠路由 / store flag,單一檔好追。
- *
- * 設計重點:
- *   - 階段 1「配置」:時間範圍 + provider/model + system prompt + user content (都可改)
- *   - 階段 2「流式」:vanilla DOM(StreamingController)接管 textContent,
- *     **不過 Vue reactive 全鏈路**(對齊 docs/19 熱路徑設計)
- *   - 階段 3「報告」:結構化後切回 Vue 渲染(AnalysisCard-like),raw fallback 也在這裡
- *
- * 銜接點:
- *   <div ref="streamRoot" /> 提供掛載點,Controller 直接動裡面 textContent
- *
- * 配額 / 沒 provider 等錯誤透過 toast / inline alert 顯示,不另開 dialog。
+ * 邏輯拆到兩個 composable(SFC 只留 template + 薄接線):
+ *   - useAnalysisConfig — 階段 1 配置 + 預設 prompt 準備
+ *   - useAnalysisRun    — 階段切換 + 流式(StreamingController)+ 報告
  */
-
-import {computed, nextTick, onBeforeUnmount, ref, watch} from 'vue'
+import {watch} from 'vue'
 import {useI18n} from 'vue-i18n'
-import {ElMessage} from 'element-plus'
 import {ArrowLeft, MagicStick, Setting, VideoPause} from '@element-plus/icons-vue'
 import {useUiStore} from '@/stores/ui.store'
 import {useWorkAnalysisStore} from './store'
-import {type StreamEndEvent, StreamingController} from './streaming-controller'
+import {useAnalysisConfig} from './useAnalysisConfig'
+import {useAnalysisRun} from './useAnalysisRun'
 import ReportContent from './ReportContent.vue'
-import type {AnalysisReport, AnalysisReportRow} from '@/types/electron/work-analysis'
-import type {LlmProviderConfig} from '@shared/types/llm.types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -35,271 +23,60 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-const {t, locale} = useI18n()
+const {t} = useI18n()
 const uiStore = useUiStore()
 const analysisStore = useWorkAnalysisStore()
 
-type Stage = 'configure' | 'streaming' | 'result'
-const stage = ref<Stage>('configure')
+// 階段 1 配置
+const config = useAnalysisConfig()
+const {
+  rangeStart,
+  rangeEnd,
+  providers,
+  activeProviderId,
+  modelOverride,
+  systemPrompt,
+  userContent,
+  recordCount,
+  preparing,
+  promptsExpanded,
+  selectedProvider,
+} = config
 
-// ── 配置階段 state ───────────────────────────────────────────────
-const rangeStart = ref<Date>(startOfToday())
-const rangeEnd = ref<Date>(new Date())
+// 階段切換 + 流式 / 報告
+const run = useAnalysisRun(config)
+const {
+  stage,
+  streamRoot,
+  streamError,
+  finalReport,
+  isStructured,
+  canStart,
+  quotaTooltip,
+  parsedReport,
+  handleStart,
+  handleInterrupt,
+  handleBackToConfigure,
+} = run
 
-const providers = ref<LlmProviderConfig[]>([])
-const activeProviderId = ref<string | null>(null)
-/** 使用者覆寫的 model;為空字串時用 provider.model */
-const modelOverride = ref('')
-
-const systemPrompt = ref('')
-const userContent = ref('')
-const recordCount = ref(0)
-const preparing = ref(false)
-const promptsExpanded = ref(false)
-
-// ── 流式階段 state ───────────────────────────────────────────────
-const streamRoot = ref<HTMLDivElement>()
-let controller: StreamingController | null = null
-const currentRunId = ref<string | null>(null)
-const streamError = ref<string | null>(null)
-
-// ── 報告階段 state ───────────────────────────────────────────────
-const finalReport = ref<AnalysisReportRow | null>(null)
-const isStructured = ref(false)
-
-// ── Computed ─────────────────────────────────────────────────────
-
-const selectedProvider = computed(() =>
-    providers.value.find(p => p.id === activeProviderId.value) ?? null
-)
-
-const effectiveModel = computed(() =>
-    modelOverride.value.trim() || selectedProvider.value?.model || ''
-)
-
-const canStart = computed(() => {
-  if (preparing.value) return false
-  if (!systemPrompt.value || !userContent.value) return false
-  if (!activeProviderId.value) return false
-  if (!effectiveModel.value) return false
-  if (analysisStore.quota.used >= analysisStore.quota.limit) return false
-  return true
-})
-
-const quotaTooltip = computed(() =>
-    analysisStore.quota.used >= analysisStore.quota.limit
-        ? t('workAnalysis.quotaTooltip', {limit: analysisStore.quota.limit})
-        : '',
-)
-
-const parsedReport = computed<AnalysisReport | null>(() => {
-  if (!finalReport.value || !isStructured.value) return null
-  try {
-    return JSON.parse(finalReport.value.reportJson) as AnalysisReport
-  } catch {
-    return null
-  }
-})
-
-// ── 載入 ─────────────────────────────────────────────────────────
-
+// 開啟 → 初始化;關閉 → 重置
 watch(() => props.modelValue, async (open) => {
-  if (open) {
-    await initOnOpen()
-  } else {
-    teardownController()
-    stage.value = 'configure'
-    streamError.value = null
-    finalReport.value = null
-  }
+  if (open) await config.init()
+  else run.reset()
 })
 
-async function initOnOpen(): Promise<void> {
-  // 1. 拉 provider 列表
-  try {
-    const cfg = await window.electronAPI.workAnalysis.readLlmConfig()
-    providers.value = cfg.providers ?? []
-    activeProviderId.value = cfg.activeProviderId ?? providers.value[0]?.id ?? null
-    modelOverride.value = ''
-  } catch {
-    providers.value = []
-    activeProviderId.value = null
-  }
-
-  // 2. 重新拉配額(避免上次 dialog 開啟到現在又用掉)
-  await analysisStore.refreshQuota()
-
-  // 3. 拉預設 prompt
-  await loadPrompts()
-}
-
-async function loadPrompts(): Promise<void> {
-  preparing.value = true
-  systemPrompt.value = ''
-  userContent.value = ''
-  recordCount.value = 0
-  try {
-    const result = await window.electronAPI.workAnalysis.prepare({
-      rangeStart: rangeStart.value.getTime(),
-      rangeEnd: rangeEnd.value.getTime(),
-      locale: locale.value === 'en' ? 'en' : 'zh-TW',
-    })
-    if (result.ok) {
-      systemPrompt.value = result.systemPrompt
-      userContent.value = result.userContent
-      recordCount.value = result.recordCount
-    } else if (result.kind === 'no-records') {
-      // 不在這裡彈 toast,讓使用者改時間範圍 — UI 內顯示提示即可
-      systemPrompt.value = ''
-      userContent.value = ''
-      recordCount.value = 0
-    } else {
-      ElMessage.error(t('workAnalysis.prepareFailed'))
-    }
-  } finally {
-    preparing.value = false
-  }
-}
-
-// 時間範圍變動時重抓 prompt
+// 時間範圍變動時重抓 prompt(僅配置階段)
 watch([rangeStart, rangeEnd], () => {
-  if (props.modelValue && stage.value === 'configure') {
-    void loadPrompts()
-  }
+  if (props.modelValue && stage.value === 'configure') void config.loadPrompts()
 })
-
-// ── 動作 ─────────────────────────────────────────────────────────
 
 function openSettings(): void {
   emit('update:modelValue', false)
   uiStore.openSettings('llm')
 }
 
-async function handleStart(): Promise<void> {
-  if (!canStart.value) return
-  if (!activeProviderId.value) return
-
-  // 切階段
-  stage.value = 'streaming'
-  streamError.value = null
-  // 等 DOM 更新出 streamRoot
-  await nextTick()
-  if (!streamRoot.value) {
-    streamError.value = t('workAnalysis.domReady') as string
-    return
-  }
-
-  // 先啟 controller 才呼 startStream,確保 push 不漏
-  const result = await window.electronAPI.workAnalysis.startStream({
-    systemPrompt: systemPrompt.value,
-    userContent: userContent.value,
-    rangeStart: rangeStart.value.getTime(),
-    rangeEnd: rangeEnd.value.getTime(),
-    providerId: activeProviderId.value,
-    model: modelOverride.value.trim() || undefined,
-    locale: locale.value === 'en' ? 'en' : 'zh-TW',
-  })
-
-  if (!result.ok) {
-    handleStartFailure(result.kind, result.used, result.limit)
-    stage.value = 'configure'
-    return
-  }
-
-  currentRunId.value = result.runId
-  controller = new StreamingController(streamRoot.value, result.runId)
-  controller.onceEnd(handleStreamEnd)
-}
-
-function handleStartFailure(
-    kind: 'busy' | 'quota' | 'bad-payload' | 'db',
-    used?: number,
-    limit?: number,
-): void {
-  switch (kind) {
-    case 'busy':
-      ElMessage.warning(t('workAnalysis.busy'))
-      break
-    case 'quota':
-      ElMessage.warning(t('workAnalysis.quotaExhausted', {used: used ?? 0, limit: limit ?? 5}))
-      break
-    case 'bad-payload':
-      ElMessage.error(t('workAnalysis.badPayload'))
-      break
-    case 'db':
-      ElMessage.error(t('workAnalysis.dbFailed'))
-      break
-  }
-}
-
-async function handleStreamEnd(event: StreamEndEvent): Promise<void> {
-  if (!event.ok) {
-    streamError.value = describeStreamError(event)
-    if (event.kind === 'no-provider') {
-      // 立即引導到設定
-      ElMessage.warning(t('workAnalysis.noProvider'))
-    }
-    return  // 留在 streaming 階段顯示錯誤,使用者按「返回」回 configure
-  }
-
-  // 成功 — 拉完整 row,進報告階段
-  try {
-    const row = await window.electronAPI.workAnalysis.get(event.reportId)
-    finalReport.value = row
-    isStructured.value = event.structured
-    stage.value = 'result'
-    // store 同步
-    await analysisStore.refreshAfterStreamEnd()
-  } catch (err) {
-    streamError.value = String(err)
-  }
-}
-
-function describeStreamError(event: Extract<StreamEndEvent, { ok: false }>): string {
-  switch (event.kind) {
-    case 'no-provider':
-      return t('workAnalysis.noProvider')
-    case 'llm-call':
-      return t('workAnalysis.llmCallFailed', {error: event.error ?? ''})
-    case 'db':
-      return t('workAnalysis.dbFailed')
-    case 'aborted':
-      return t('workAnalysis.aborted')
-  }
-}
-
-async function handleInterrupt(): Promise<void> {
-  if (!currentRunId.value) return
-  await window.electronAPI.workAnalysis.interrupt(currentRunId.value)
-  // 不直接切階段,等 PUSH_END 帶 aborted 回來統一處理
-}
-
-function handleBackToConfigure(): void {
-  teardownController()
-  streamError.value = null
-  stage.value = 'configure'
-}
-
 function handleClose(): void {
   emit('update:modelValue', false)
-}
-
-function teardownController(): void {
-  controller?.dispose()
-  controller = null
-  currentRunId.value = null
-}
-
-onBeforeUnmount(() => {
-  teardownController()
-})
-
-// ── 工具 ─────────────────────────────────────────────────────────
-
-function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
 }
 </script>
 

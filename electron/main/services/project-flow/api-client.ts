@@ -10,19 +10,12 @@
  * Token / baseUrl 由 caller 傳進來(從 renderer authStore 拿,跟 notification-client / sync-service 同套)。
  */
 
-import {logger} from '../../utils/logger'
-import {appendUserId, buildQuery, fetchCause, isRetryableCause, joinUrl} from './http-utils'
+import {appendUserId, buildQuery} from '../http/http-utils'
+import {sendMain} from '../http/main-http'
 
 const TAG = 'project-flow.api'
 
 const REQUEST_TIMEOUT_MS = 15_000
-
-/** 後端統一 envelope:{ code, message, data } */
-interface Envelope<T> {
-    code: number
-    message?: string
-    data?: T
-}
 
 /**
  * 呼叫後端必備的上下文。
@@ -59,9 +52,9 @@ export const projectFlowApi = {
     },
 }
 
-// ─── 內部 HTTP helper(URL 拼接 / 錯誤歸類純函數已抽到 http-utils.ts)───
+// ─── 內部 HTTP helper —— 薄薄一層:拼 userId query + 建 JSON init,核心走 sendMain ───
 
-async function req<T>(
+function req<T>(
     ctx: ProjectFlowApiContext,
     method: string,
     path: string,
@@ -69,54 +62,13 @@ async function req<T>(
     timeoutMs: number = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
     // 自動注入 userId 到 query — 後端 [AllowAnonymous] + [FromQuery] string userId
-    const url = appendUserId(joinUrl(ctx.baseUrl, path), ctx.userId)
-
-    // 第一次失敗且是「連線層可重試」錯誤 → 換新連線立刻重打一次
-    for (let attempt = 0; ; attempt++) {
-        const ctrl = new AbortController()
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-        try {
-            const headers: Record<string, string> = {'Content-Type': 'application/json'}
-            if (ctx.token) headers.Authorization = `Bearer ${ctx.token}`
-            const res = await fetch(url, {
-                method,
-                headers,
-                body: body == null ? undefined : JSON.stringify(body),
-                signal: ctrl.signal,
-            })
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status} ${res.statusText} ${path}`)
-            }
-            const env = await res.json() as Envelope<T>
-            if (env.code !== 200) {
-                throw new Error(env.message || `code=${env.code}`)
-            }
-            return env.data as T
-        } catch (err) {
-            const e = err as Error
-            const cause = fetchCause(e)
-
-            // 殭屍 keep-alive 連線:重試一次(新請求會建新 socket)
-            if (attempt === 0 && cause && isRetryableCause(cause)) {
-                logger.warn(`${method} ${path} 連線層失敗(${cause.text}),重試一次`, TAG)
-                clearTimeout(timer)
-                continue
-            }
-
-            // AbortController 砍掉的訊息是「This operation was aborted」→ 翻成超時;
-            // 「fetch failed」附上 cause,日誌才查得到真因(ECONNRESET / EAI_AGAIN / ...)
-            let friendly = e
-            if (e.name === 'AbortError' || /abort/i.test(e.message)) {
-                friendly = new Error(`請求超時(${Math.round(timeoutMs / 1000)}s):${path}`)
-            } else if (cause) {
-                friendly = new Error(`網路錯誤(${cause.text}):${path}`)
-            }
-            logger.warn(`${method} ${path} 失敗: ${friendly.message}`, TAG)
-            throw friendly
-        } finally {
-            clearTimeout(timer)
-        }
+    const p = appendUserId(path, ctx.userId)
+    const init: RequestInit = {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: body == null ? undefined : JSON.stringify(body),
     }
+    return sendMain<T>(ctx, method, p, init, timeoutMs, TAG)
 }
 
 function get<T>(ctx: ProjectFlowApiContext, path: string, params: Record<string, unknown>): Promise<T> {

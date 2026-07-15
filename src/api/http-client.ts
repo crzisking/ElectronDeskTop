@@ -9,8 +9,15 @@
  *  - Auth 攔截器（注入 Bearer Token）
  *  - 錯誤攔截器（標準化 ApiError）
  *
- * 注意：HTTP Client 只存在於渲染進程（Renderer），
- * 主進程不做任何 HTTP 請求，職責分離清晰。
+ * ── 「調後端」傳輸策略(全專案兩條通道,別再各自發明第三種)──────────
+ *  1. **渲染端 axios 直連(本檔,主要方向)**:一般業務 feature 用這個 —— repair / ai-sop /
+ *     idea-capture 想法庫 / work-collect 等。走本工廠拿 client,攔截器注入 token、拆 envelope。
+ *  2. **主進程 fetch(electron/main/services/http/main-http.ts)**:需要主進程上下文的才走 ——
+ *     auth(避開 CORS)、跨窗共享的 project-flow / idea-capture create·refine、背景佇列 / 長任務。
+ *     渲染端經 IPC 呼叫,token/baseUrl 由 main 統一注入。
+ *  新功能預設走通道 1(渲染端 axios);只有「非主進程做不可」的才放通道 2。
+ *
+ * (舊註解「主進程不做任何 HTTP」是錯的 —— 主進程確實會發,見 main-http.ts。)
  *
  * ── 攔截器返回值約定 ────────────────────────────────────────────────
  * auth.interceptor 的響應攔截器會剝掉外層 { code, message, data }，
