@@ -33,3 +33,6 @@ export type {RunHandle} from './run-context'
 
 export {prepareAnalysis} from './preparation'
 export type {PrepareInput, PrepareOutcome} from './preparation'
+
+export {startAnalysisStream, todayQuota, DAILY_LIMIT} from './runner'
+export type {StartStreamInput, StartStreamOutcome, RunnerDeps} from './runner'

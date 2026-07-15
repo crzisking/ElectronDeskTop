@@ -19,8 +19,6 @@ export function createProjectFlowBridge(ipc: IpcRenderer, ch: ProjectFlowChannel
     const c = (action: string, args: object = {}) => ipc.invoke(action, args)
 
     return {
-        listMyNodes: (ctx: Ctx) =>
-            c(ch.PROJECT_FLOW_MY_NODES, {ctx}) as Promise<Result<unknown>>,
         todayActivity: () =>
             c(ch.PROJECT_FLOW_TODAY_ACTIVITY, {}) as Promise<Result<unknown>>,
 

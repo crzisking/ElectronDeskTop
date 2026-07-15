@@ -93,11 +93,10 @@ function activityText(categories: TodayActivityCategory[]): string {
         .join('\n')
 }
 
-// ─── AI 備忘建議:項目進度 + 現有待辦驅動(不看原始活動記錄) ──
+// ─── AI 備忘建議:現有待辦驅動(不看原始活動記錄) ──
 
-/** renderer 傳來的上下文:我的節點(含截止日/狀態)+ 現有 pending 備忘 */
+/** renderer 傳來的上下文:現有 pending 備忘 */
 export interface MemoSuggestInput {
-    nodes?: { projectName: string; title: string; status: string; deadline?: number | null; priority?: number }[]
     memos?: { title: string; priority: number; dueDate?: number | null }[]
 }
 
@@ -110,10 +109,7 @@ export async function generateMemoSuggestions(
     const today = new Date().toISOString().slice(0, 10)
     const fmtDate = (ms?: number | null) => (ms ? new Date(ms).toISOString().slice(0, 10) : '無')
 
-    // 節點:只給未完成的;備忘:只給 pending(renderer 端已過濾,這裡再保險截斷)
-    const nodeLines = (input.nodes ?? []).slice(0, 30)
-        .map((n) => `- [${n.status}] ${n.projectName} / ${n.title}(截止: ${fmtDate(n.deadline)})`)
-        .join('\n') || '(目前沒有指派給我的節點)'
+    // 備忘:只給 pending(renderer 端已過濾,這裡再保險截斷)
     const memoLines = (input.memos ?? []).slice(0, 30)
         .map((m) => `- [優先級${m.priority}] ${m.title}(到期: ${fmtDate(m.dueDate)})`)
         .join('\n') || '(目前沒有進行中備忘)'
@@ -125,16 +121,16 @@ export async function generateMemoSuggestions(
             {
                 role: 'system',
                 content:
-                    '你是工作助理。根據使用者的項目節點進度與現有待辦,建議值得新增的備忘錄。' +
-                    '優先關注:即將到期或已逾期的節點、blocked 狀態的節點、高優先級但沒有跟進動作的待辦。' +
+                    '你是工作助理。根據使用者現有的待辦備忘,建議值得新增的備忘錄。' +
+                    '優先關注:高優先級但沒有跟進動作的待辦、即將到期或已逾期的待辦。' +
                     '不要重複已存在的備忘。回 JSON。',
             },
             {
                 role: 'user',
                 content:
-                    `今天是 ${today}。\n\n我負責的項目節點:\n${nodeLines}\n\n現有進行中備忘:\n${memoLines}\n\n` +
+                    `今天是 ${today}。\n\n現有進行中備忘:\n${memoLines}\n\n` +
                     `請建議最多 3 條新備忘(沒有值得提醒的就回空陣列)。\n` +
-                    `回 JSON:{"suggestions":[{"title":"短標題","description":"具體說明","priority":1,"reasoning":"為什麼建議(關聯哪個節點/截止日)"}]}\n` +
+                    `回 JSON:{"suggestions":[{"title":"短標題","description":"具體說明","priority":1,"reasoning":"為什麼建議(關聯哪個待辦/到期日)"}]}\n` +
                     `priority:0=低 1=中 2=高(逾期/即將到期給 2)。`,
             },
         ],

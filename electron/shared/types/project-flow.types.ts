@@ -176,20 +176,6 @@ export interface MemoResponse {
     updatedAt: number
 }
 
-// ─── 我的節點(跨項目,後端 GET /my-nodes) ──────────────────
-
-export interface MyNodeItem {
-    nodeId: number
-    projectId: number
-    projectName: string
-    title: string
-    status: NodeStatus
-    nodeType: NodeType
-    priority: number
-    /** 截止時間 unix ms;無為 null */
-    deadline?: number | null
-}
-
 // ─── 員工搜尋(後端 /api/employee/getEmployees) ─────────────
 
 export interface EmployeeItem {

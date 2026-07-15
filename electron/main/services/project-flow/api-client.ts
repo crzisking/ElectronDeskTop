@@ -41,11 +41,6 @@ export interface ProjectFlowApiContext {
 
 /** 對外暴露給 IPC handler 的函式;每個 method 接 (ctx, payload) 回 data */
 export const projectFlowApi = {
-    /** 跨項目「我的節點」— 備忘 AI 進度輸入 */
-    listMyNodes(ctx: ProjectFlowApiContext) {
-        return get(ctx, '/api/projectflow/my-nodes', {})
-    },
-
     // Memos
     listMemos(ctx: ProjectFlowApiContext, params: unknown) {
         return get(ctx, '/api/projectflow/memos', params as Record<string, unknown>)

@@ -210,24 +210,14 @@ const accepting = ref(false)
 
 /**
  * 收集上下文 → 本地 LLM 生成建議 → 開採納彈窗。
- * 上下文:我名下未完成的節點(看截止日/阻塞)+ 現有 pending 備忘(讓 AI 不重複建議)。
+ * 上下文:現有 pending 備忘(讓 AI 針對待辦給建議、且不重複)。
  */
 async function onAiSuggest() {
   aiLoading.value = true
   try {
-    const myNodes = await projectFlowApi.listMyNodes()
     const pendingMemos = store.memos.filter((m) => m.status === 'pending')
 
     const r = (await projectFlowApi.aiMemoSuggest({
-      nodes: myNodes
-          .filter((n) => n.status !== 'completed' && n.status !== 'cancelled')
-          .map((n) => ({
-            projectName: n.projectName,
-            title: n.title,
-            status: n.status,
-            deadline: n.deadline,
-            priority: n.priority
-          })),
       memos: pendingMemos.map((m) => ({title: m.title, priority: m.priority, dueDate: m.dueDate})),
     })) as { suggestions?: Suggestion[] }
 

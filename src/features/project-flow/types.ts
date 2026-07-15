@@ -9,7 +9,6 @@
 export type {
     MemoResponse,
     PagedResult,
-    MyNodeItem,
     TodayActivityCategory,
     TodayActivitySummary,
     AiMemoSuggestion,

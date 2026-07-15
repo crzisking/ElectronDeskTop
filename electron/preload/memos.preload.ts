@@ -14,7 +14,7 @@
  * 哪裡改了那邊也要動。
  *
  * ⚠️ 項目流程的專案/畫布/匯報/反饋/團隊功能已清退,本檔只留備忘錄窗需要的部分
- * (memo CRUD + AI 備忘建議的輸入「我的節點」+ 首頁用的今日活動)。
+ * (memo CRUD + AI 備忘建議 + 首頁用的今日活動)。
  */
 
 import {contextBridge, ipcRenderer} from 'electron'
@@ -29,7 +29,6 @@ const IPC = {
     PF_SET_MEMO_STATUS: 'pf:set-memo-status',
     PF_DELETE_MEMO: 'pf:delete-memo',
     PF_AI_MEMO_SUGGEST: 'pf:ai-memo-suggest',
-    PF_MY_NODES: 'pf:my-nodes',
     PF_TODAY_ACTIVITY: 'pf:today-activity',
 
     PUSH_PROJECT_FLOW_EVENT: 'push:project-flow-event',
@@ -70,7 +69,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
         deleteMemo: (_ctx: unknown, memoId: number) => c(IPC.PF_DELETE_MEMO, {memoId}),
 
         aiMemoSuggest: (_ctx: unknown, body: object) => c(IPC.PF_AI_MEMO_SUGGEST, {body}),
-        listMyNodes: (_ctx: unknown) => c(IPC.PF_MY_NODES, {}),
         todayActivity: () => c(IPC.PF_TODAY_ACTIVITY, {}),
     },
 

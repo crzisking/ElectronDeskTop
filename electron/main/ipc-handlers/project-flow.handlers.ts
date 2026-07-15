@@ -2,7 +2,7 @@
  * 項目流程 IPC handler(docs/20)— 純通道註冊層。
  *
  * ⚠️ 專案/畫布/匯報/反饋/團隊功能已清退(公測前瘦身),只留備忘錄獨立窗需要的部分
- * + 首頁儀表板用的「我的節點」/「今日活動」。
+ * + 首頁儀表板用的「今日活動」。
  *
  * 模式跟 work-collect.handlers.ts 同:
  *   - renderer invoke 帶 {ctx: {baseUrl, userId, token}, ...args}
@@ -72,8 +72,6 @@ export function registerProjectFlowHandlers(
 ): void {
     const ch = IpcChannels
     const api = projectFlowApi
-
-    handleWithCtx(ch.PROJECT_FLOW_MY_NODES, (ctx) => api.listMyNodes(ctx))
 
     // 今日活動摘要 — 純本地讀 work-collect,不打後端(首頁儀表板用)
     ipcMain.handle(ch.PROJECT_FLOW_TODAY_ACTIVITY, async () =>

@@ -153,8 +153,7 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue'
-import {ElMessage} from 'element-plus'
+import {onMounted, ref} from 'vue'
 import {
   ArrowDown,
   ArrowRight,
@@ -166,412 +165,73 @@ import {
   Promotion,
   Tools
 } from '@element-plus/icons-vue'
-import {IpcChannels} from '@shared/ipc-channels'
-import type {ConversationSummary} from '@shared/types/agent.types'
 import {renderMarkdown as render} from './markdown'
+import {agentApi} from './api'
+import {folderName, useAgentConversations} from './composables/useAgentConversations'
+import {useAgentStream} from './composables/useAgentStream'
+import {useAgentPermissions} from './composables/useAgentPermissions'
+import {useToolGroups} from './composables/useToolGroups'
 
-// ── 視圖訊息(union) ──
-interface ChatMsg {
-  id: string
-  kind: 'user' | 'assistant'
-  content: string
-  reasoning?: string
-  /** think 內容預設折疊,點擊展開 */
-  reasoningOpen?: boolean
-  streaming?: boolean
-}
-
-interface ToolMsg {
-  id: string // = toolUseId
-  kind: 'tool'
-  name: string
-  input: unknown
-  output?: unknown
-  isError?: boolean
-  running?: boolean
-  /** 預設折疊,點擊展開看 input/output */
-  open?: boolean
-}
-
-type ViewMsg = ChatMsg | ToolMsg
-
-/** 顯示用:連續的工具訊息折成一組(整組預設折疊) */
-interface ToolGroup {
-  kind: 'tool-group'
-  /** 組 id = 該組第一則工具的 id(串流追加同組時保持穩定) */
-  id: string
-  tools: ToolMsg[]
-}
-
-type DisplayItem = ChatMsg | ToolGroup
-
-const api = () => window.electronAPI.agent
-
+// 模型是否配好(未配好時 banner 提示 + 停用輸入)
 const ready = ref(false)
-const conversations = ref<ConversationSummary[]>([])
-const activeConvId = ref<string>('')
-const messages = ref<ViewMsg[]>([])
-const input = ref('')
-const sending = ref(false)
-const scrollEl = ref<HTMLDivElement | null>(null)
 
-// ── 工具組:把 messages 裡連續的 tool 訊息折成一塊(整組預設折疊,少一堆卡片) ──
-const groupOpen = ref<Record<string, boolean>>({})
+// 對話 / 訊息 / 工作資料夾 —— 核心狀態擁有者
+const conv = useAgentConversations()
+const {
+  conversations,
+  activeConvId,
+  activeWorkspaces,
+  messages,
+  scrollEl,
+  loadingMore,
+  loadConversations,
+  selectConversation,
+  onScroll,
+  newChat,
+  addWorkspace,
+  removeWorkspace,
+  removeConversation,
+} = conv
 
-const displayItems = computed<DisplayItem[]>(() => {
-  const out: DisplayItem[] = []
-  let buf: ToolMsg[] = []
-  const flush = () => {
-    if (buf.length) {
-      out.push({kind: 'tool-group', id: buf[0].id, tools: buf})
-      buf = []
-    }
-  }
-  for (const m of messages.value) {
-    if (m.kind === 'tool') buf.push(m)
-    else {
-      flush()
-      out.push(m)
-    }
-  }
-  flush()
-  return out
+// 送出 / 停止 / 串流 —— 往 conv 的共享 messages 追加
+const {input, sending, send, stop} = useAgentStream({
+  messages: conv.messages,
+  activeConvId: conv.activeConvId,
+  ready,
+  scrollBottom: conv.scrollBottom,
+  reloadConversations: conv.loadConversations,
 })
 
-const isGroupOpen = (id: string) => !!groupOpen.value[id]
-const toggleGroup = (id: string) => {
-  groupOpen.value[id] = !groupOpen.value[id]
-}
-const groupRunning = (g: ToolGroup) => g.tools.some((t) => t.running)
-const groupError = (g: ToolGroup) => g.tools.some((t) => t.isError)
+// 權限彈框
+const {pendingPerm, alwaysLabel, respondPerm} = useAgentPermissions()
 
-/** 折疊時的一行摘要:1 個顯示工具名,多個顯示「N 個工具:name…」 */
-function groupSummary(g: ToolGroup): string {
-  const names = g.tools.map((t) => t.name)
-  if (names.length === 1) return names[0]
-  const uniq = [...new Set(names)]
-  const head = uniq.slice(0, 3).join('、')
-  return `${names.length} 個工具:${head}${uniq.length > 3 ? '…' : ''}`
-}
+// 工具組顯示 + input/output 格式化
+const {
+  displayItems,
+  isGroupOpen,
+  toggleGroup,
+  groupRunning,
+  groupError,
+  groupSummary,
+  statusClass,
+  stringify,
+  shorten,
+} = useToolGroups(conv.messages)
 
-/** 單一工具狀態小圓點 class */
-function statusClass(t: ToolMsg): string {
-  if (t.running) return 'dot-running'
-  return t.isError ? 'dot-error' : 'dot-ok'
-}
-
-// ── 權限彈框(Stage 2)──
-interface PermReq {
-  conversationId: string
-  approvalId: string
-  tool: string
-  subject: string
-  input: unknown
-  suggestedPattern: string
-}
-
-const pendingPerm = ref<PermReq | null>(null)
-const alwaysLabel = computed(() => {
-  const p = pendingPerm.value
-  if (!p) return ''
-  return p.tool === 'bash' ? p.suggestedPattern : p.tool
-})
-/** 當前對話綁定的工作資料夾清單(可多個,第一個為主目錄);顯示成 header 的 chip 條 */
-const activeWorkspaces = ref<string[]>([])
-
-/** 路徑 → 顯示用的資料夾名(最後一段) */
-function folderName(p: string): string {
-  const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/)
-  return parts[parts.length - 1] || p
-}
-
-// ── 懶加載:先載最近 PAGE 則,往上滾再載更舊(上下文長也不卡)──
-const PAGE = 30
-let oldestTs: number | null = null
-const hasMore = ref(false)
-const loadingMore = ref(false)
-
-/** DB 訊息行 → 視圖(只顯示 user/assistant;工具卡只在當輪即時渲,不從歷史重建) */
-interface RawRow {
-  id: string
-  role: string
-  content: string
-  reasoningContent?: string
-  timestamp: number
-}
-
-function mapRows(rows: RawRow[]): ViewMsg[] {
-  return rows
-      .filter((r) => r.role === 'user' || r.role === 'assistant')
-      .map((r) => ({id: r.id, kind: r.role as 'user' | 'assistant', content: r.content, reasoning: r.reasoningContent}))
-}
-
-// ── envelope 解包 ──
-async function call<T>(p: Promise<{ ok: true; data: T } | { ok: false; error: string }>): Promise<T> {
-  const r = await p
-  if (r.ok) return r.data
-  throw new Error(r.error)
-}
-
-// ── 載入 ──
 async function loadConfig() {
   try {
-    const cfg = await call<{ isReady: boolean }>(api().configRead())
+    const cfg = await agentApi.configRead()
     ready.value = !!cfg.isReady
   } catch {
     ready.value = false
   }
 }
 
-async function loadConversations() {
-  try {
-    conversations.value = await call<ConversationSummary[]>(api().listConversations())
-  } catch {
-    conversations.value = []
-  }
-}
-
-async function selectConversation(id: string) {
-  activeConvId.value = id
-  activeWorkspaces.value = conversations.value.find((c) => c.conversationId === id)?.workspaces ?? []
-  try {
-    const rows = await call<RawRow[]>(api().listMessages(id, PAGE))
-    messages.value = mapRows(rows)
-    oldestTs = rows.length ? rows[0].timestamp : null
-    hasMore.value = rows.length >= PAGE
-    scrollBottom()
-  } catch {
-    messages.value = []
-    hasMore.value = false
-  }
-}
-
-/** 往上滾到頂 → 載更舊一頁,並補回 scrollTop 保持視覺位置 */
-async function loadOlder() {
-  if (loadingMore.value || !hasMore.value || oldestTs == null || !activeConvId.value) return
-  const el = scrollEl.value
-  if (!el) return
-  loadingMore.value = true
-  const prevH = el.scrollHeight
-  const prevTop = el.scrollTop
-  try {
-    const rows = await call<RawRow[]>(api().listMessages(activeConvId.value, PAGE, oldestTs))
-    if (rows.length) {
-      oldestTs = rows[0].timestamp
-      hasMore.value = rows.length >= PAGE
-      messages.value = [...mapRows(rows), ...messages.value]
-      await nextTick()
-      el.scrollTop = el.scrollHeight - prevH + prevTop
-    } else {
-      hasMore.value = false
-    }
-  } catch {
-    hasMore.value = false
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-function onScroll() {
-  const el = scrollEl.value
-  if (el && el.scrollTop < 60) void loadOlder()
-}
-
-async function newChat() {
-  try {
-    // opencode 式:新對話先選工作資料夾;取消就不建
-    const picked = await call<{ path: string | null }>(api().pickWorkspace())
-    if (!picked.path) return
-    const r = await call<{ conversationId: string; workspaces: string[] }>(api().newConversation(picked.path))
-    activeConvId.value = r.conversationId
-    activeWorkspaces.value = r.workspaces
-    messages.value = []
-    oldestTs = null
-    hasMore.value = false
-    await loadConversations()
-  } catch (err) {
-    ElMessage.error((err as Error).message)
-  }
-}
-
-/** 加一個工作資料夾(chip 條的「+」) */
-async function addWorkspace() {
-  if (!activeConvId.value) return
-  try {
-    const picked = await call<{ path: string | null }>(api().pickWorkspace())
-    if (!picked.path || activeWorkspaces.value.includes(picked.path)) return
-    const next = [...activeWorkspaces.value, picked.path]
-    const r = await call<{ workspaces: string[] }>(api().setWorkspaces(activeConvId.value, next))
-    activeWorkspaces.value = r.workspaces
-    await loadConversations()
-  } catch (err) {
-    ElMessage.error((err as Error).message)
-  }
-}
-
-/** 移除一個工作資料夾(chip 的 ×) */
-async function removeWorkspace(path: string) {
-  if (!activeConvId.value) return
-  try {
-    const next = activeWorkspaces.value.filter((w) => w !== path)
-    const r = await call<{ workspaces: string[] }>(api().setWorkspaces(activeConvId.value, next))
-    activeWorkspaces.value = r.workspaces
-    await loadConversations()
-  } catch (err) {
-    ElMessage.error((err as Error).message)
-  }
-}
-
-async function removeConversation(id: string) {
-  try {
-    await call(api().deleteConversation(id))
-    if (id === activeConvId.value) {
-      activeConvId.value = ''
-      messages.value = []
-    }
-    await loadConversations()
-  } catch (err) {
-    ElMessage.error((err as Error).message)
-  }
-}
-
-// ── 送出 / 停止 ──
-async function send() {
-  const text = input.value.trim()
-  if (!text || !ready.value || sending.value) return
-  if (!activeConvId.value) {
-    ElMessage.info('請先點「新對話」選擇工作資料夾')
-    return
-  }
-  input.value = ''
-  sending.value = true
-  messages.value.push({id: `u-${Date.now()}`, kind: 'user', content: text})
-  scrollBottom()
-  try {
-    const r = await call<{ messageId: string; conversationId: string }>(
-        api().start(activeConvId.value, text))
-    activeConvId.value = r.conversationId
-    // 預建 assistant 氣泡(串流 delta 會找這個 id 累積)
-    ensureAssistant(r.messageId)
-    await loadConversations()
-  } catch (err) {
-    sending.value = false
-    ElMessage.error((err as Error).message)
-  }
-}
-
-function stop() {
-  api().interrupt(activeConvId.value)
-  sending.value = false
-}
-
-// ── 串流事件 ──
-function ensureAssistant(id: string): ChatMsg {
-  const found = messages.value.find((m) => m.id === id && m.kind === 'assistant') as ChatMsg | undefined
-  if (found) return found
-  const msg: ChatMsg = {id, kind: 'assistant', content: '', reasoning: '', streaming: true}
-  messages.value.push(msg)
-  return msg
-}
-
-function onStream(...args: unknown[]) {
-  const p = args[0] as { conversationId: string; messageId: string; kind: 'text' | 'thinking'; delta: string }
-  if (p.conversationId !== activeConvId.value) return
-  const m = ensureAssistant(p.messageId)
-  if (p.kind === 'thinking') m.reasoning = (m.reasoning ?? '') + p.delta
-  else m.content += p.delta
-  scrollBottom()
-}
-
-function onToolUse(...args: unknown[]) {
-  const p = args[0] as { conversationId: string; toolUseId: string; name: string; input: unknown }
-  if (p.conversationId !== activeConvId.value) return
-  messages.value.push({id: p.toolUseId, kind: 'tool', name: p.name, input: p.input, running: true})
-  scrollBottom()
-}
-
-function onToolResult(...args: unknown[]) {
-  const p = args[0] as { conversationId: string; toolUseId: string; content: unknown; isError: boolean }
-  if (p.conversationId !== activeConvId.value) return
-  const t = messages.value.find((m) => m.id === p.toolUseId && m.kind === 'tool') as ToolMsg | undefined
-  if (t) {
-    t.output = p.content
-    t.isError = p.isError
-    t.running = false
-  }
-  scrollBottom()
-}
-
-function onEnd(...args: unknown[]) {
-  const p = args[0] as { conversationId: string; messageId: string }
-  if (p.conversationId !== activeConvId.value) return
-  const m = messages.value.find((x) => x.id === p.messageId && x.kind === 'assistant') as ChatMsg | undefined
-  if (m) m.streaming = false
-  sending.value = false
-}
-
-function onError(...args: unknown[]) {
-  const p = args[0] as { conversationId: string; message: string }
-  sending.value = false
-  ElMessage.error(p.message)
-}
-
-function onPermissionAsk(...args: unknown[]) {
-  pendingPerm.value = args[0] as PermReq
-}
-
-/** decision: allow-once / allow-always / deny-once / deny-always */
-function respondPerm(decision: string) {
-  const p = pendingPerm.value
-  if (!p) return
-  const pattern = decision.endsWith('always') ? p.suggestedPattern : undefined
-  void api().permissionRespond(p.approvalId, decision, pattern)
-  pendingPerm.value = null
-}
-
-// ── 工具函式 ──
-function stringify(v: unknown): string {
-  if (typeof v === 'string') return v
-  try {
-    return JSON.stringify(v, null, 2)
-  } catch {
-    return String(v)
-  }
-}
-
-function shorten(s: string, max = 800): string {
-  return s.length > max ? s.slice(0, max) + `…(+${s.length - max})` : s
-}
-
-function scrollBottom() {
-  void nextTick(() => {
-    const el = scrollEl.value
-    if (el) el.scrollTop = el.scrollHeight
-  })
-}
-
-// ── 生命週期 ──
-const C = IpcChannels
 onMounted(async () => {
-  window.electronAPI.on(C.AGENT_PUSH_STREAM, onStream)
-  window.electronAPI.on(C.AGENT_PUSH_TOOL_USE, onToolUse)
-  window.electronAPI.on(C.AGENT_PUSH_TOOL_RESULT, onToolResult)
-  window.electronAPI.on(C.AGENT_PUSH_END, onEnd)
-  window.electronAPI.on(C.AGENT_PUSH_ERROR, onError)
-  window.electronAPI.on(C.AGENT_PUSH_PERMISSION_ASK, onPermissionAsk)
   await loadConfig()
   await loadConversations()
   // 有舊對話就選第一個;沒有就留空,由使用者點「新對話」選工作資料夾(不自動彈資料夾框)
   if (conversations.value.length) await selectConversation(conversations.value[0].conversationId)
-})
-
-onUnmounted(() => {
-  window.electronAPI.off(C.AGENT_PUSH_STREAM, onStream)
-  window.electronAPI.off(C.AGENT_PUSH_TOOL_USE, onToolUse)
-  window.electronAPI.off(C.AGENT_PUSH_TOOL_RESULT, onToolResult)
-  window.electronAPI.off(C.AGENT_PUSH_END, onEnd)
-  window.electronAPI.off(C.AGENT_PUSH_ERROR, onError)
-  window.electronAPI.off(C.AGENT_PUSH_PERMISSION_ASK, onPermissionAsk)
 })
 </script>
 

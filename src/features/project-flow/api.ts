@@ -14,7 +14,7 @@ import {useAuthStore} from '@/stores/auth.store'
 import {plain} from '@/shared/utils/ipc-clone'
 import {unwrapIpc as unwrap} from '@/shared/utils/ipc'
 import {BACKEND_BASE_URL} from '@/shared/config/backend'
-import type {MemoResponse, MyNodeItem, PagedResult, TodayActivitySummary} from './types'
+import type {MemoResponse, PagedResult, TodayActivitySummary} from './types'
 
 /**
  * 從 authStore 取 ctx。後端 ProjectFlowController 已 [AllowAnonymous],身分靠 userId(工號)寫進 query;
@@ -32,8 +32,6 @@ function ctx(): { baseUrl: string; userId: string; token: string } {
 const pf = () => window.electronAPI.projectFlow
 
 export const projectFlowApi = {
-    /** 跨項目「我的節點」(備忘 AI 進度輸入) */
-    listMyNodes: () => unwrap<MyNodeItem[]>(pf().listMyNodes(ctx())),
     /** 今日 work-collect 摘要(類別 + 24h 熱力;唯讀參考,純本地不打後端) */
     todayActivity: () => unwrap<TodayActivitySummary>(pf().todayActivity()),
 

@@ -2,14 +2,12 @@
  * 項目流程 IPC channels(docs/20)。
  *
  * ⚠️ 項目流程的專案/畫布/匯報/反饋/團隊功能已清退(公測前瘦身),只留備忘錄獨立窗
- * 需要的部分:備忘錄 CRUD + AI 備忘建議的輸入(我的節點)+ 首頁用的今日活動聚合。
+ * 需要的部分:備忘錄 CRUD + AI 備忘建議 + 首頁用的今日活動聚合。
  *
  * 命名:PROJECT_FLOW_* = renderer → main invoke(轉 HTTP 給 tmbom 後端 + cache 加速)
  *       PUSH_PROJECT_FLOW_* = main → renderer push(由 NotificationsHub action 觸發)
  */
 export const ProjectFlowChannels = {
-    /** 跨項目「我的節點」(備忘 AI 建議的輸入) */
-    PROJECT_FLOW_MY_NODES: 'pf:my-nodes',
     /** 今日 work-collect 聚合(唯讀參考數據,首頁儀表板用) */
     PROJECT_FLOW_TODAY_ACTIVITY: 'pf:today-activity',
 
