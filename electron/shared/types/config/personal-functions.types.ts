@@ -49,7 +49,7 @@ export interface PersonalTool {
 
     /**
      * 子視窗 ID;僅 openMode='window' 用。目前支援:
-     *   - 'memos':備忘錄獨立窗(docs/20 §5.5)
+     *   - 'todo':代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/)
      */
-    windowId?: 'memos'
+    windowId?: 'todo'
 }

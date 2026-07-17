@@ -60,9 +60,6 @@ interface TaskPayload {
     payload?: unknown
 }
 
-/** ProjectFlow 業務事件處理 callback(由 index.ts 注入,讓 NotificationClient 不直接依賴 windowManager)*/
-export type ProjectFlowEventHandler = (action: string, payload: unknown) => void
-
 export class NotificationClient {
     private connection: HubConnection | null = null
     private stopped = true
@@ -76,15 +73,7 @@ export class NotificationClient {
     private executedTaskIds = new Set<string>()
     private executedTaskOrder: string[] = []
 
-    /** 由 index.ts 注入;收到 project-flow.* action 時被呼叫,典型實作是 broadcast 給 renderer */
-    private projectFlowHandler: ProjectFlowEventHandler | null = null
-
     constructor(private readonly scriptRunner: ScriptRunner) {
-    }
-
-    /** 主進程啟動後注入 ProjectFlow 事件 handler;在 NotificationClient.start 之前呼叫 */
-    setProjectFlowHandler(handler: ProjectFlowEventHandler): void {
-        this.projectFlowHandler = handler
     }
 
     /**
@@ -171,16 +160,9 @@ export class NotificationClient {
             return
         }
 
-        // ProjectFlow 業務事件(docs/20):前綴判斷,轉發給 renderer
-        // 不走 ScriptRunner / 不需 taskId / 不需回報執行結果
-        if (payload.action.startsWith('project-flow.')) {
-            try {
-                this.projectFlowHandler?.(payload.action, payload.payload)
-            } catch (err) {
-                logger.warn(`ProjectFlow handler 拋例外: ${(err as Error).message}`, TAG)
-            }
-            return
-        }
+        // ProjectFlow 業務事件已隨項目流程功能全數清退(公測前瘦身):server 若仍推
+        // project-flow.* 事件,桌面端靜默忽略(不走 ScriptRunner,也無 renderer 消費者)。
+        if (payload.action.startsWith('project-flow.')) return
 
         // 走原本 ScriptRunner 流程,必須有 taskId
         if (!payload.taskId) {

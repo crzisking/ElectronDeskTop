@@ -150,15 +150,16 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
               routeName: 'work-collect',
           },
           {
-              // 備忘錄走獨立窗(docs/20 §5.5 + user 反饋:不要嵌在主流程內)。
-              // ⚠️ 項目流程的專案/匯報/團隊功能已清退,備忘錄是唯一保留的部分。
-              id: 'projectMemos',
-              name: '備忘錄',
-              description: '個人待辦,獨立窗口隨手叫出',
-              icon: 'Memo',
+              // 代辦事項(docs/23):備忘錄就地演進而來。全域熱鍵 Ctrl+/ 隨手記一句,
+              // AI 後台整理;桌面頂端 dock 懸停顯示。卡片點擊 = 拉起錄入窗(等同快捷鍵),
+              // 主要作用是讓使用者「發現」這個功能;日常直接按 Ctrl+/ 即可。
+              id: 'todo',
+              name: '代辦事項',
+              description: '按 Ctrl + / 隨手記一句,AI 自動整理;移到螢幕頂端查看',
+              icon: 'List',
               enabled: true,
               openMode: 'window',
-              windowId: 'memos',
+              windowId: 'todo',
           },
       ],
   },

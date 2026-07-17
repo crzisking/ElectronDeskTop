@@ -84,8 +84,6 @@ export default defineConfig({
           floatingBall: resolve('electron/preload/floating-ball.preload.ts'),
           // 日誌查看器子視窗預加載腳本 → out/preload/log-viewer.preload.js
           'log-viewer.preload': resolve('electron/preload/log-viewer.preload.ts'),
-          // 備忘錄子視窗預加載腳本 → out/preload/memos.preload.js
-            'memos.preload': resolve('electron/preload/memos.preload.ts'),
             // AI Agent 子視窗預加載腳本 → out/preload/agent.preload.js
             'agent.preload': resolve('electron/preload/agent.preload.ts'),
             // 靈感速記速記小窗預加載腳本 → out/preload/idea-capture.preload.js
@@ -127,7 +125,6 @@ export default defineConfig({
           index: resolve('src/windows/main/index.html'),
           floatingBall: resolve('src/windows/floating-ball/index.html'),
           logViewer: resolve('src/windows/log-viewer/index.html'),
-            memos: resolve('src/windows/memos/index.html'),
             agent: resolve('src/windows/agent/index.html'),
             ideaCapture: resolve('src/windows/idea-capture/index.html'),
             todoCapture: resolve('src/windows/todo-capture/index.html'),

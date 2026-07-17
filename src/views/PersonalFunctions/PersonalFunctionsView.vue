@@ -44,10 +44,10 @@ function handleOpen(tool: PersonalTool) {
     return
   }
   if (tool.openMode === 'window' && tool.windowId) {
-    // 目前只有 memos 一個獨立窗;之後加新窗在這 switch
-    if (tool.windowId === 'memos') {
-      window.electronAPI.window.openMemos().catch((err) => {
-        logger.warn('打開備忘錄子窗失敗', 'PersonalFunctions', err as Error)
+    // 目前只有 todo 一個;之後加新窗在這 switch
+    if (tool.windowId === 'todo') {
+      window.electronAPI.window.openTodoCapture().catch((err) => {
+        logger.warn('打開代辦錄入窗失敗', 'PersonalFunctions', err as Error)
       })
     }
   }

@@ -99,7 +99,7 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
                 enabled: r.enabled === 1,
                 openMode: r.openMode as 'page' | 'window',
                 routeName: r.routeName ?? undefined,
-                windowId: (r.windowId ?? undefined) as 'memos' | undefined,
+                windowId: (r.windowId ?? undefined) as 'todo' | undefined,
             })),
         },
         update: {

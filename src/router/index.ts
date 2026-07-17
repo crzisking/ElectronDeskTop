@@ -124,8 +124,8 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
-      // 備忘錄改成獨立 BrowserWindow(electron/main/windows/memos-window.ts),
-        // 不再以路由形式嵌在主窗;項目流程的專案/畫布/匯報/團隊功能已清退,無對應路由。
+      // 備忘錄已退場,由桌面代辦本地取代(docs/23,全域熱鍵 Ctrl+/ + 頂部 dock,無路由);
+        // 項目流程的專案/畫布/匯報/團隊功能亦已清退,無對應路由。
 
         // 想法庫(docs/21)— 靈感速記的回顧頁;記錄本身走全域快捷鍵 / 速記小窗
         {

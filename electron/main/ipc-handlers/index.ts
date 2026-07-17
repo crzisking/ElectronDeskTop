@@ -160,8 +160,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerSavedCredentialsHandlers(savedCredentialsService)
   registerWorkAnalysisHandlers(workAnalysisService, workRecordService, workTemplateCacheService, llmClient, configManager, agentService, windowManager)
   registerNotificationHandlers(notificationClient, configManager)
-    // AI 本地端點(memo-suggest / report-generate)需要 LlmClient + workRecordService
-    registerProjectFlowHandlers({llmClient, workRecordService})
+    // 首頁今日活動聚合:純本地讀 work-collect
+    registerProjectFlowHandlers({workRecordService})
     // Agent v2(docs/19);agentService 提供模型連線,windowManager 給資料夾選擇器當 parent
     registerAgentHandlers({
         runtime: agentRuntime,

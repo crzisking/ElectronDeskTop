@@ -21,7 +21,6 @@ import {IdeaHotkeyManager} from './idea-capture/hotkey-manager'
 import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
 import {DailyAdviceService} from './db/features/daily-advice/service'
 import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
-import {MemoReminderScheduler} from './services/memo-reminder/scheduler'
 import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
@@ -71,7 +70,6 @@ let llmClient: LlmClient | null = null
 let workAnalysisService: WorkAnalysisService | null = null
 let dailyAdviceService: DailyAdviceService | null = null
 let dailyAdviceScheduler: DailyAdviceScheduler | null = null
-let memoReminderScheduler: MemoReminderScheduler | null = null
 let workCollector: WorkCollectorScheduler
 /** 遠程通知 WebSocket 客戶端(docs/18)。登入後由 renderer IPC NOTIFICATION_START 觸發實際連線 */
 let notificationClient: NotificationClient
@@ -133,7 +131,6 @@ function gracefulShutdown(): void {
   updateMgr?.dispose()
   workCollector?.dispose()
     dailyAdviceScheduler?.dispose()
-    memoReminderScheduler?.dispose()
     ideaHotkey?.unregister()
     try {
         globalShortcut.unregister(TODO_HOTKEY)
@@ -287,13 +284,6 @@ app.whenReady().then(async () => {
     scriptRunner = new ScriptRunner()
     registerBuiltinScripts(scriptRunner, {configManager, windowManager, logService})
     notificationClient = new NotificationClient(scriptRunner)
-    // 收到 ProjectFlow 業務事件 → 廣播給主窗 + memos 子窗(任一打開就收得到)
-    notificationClient.setProjectFlowHandler((action, payload) => {
-        const evt = {action, payload}
-        windowManager?.sendToMainWindow(IpcChannels.PUSH_PROJECT_FLOW_EVENT, evt)
-        const memos = windowManager?.getMemosWindow()
-        if (memos && !memos.isDestroyed()) memos.webContents.send(IpcChannels.PUSH_PROJECT_FLOW_EVENT, evt)
-    })
 
     // Agent v2(docs/19):config/db 用 dbManager,event-bridge 用 windowManager 推串流。
     // dbManager 此處已保證非 null(上方 !dbManager 直接 throw)。
@@ -364,10 +354,6 @@ app.whenReady().then(async () => {
         dailyAdviceScheduler.start()
     }
     registerDailyAdviceHandlers(dailyAdviceScheduler)
-
-    // 備忘到期提醒(純桌面端):每 30 分鐘檢查 pending 備忘,快到期/逾期發系統通知
-    memoReminderScheduler = new MemoReminderScheduler(windowManager)
-    memoReminderScheduler.start()
 
   // 在 IPC handler 註冊後才 init，托盤菜單點擊才能正確觸發處理器
   trayManager.init()

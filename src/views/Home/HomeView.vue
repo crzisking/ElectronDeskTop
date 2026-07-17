@@ -95,26 +95,6 @@
 
       <el-divider/>
 
-      <!-- 待辦備忘:按到期排序,逾期紅 / 24h 內橙;點任意處開備忘獨立窗 -->
-      <section class="sec">
-        <div class="sec-head">
-          <span class="sec-label">{{ $t('home.memosTitle') }}</span>
-          <el-button link size="small" type="primary" @click="openMemosWindow">
-            {{ $t('home.memosOpen') }} ↗
-          </el-button>
-        </div>
-        <div v-if="!memos.length" class="sec-empty">{{ $t('home.memosEmpty') }}</div>
-        <ul v-else class="memo-list">
-          <li v-for="m in memos" :key="m.memoId" class="memo-item" @click="openMemosWindow">
-            <i :class="dueClass(m.dueDate)" class="memo-dot"/>
-            <span class="memo-title">{{ m.title }}</span>
-            <span :class="dueClass(m.dueDate)" class="memo-due">{{ dueText(m.dueDate) }}</span>
-          </li>
-        </ul>
-      </section>
-
-      <el-divider/>
-
       <!-- 今日學習建議 -->
       <section v-loading="loading" class="sec">
         <div class="sec-head">
@@ -182,9 +162,9 @@ import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useI18n} from 'vue-i18n'
 import {formatClock as formatTime} from '@/shared/utils/format'
-import {distPercent, dueDays, dueLevel, heatStyle, paceLevel} from './dashboard-utils'
+import {distPercent, heatStyle, paceLevel} from './dashboard-utils'
 import {projectFlowApi} from '@/features/project-flow/api'
-import type {MemoResponse, TodayActivitySummary} from '@/features/project-flow/types'
+import type {TodayActivitySummary} from '@/features/project-flow/types'
 import type {DailyAdviceContent, DailyAdviceRow, DailyAdviceStatus} from '@/types/electron/daily-advice'
 
 const ui = useUiStore()
@@ -232,43 +212,6 @@ async function loadActivity() {
   }
 }
 
-// ─── 待辦備忘(到期近的在前;主進程另有 30 分鐘級系統通知) ──
-
-const MEMO_SHOW_LIMIT = 4
-
-const memos = ref<MemoResponse[]>([])
-
-async function loadMemos() {
-  try {
-    const r = await projectFlowApi.listMemos({status: 'pending', pageIndex: 1, pageSize: 50})
-    memos.value = (r?.list ?? [])
-        .sort((a, b) => (a.dueDate ?? Number.MAX_SAFE_INTEGER) - (b.dueDate ?? Number.MAX_SAFE_INTEGER))
-        .slice(0, MEMO_SHOW_LIMIT)
-  } catch {
-    /* 未登入 / 後端不可達 → 顯示空狀態,不打擾 */
-  }
-}
-
-/** 到期文案:逾期 N 天 / 今天到期 / N 天後 / 無期限(按日曆日,見 dashboard-utils.dueDays) */
-function dueText(due?: number | null): string {
-  const d = dueDays(due, Date.now())
-  if (d === null) return t('home.memoNoDue')
-  if (d < 0) return t('home.memoOverdue', {n: -d})
-  if (d === 0) return t('home.memoDueToday')
-  return t('home.memoDueDays', {n: d})
-}
-
-/** 顏色等級 class:逾期紅 / 24h 內橙 / 其餘灰(等級判斷在 dashboard-utils.dueLevel) */
-function dueClass(due?: number | null): string {
-  return `lv-${dueLevel(due, Date.now())}`
-}
-
-function openMemosWindow() {
-  window.electronAPI.window.openMemos().catch(() => {
-    /* 視窗開啟失敗不擴散 */
-  })
-}
-
 // ─── 學習建議 ────────────────────────────────────────────────
 
 const loading = ref(false)
@@ -290,7 +233,6 @@ const content = computed<DailyAdviceContent | null>(() => {
 onMounted(() => {
   void load()
   void loadActivity()
-  void loadMemos()
   window.electronAPI.on(IpcChannels.PUSH_DAILY_ADVICE, onPush)
 })
 onUnmounted(() => {
@@ -516,81 +458,6 @@ async function onGenerate() {
   height: 8px;
   border-radius: 50%;
   display: inline-block;
-}
-
-/* 待辦備忘 */
-.memo-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.memo-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px dashed #f0f2f5;
-  cursor: pointer;
-}
-
-.memo-item:last-child {
-  border-bottom: none;
-}
-
-.memo-item:hover .memo-title {
-  color: #305a9e;
-}
-
-.memo-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.memo-title {
-  font-size: 13px;
-  color: #3c4858;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.memo-due {
-  font-size: 12px;
-  flex: none;
-}
-
-/* 到期等級配色:dot 背景 + due 文字共用 */
-.memo-dot.lv-overdue {
-  background: #f56c6c;
-}
-
-.memo-dot.lv-soon {
-  background: #e6a23c;
-}
-
-.memo-dot.lv-normal {
-  background: #a3b0c2;
-}
-
-.memo-dot.lv-none {
-  background: #dcdfe6;
-}
-
-.memo-due.lv-overdue {
-  color: #f56c6c;
-  font-weight: 600;
-}
-
-.memo-due.lv-soon {
-  color: #e6a23c;
-}
-
-.memo-due.lv-normal, .memo-due.lv-none {
-  color: #8a94a6;
 }
 
 /* 建議 */

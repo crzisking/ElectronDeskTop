@@ -58,8 +58,6 @@ const ALLOWED_PUSH_CHANNELS: readonly string[] = [
   // 工作分析 streaming:per-runId 的文字增量 + 結束事件
   IpcChannels.PUSH_WORK_ANALYSIS_STREAM,
   IpcChannels.PUSH_WORK_ANALYSIS_END,
-  // 項目流程 SignalR 推送(對齊 docs/20 §6.3):feedback-new / report-submitted 等 action
-  IpcChannels.PUSH_PROJECT_FLOW_EVENT,
   // 每日學習建議生成完成(首頁即時刷新)
   IpcChannels.PUSH_DAILY_ADVICE,
     // Agent v2 串流事件(docs/19)

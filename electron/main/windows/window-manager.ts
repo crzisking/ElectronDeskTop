@@ -16,7 +16,6 @@ import {logger} from '../utils/logger'
 import {MainWindow} from './main-window'
 import {FloatingBallWindow} from './floating-ball-window'
 import {LogViewerWindow} from './log-viewer-window'
-import {MemosWindow} from './memos-window'
 import {AgentWindow} from './agent-window'
 import {IdeaCaptureWindow} from './idea-capture-window'
 import {TodoCaptureWindow} from './todo-capture-window'
@@ -27,7 +26,6 @@ export class WindowManager {
     private main = new MainWindow()
     private floatingBall = new FloatingBallWindow()
     private logViewer = new LogViewerWindow()
-    private memos = new MemosWindow()
     private agent = new AgentWindow()
     private ideaCapture = new IdeaCaptureWindow()
     private todoCapture = new TodoCaptureWindow()
@@ -50,11 +48,6 @@ export class WindowManager {
     // ── 按需建構(IPC / 浮球菜單觸發)───────────────────────────────
     createLogViewerWindow(): BrowserWindow {
         return this.logViewer.open(this.main.instance)
-    }
-
-    /** 開啟備忘錄獨立窗(docs/20 §5.5);已開過就 focus,不重建 */
-    createMemosWindow(): BrowserWindow {
-        return this.memos.open(this.main.instance)
     }
 
     /** 開啟 AI Agent 獨立窗(docs/19);已開過就 focus,不重建 */
@@ -167,18 +160,12 @@ export class WindowManager {
         return openChildWindow(url, title, allowedDomains)
     }
 
-    /** Memos 子視窗(SignalR push 廣播時要包含)*/
-    getMemosWindow(): BrowserWindow | null {
-        return this.memos.instance
-    }
-
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
         this.todoDock.destroy()
         this.todoCapture.destroy()
         this.ideaCapture.destroy()
         this.agent.destroy()
-        this.memos.destroy()
         this.logViewer.destroy()
         this.floatingBall.destroy()
         this.main.destroy()

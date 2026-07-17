@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest'
-import {safeParseJson, stripJsonFence, summarizeTodayActivity} from '@main/services/project-flow/ai-local'
+import {stripJsonFence, summarizeTodayActivity} from '@main/services/project-flow/ai-local'
 
 describe('stripJsonFence(剝掉模型加的 ```json 圍欄)', () => {
     it('剝 ```json 圍欄', () => {
@@ -10,16 +10,6 @@ describe('stripJsonFence(剝掉模型加的 ```json 圍欄)', () => {
     })
     it('沒圍欄 → 原樣(去頭尾空白)', () => {
         expect(stripJsonFence('  {"a":1}  ')).toBe('{"a":1}')
-    })
-})
-
-describe('safeParseJson(剝圍欄後解析,壞了拋清楚的錯)', () => {
-    it('合法 JSON(帶圍欄)→ 解析成物件', () => {
-        expect(safeParseJson('```json\n{"x":[1,2]}\n```')).toEqual({x: [1, 2]})
-    })
-    it('非法 JSON → 拋錯(不是回 null;呼叫端用 safeRun 接成 {ok:false})', () => {
-        // 設計上故意 throw:回 null 會讓 AI 功能把 null 當正常數據用,錯誤被吞掉更難查
-        expect(() => safeParseJson('not json')).toThrow(/非合法 JSON/)
     })
 })
 

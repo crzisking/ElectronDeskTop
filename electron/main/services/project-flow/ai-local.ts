@@ -1,14 +1,10 @@
 /**
- * 項目流程的本地 AI 能力 — 備忘建議 + 今日活動聚合(首頁儀表板用)。
+ * 項目流程的本地聚合 — 今日活動摘要(首頁儀表板用)+ LLM 回應圍欄剝除工具。
  *
- * ⚠️ 匯報功能已清退,原本的「寫作教練」(generateReportAdvice)一併移除。
- * 從 ipc-handlers/project-flow.handlers.ts 搬出:handler 檔只負責通道註冊,
- * 業務與 prompt 集中在 services(對齊 daily-advice/scheduler 的擺放)。
- *
- * 設計原則:AI 是「教練」不是「代筆」— 不產出可直接提交的內容。
+ * ⚠️ 匯報/備忘建議等 AI 能力已隨對應功能清退(公測前瘦身);本檔只剩純本地的
+ * work-collect 聚合(不打後端、不呼叫 LLM)與 daily-advice 共用的 stripJsonFence。
  */
 
-import type {LlmClient} from '../llm'
 import type {WorkRecordService} from '../../db/features/work-collect/service'
 
 // ─── 今日活動聚合(首頁儀表板 + AI 建議共用) ─────────
@@ -80,74 +76,7 @@ export function summarizeTodayActivityFromService(
     return summarizeTodayActivity(workRecordService.listByRange(startOfDay, Date.now(), false), intervalMinutes)
 }
 
-/** 只要類別聚合時的便捷入口(AI prompt 用) */
-export function aggregateTodayActivity(workRecordService: WorkRecordService): TodayActivityCategory[] {
-    return summarizeTodayActivityFromService(workRecordService).categories
-}
-
-/** 聚合結果 → prompt 用文字 */
-function activityText(categories: TodayActivityCategory[]): string {
-    if (!categories.length) return '(今日尚無工作紀錄)'
-    return categories
-        .map((c) => `- ${c.category}: 約 ${c.minutes} 分鐘 (主要應用: ${c.apps.slice(0, 3).join(', ')})`)
-        .join('\n')
-}
-
-// ─── AI 備忘建議:現有待辦驅動(不看原始活動記錄) ──
-
-/** renderer 傳來的上下文:現有 pending 備忘 */
-export interface MemoSuggestInput {
-    memos?: { title: string; priority: number; dueDate?: number | null }[]
-}
-
-export async function generateMemoSuggestions(
-    llm: LlmClient | null,
-    input: MemoSuggestInput,
-): Promise<{ suggestions: object[] }> {
-    if (!llm) throw new Error('LLM provider 尚未配置(請先到設定頁設定)')
-
-    const today = new Date().toISOString().slice(0, 10)
-    const fmtDate = (ms?: number | null) => (ms ? new Date(ms).toISOString().slice(0, 10) : '無')
-
-    // 備忘:只給 pending(renderer 端已過濾,這裡再保險截斷)
-    const memoLines = (input.memos ?? []).slice(0, 30)
-        .map((m) => `- [優先級${m.priority}] ${m.title}(到期: ${fmtDate(m.dueDate)})`)
-        .join('\n') || '(目前沒有進行中備忘)'
-
-    const result = await llm.complete({
-        responseFormat: 'json_object',
-        temperature: 0.4,
-        messages: [
-            {
-                role: 'system',
-                content:
-                    '你是工作助理。根據使用者現有的待辦備忘,建議值得新增的備忘錄。' +
-                    '優先關注:高優先級但沒有跟進動作的待辦、即將到期或已逾期的待辦。' +
-                    '不要重複已存在的備忘。回 JSON。',
-            },
-            {
-                role: 'user',
-                content:
-                    `今天是 ${today}。\n\n現有進行中備忘:\n${memoLines}\n\n` +
-                    `請建議最多 3 條新備忘(沒有值得提醒的就回空陣列)。\n` +
-                    `回 JSON:{"suggestions":[{"title":"短標題","description":"具體說明","priority":1,"reasoning":"為什麼建議(關聯哪個待辦/到期日)"}]}\n` +
-                    `priority:0=低 1=中 2=高(逾期/即將到期給 2)。`,
-            },
-        ],
-    })
-    return safeParseJson<{ suggestions: object[] }>(result.content, 'suggestions')
-}
-
-/** 剝掉 LLM 回應可能包的 markdown 圍欄(daily-advice 也共用) */
+/** 剝掉 LLM 回應可能包的 markdown 圍欄(daily-advice 共用) */
 export function stripJsonFence(raw: string): string {
     return raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim()
-}
-
-/** 剝圍欄 + parse;失敗給清楚錯誤訊息 */
-export function safeParseJson<T>(raw: string, label: string): T {
-    try {
-        return JSON.parse(stripJsonFence(raw)) as T
-    } catch (err) {
-        throw new Error(`LLM ${label} 回應非合法 JSON: ${(err as Error).message}`)
-    }
 }
