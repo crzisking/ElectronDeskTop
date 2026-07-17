@@ -39,6 +39,7 @@
                   class="pri">{{ priLabel(t.priority) }}</span>
           </div>
           <div class="row2">
+            <span v-if="t.note" class="note-mark" title="有備注">📝</span>
             <span class="hint">{{ t.aiHint ? '✨ ' + t.aiHint : '' }}</span>
             <span class="grow"></span>
             <button class="mini" title="延後到明天" type="button" @click.stop="snooze(t.id)">延後</button>
@@ -74,6 +75,11 @@
               </button>
               <button :class="{ on: t.priority === 0 }" class="chip" type="button" @click="setPriority(t.id, 0)">低
               </button>
+            </div>
+            <div class="e-line">
+              <span class="e-label">備注</span>
+              <button class="chip" type="button" @click="openNote(t.id)">{{ t.note ? '編輯' : '添加' }}</button>
+              <span v-if="t.note" class="note-preview" :title="t.note">{{ t.note }}</span>
             </div>
           </div>
         </div>
@@ -205,6 +211,11 @@ async function setDue(id: string, preset: string) {
 
 async function setPriority(id: string, p: number) {
   await api().patch(id, {priority: p as 0 | 1 | 2})
+}
+
+/** 備注:dock 不能打字 → 開可聚焦備注小窗編輯 */
+function openNote(id: string) {
+  void api().openNote(id)
 }
 
 /** dueAt 是否等於今天(offset 0)/ 明天(offset 1) —— 給編輯 chip 高亮用 */
@@ -562,6 +573,22 @@ onUnmounted(() => {
 
 .chip.muted {
   color: #9aa0a6;
+}
+
+/* 備注:編輯行的預覽 + 卡片上的小標記 */
+.note-preview {
+  font-size: 11px;
+  color: #8a94a6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.note-mark {
+  font-size: 11px;
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .card.editing {

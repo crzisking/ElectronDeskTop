@@ -91,7 +91,9 @@ export default defineConfig({
             // 代辦錄入小窗預加載腳本 → out/preload/todo-capture.preload.js
             'todo-capture.preload': resolve('electron/preload/todo-capture.preload.ts'),
             // 代辦頂部 dock 窗預加載腳本 → out/preload/todo-dock.preload.js
-            'todo-dock.preload': resolve('electron/preload/todo-dock.preload.ts')
+            'todo-dock.preload': resolve('electron/preload/todo-dock.preload.ts'),
+            // 代辦備注小窗預加載腳本 → out/preload/todo-note.preload.js
+            'todo-note.preload': resolve('electron/preload/todo-note.preload.ts')
         }
       }
     }
@@ -128,7 +130,8 @@ export default defineConfig({
             agent: resolve('src/windows/agent/index.html'),
             ideaCapture: resolve('src/windows/idea-capture/index.html'),
             todoCapture: resolve('src/windows/todo-capture/index.html'),
-            todoDock: resolve('src/windows/todo-dock/index.html')
+            todoDock: resolve('src/windows/todo-dock/index.html'),
+            todoNote: resolve('src/windows/todo-note/index.html')
         }
       }
     },

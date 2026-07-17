@@ -27,6 +27,12 @@ export const TodoChannels = {
     TODO_OPEN_CAPTURE: 'todo:open-capture',
     /** 錄入窗 🎤 → 觸發 Windows 系統語音輸入(Win+H) */
     TODO_TRIGGER_VOICE: 'todo:trigger-voice',
+    /** dock 卡片「備注」→ 開可聚焦備注小窗(帶 id) */
+    TODO_OPEN_NOTE: 'todo:open-note',
+    /** 備注窗載入時查當前編輯目標 → 回 {id, title, note} */
+    TODO_NOTE_TARGET: 'todo:note-target',
+    /** 備注窗保存/取消後隱藏自己 */
+    TODO_HIDE_NOTE: 'todo:hide-note',
 
     /** PUSH:代辦有變動 → 通知所有代辦窗 + 主窗刷新 */
     PUSH_TODO_CHANGED: 'todo:push:changed',

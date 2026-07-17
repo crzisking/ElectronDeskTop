@@ -20,6 +20,7 @@ import {AgentWindow} from './agent-window'
 import {IdeaCaptureWindow} from './idea-capture-window'
 import {TodoCaptureWindow} from './todo-capture-window'
 import {TodoDockWindow} from './todo-dock-window'
+import {TodoNoteWindow} from './todo-note-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
@@ -30,6 +31,7 @@ export class WindowManager {
     private ideaCapture = new IdeaCaptureWindow()
     private todoCapture = new TodoCaptureWindow()
     private todoDock = new TodoDockWindow()
+    private todoNote = new TodoNoteWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -88,6 +90,16 @@ export class WindowManager {
     /** 代辦 dock 窗實例(懸停切穿透用) */
     getTodoDockWindow(): TodoDockWindow {
         return this.todoDock
+    }
+
+    /** 開啟代辦備注小窗(docs/23);帶要編輯的代辦 id,已開過就換目標 + 前台 */
+    createTodoNoteWindow(id: string): BrowserWindow {
+        return this.todoNote.open(id)
+    }
+
+    /** 代辦備注小窗實例(查編輯目標 / 保存後隱藏用) */
+    getTodoNoteWindow(): TodoNoteWindow {
+        return this.todoNote
     }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
@@ -162,6 +174,7 @@ export class WindowManager {
 
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
+        this.todoNote.destroy()
         this.todoDock.destroy()
         this.todoCapture.destroy()
         this.ideaCapture.destroy()

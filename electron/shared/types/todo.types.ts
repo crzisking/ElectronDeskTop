@@ -64,6 +64,13 @@ export interface TodoPatch {
     enrichPromptedAt?: number | null
 }
 
+/** 備注窗載入時查的編輯目標 */
+export interface TodoNoteTarget {
+    id: string
+    title: string
+    note: string | null
+}
+
 /** dock 頂部資訊條 + 計數用 */
 export interface TodoCounts {
     /** 今天該做(active 且今天到期或逾期) */

@@ -65,6 +65,29 @@ export function registerTodoHandlers(deps: {
         return {ok: true, data: true}
     })
 
+    // dock 卡片「備注」→ 開可聚焦備注小窗(dock focusable:false 不能打字)
+    ipcMain.handle(IpcChannels.TODO_OPEN_NOTE, (_e, p: unknown): Result<boolean> => {
+        const id = readId(p)
+        if (!id) return fail('缺 id')
+        deps.windowManager.createTodoNoteWindow(id)
+        return ok(true)
+    })
+
+    // 備注窗載入時查編輯目標 → 回 {id, title, note}
+    ipcMain.handle(IpcChannels.TODO_NOTE_TARGET, (): Result<unknown> => {
+        const s = svc()
+        const id = deps.windowManager.getTodoNoteWindow().currentTargetId
+        if (!s || !id) return ok(null)
+        const row = s.get(id)
+        if (!row) return ok(null)
+        return ok({id: row.id, title: row.title, note: row.note})
+    })
+
+    ipcMain.handle(IpcChannels.TODO_HIDE_NOTE, () => {
+        deps.windowManager.getTodoNoteWindow().hide()
+        return {ok: true, data: true}
+    })
+
     ipcMain.handle(IpcChannels.TODO_CREATE, (_e, p: unknown): Result<unknown> => {
         const s = svc()
         if (!s) return fail('DB 未就緒')
