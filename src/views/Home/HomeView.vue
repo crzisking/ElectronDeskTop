@@ -95,6 +95,26 @@
 
       <el-divider/>
 
+      <!-- 待辦(本地代辦;到期近的在前,點圈完成,＋記一條開錄入窗) -->
+      <section class="sec">
+        <div class="sec-head">
+          <span class="sec-label">{{ $t('home.todoTitle') }}</span>
+          <el-button link size="small" type="primary" @click="openTodoCapture">
+            {{ $t('home.todoAdd') }} ＋
+          </el-button>
+        </div>
+        <div v-if="!todos.length" class="sec-empty">{{ $t('home.todoEmpty') }}</div>
+        <ul v-else class="todo-list">
+          <li v-for="td in todos" :key="td.id" class="todo-item">
+            <span class="todo-circle" title="完成" @click="completeTodo(td.id)"></span>
+            <span class="todo-title">{{ td.title }}</span>
+            <span :class="dueClass(td.dueAt)" class="todo-due">{{ dueText(td.dueAt) }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <el-divider/>
+
       <!-- 今日學習建議 -->
       <section v-loading="loading" class="sec">
         <div class="sec-head">
@@ -162,9 +182,10 @@ import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useI18n} from 'vue-i18n'
 import {formatClock as formatTime} from '@/shared/utils/format'
-import {distPercent, heatStyle, paceLevel} from './dashboard-utils'
+import {distPercent, dueDays, dueLevel, heatStyle, paceLevel} from './dashboard-utils'
 import {projectFlowApi} from '@/features/project-flow/api'
 import type {TodayActivitySummary} from '@/features/project-flow/types'
+import type {Todo} from '@shared/types/todo.types'
 import type {DailyAdviceContent, DailyAdviceRow, DailyAdviceStatus} from '@/types/electron/daily-advice'
 
 const ui = useUiStore()
@@ -212,6 +233,53 @@ async function loadActivity() {
   }
 }
 
+// ─── 待辦(本地代辦;dock 之外在首頁也能一眼掃到)──────────────
+
+const TODO_SHOW_LIMIT = 5
+const todos = ref<Todo[]>([])
+
+async function loadTodos() {
+  try {
+    const r = await window.electronAPI.todo.listOpen()
+    const list = r.ok ? r.data : []
+    todos.value = [...list]
+        .sort((a, b) => (a.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.dueAt ?? Number.MAX_SAFE_INTEGER))
+        .slice(0, TODO_SHOW_LIMIT)
+  } catch {
+    /* 讀不到就顯示空狀態,不打擾 */
+  }
+}
+
+async function completeTodo(id: string) {
+  try {
+    await window.electronAPI.todo.complete(id)
+  } catch {
+    /* 靜默 */
+  }
+  void loadTodos()
+}
+
+function openTodoCapture() {
+  void window.electronAPI.todo.openCapture()
+}
+
+/** 到期文案:逾期 N 天 / 今天到期 / N 天後 / 無期限(按日曆日,見 dashboard-utils.dueDays) */
+function dueText(due?: number | null): string {
+  const d = dueDays(due ?? null, Date.now())
+  if (d === null) return t('home.todoNoDue')
+  if (d < 0) return t('home.todoOverdue', {n: -d})
+  if (d === 0) return t('home.todoDueToday')
+  return t('home.todoDueDays', {n: d})
+}
+
+/** 顏色等級 class:逾期紅 / 24h 內橙 / 其餘灰 */
+function dueClass(due?: number | null): string {
+  return `lv-${dueLevel(due ?? null, Date.now())}`
+}
+
+/** 代辦變動(錄入 / AI 完成 / dock 就地改)→ 首頁即時刷新 */
+const onTodoChanged = () => void loadTodos()
+
 // ─── 學習建議 ────────────────────────────────────────────────
 
 const loading = ref(false)
@@ -233,10 +301,13 @@ const content = computed<DailyAdviceContent | null>(() => {
 onMounted(() => {
   void load()
   void loadActivity()
+  void loadTodos()
   window.electronAPI.on(IpcChannels.PUSH_DAILY_ADVICE, onPush)
+  window.electronAPI.on(IpcChannels.PUSH_TODO_CHANGED, onTodoChanged)
 })
 onUnmounted(() => {
   window.electronAPI.off(IpcChannels.PUSH_DAILY_ADVICE, onPush)
+  window.electronAPI.off(IpcChannels.PUSH_TODO_CHANGED, onTodoChanged)
 })
 
 function onPush(...args: unknown[]) {
@@ -458,6 +529,68 @@ async function onGenerate() {
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* 待辦 */
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #f0f2f5;
+}
+
+.todo-item:last-child {
+  border-bottom: none;
+}
+
+.todo-circle {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid #c4ccd8;
+  flex: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.todo-circle:hover {
+  border-color: #52c41a;
+  background: #52c41a;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.todo-title {
+  font-size: 13px;
+  color: #3c4858;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-due {
+  font-size: 12px;
+  flex: none;
+}
+
+.todo-due.lv-overdue {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+.todo-due.lv-soon {
+  color: #e6a23c;
+}
+
+.todo-due.lv-normal, .todo-due.lv-none {
+  color: #8a94a6;
 }
 
 /* 建議 */
