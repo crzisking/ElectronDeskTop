@@ -120,6 +120,20 @@
       "when": 1781090198616,
       "tag": "0016_light_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1784168911473,
+      "tag": "0017_strong_kronos",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1784201869770,
+      "tag": "0018_clever_luke_cage",
+      "breakpoints": true
     }
   ]
 }

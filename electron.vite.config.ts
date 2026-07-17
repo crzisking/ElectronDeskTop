@@ -89,7 +89,11 @@ export default defineConfig({
             // AI Agent 子視窗預加載腳本 → out/preload/agent.preload.js
             'agent.preload': resolve('electron/preload/agent.preload.ts'),
             // 靈感速記速記小窗預加載腳本 → out/preload/idea-capture.preload.js
-            'idea-capture.preload': resolve('electron/preload/idea-capture.preload.ts')
+            'idea-capture.preload': resolve('electron/preload/idea-capture.preload.ts'),
+            // 代辦錄入小窗預加載腳本 → out/preload/todo-capture.preload.js
+            'todo-capture.preload': resolve('electron/preload/todo-capture.preload.ts'),
+            // 代辦頂部 dock 窗預加載腳本 → out/preload/todo-dock.preload.js
+            'todo-dock.preload': resolve('electron/preload/todo-dock.preload.ts')
         }
       }
     }
@@ -125,7 +129,9 @@ export default defineConfig({
           logViewer: resolve('src/windows/log-viewer/index.html'),
             memos: resolve('src/windows/memos/index.html'),
             agent: resolve('src/windows/agent/index.html'),
-            ideaCapture: resolve('src/windows/idea-capture/index.html')
+            ideaCapture: resolve('src/windows/idea-capture/index.html'),
+            todoCapture: resolve('src/windows/todo-capture/index.html'),
+            todoDock: resolve('src/windows/todo-dock/index.html')
         }
       }
     },

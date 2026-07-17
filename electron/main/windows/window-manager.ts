@@ -19,6 +19,8 @@ import {LogViewerWindow} from './log-viewer-window'
 import {MemosWindow} from './memos-window'
 import {AgentWindow} from './agent-window'
 import {IdeaCaptureWindow} from './idea-capture-window'
+import {TodoCaptureWindow} from './todo-capture-window'
+import {TodoDockWindow} from './todo-dock-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
@@ -28,6 +30,8 @@ export class WindowManager {
     private memos = new MemosWindow()
     private agent = new AgentWindow()
     private ideaCapture = new IdeaCaptureWindow()
+    private todoCapture = new TodoCaptureWindow()
+    private todoDock = new TodoDockWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -71,6 +75,26 @@ export class WindowManager {
     /** 靈感速記小窗實例(隱藏 / 保存後關窗用) */
     getIdeaCaptureWindow(): IdeaCaptureWindow {
         return this.ideaCapture
+    }
+
+    /** 開啟代辦錄入小窗(docs/23);已開過就 show+focus,不重建 */
+    createTodoCaptureWindow(): BrowserWindow {
+        return this.todoCapture.open()
+    }
+
+    /** 代辦錄入小窗實例(保存 / Esc 後隱藏用) */
+    getTodoCaptureWindow(): TodoCaptureWindow {
+        return this.todoCapture
+    }
+
+    /** 建立代辦頂部 dock 窗(docs/23);開機常駐,呼叫一次 */
+    createTodoDockWindow(): BrowserWindow {
+        return this.todoDock.create()
+    }
+
+    /** 代辦 dock 窗實例(懸停切穿透用) */
+    getTodoDockWindow(): TodoDockWindow {
+        return this.todoDock
     }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
@@ -150,6 +174,8 @@ export class WindowManager {
 
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
+        this.todoDock.destroy()
+        this.todoCapture.destroy()
         this.ideaCapture.destroy()
         this.agent.destroy()
         this.memos.destroy()

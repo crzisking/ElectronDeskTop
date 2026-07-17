@@ -37,6 +37,7 @@ import {registerNotificationHandlers} from './notification.handlers'
 import {registerProjectFlowHandlers} from './project-flow.handlers'
 import {registerAgentHandlers} from './agent.handlers'
 import {registerIdeaCaptureHandlers} from './idea-capture.handlers'
+import {registerTodoHandlers} from './todo.handlers'
 import type {AgentRuntime} from '../agent/runtime'
 import type {IdeaConfigStore} from '../idea-capture/config-store'
 import type {IdeaRefiner} from '../idea-capture/refiner'
@@ -59,6 +60,8 @@ import type {WorkAnalysisService} from '../db/features/work-analysis/service'
 import type {WorkCollectorScheduler, WorkCollectSyncService} from '../work-collect'
 import type {NotificationClient} from '../services/notification-client'
 import type {AccountChangeCleaner} from '../db/account-change-cleaner'
+import type {TodosService} from '../db/features/todos/service'
+import type {TodoAiRunner} from '../todo/runner'
 
 /**
  * IPC 註冊所需的所有依賴,集中成一個物件傳遞。
@@ -106,6 +109,10 @@ export interface IpcHandlerContext {
     ideaRefiner: IdeaRefiner | null
     ideaHotkey: IdeaHotkeyManager | null
     ideaCaptureWindow: IdeaCaptureWindow | null
+    /** 桌面代辦(docs/23):本地 todos 表 service;DB 未就緒時為 null */
+    todosService: TodosService | null
+    /** 桌面代辦 AI runner(docs/23 P2):後台調後端解析;DB 未就緒時為 null */
+    todoAiRunner: TodoAiRunner | null
 }
 
 /**
@@ -137,6 +144,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
       ideaRefiner,
       ideaHotkey,
       ideaCaptureWindow,
+      todosService,
+      todoAiRunner,
   } = ctx
 
   registerWindowHandlers(windowManager, configManager)
@@ -169,6 +178,8 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
         captureWindow: ideaCaptureWindow,
         windowManager,
     })
+    // 桌面代辦(docs/23):本地 todos CRUD + 捕獲窗隱藏 + AI runner
+    registerTodoHandlers({todosService, windowManager, todoAiRunner})
 
   logger.info('所有 IPC Handlers 註冊完成', 'IPC')
 }

@@ -24,6 +24,7 @@ import type {ProjectFlowAPI} from './electron/project-flow'
 import type {DailyAdviceAPI} from './electron/daily-advice'
 import type {AgentAPI} from './electron/agent'
 import type {IdeaCaptureAPI} from './electron/idea-capture'
+import type {TodoAPI} from './electron/todo'
 
 // 確保此檔被視為模塊(避免全局聲明衝突)
 export {}
@@ -47,6 +48,7 @@ declare global {
       dailyAdvice: DailyAdviceAPI
         agent: AgentAPI
         ideaCapture: IdeaCaptureAPI
+        todo: TodoAPI
 
       /**
        * 浮球右鍵原生菜單。

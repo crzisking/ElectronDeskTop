@@ -4,7 +4,7 @@
  * 模塊順序受依賴關係限制（IPC handler 需要各 manager 已建構）。
  */
 
-import {app} from 'electron'
+import {app, globalShortcut} from 'electron'
 import {WindowManager} from './window-manager'
 import {FloatingBallManager} from './floating-ball'
 import {TrayManager} from './tray-manager'
@@ -33,6 +33,8 @@ import {UserProfileService} from './db/features/user-profile/service'
 import {SavedCredentialsService} from './db/features/saved-credentials/service'
 import {AgentService} from './db/features/agent/service'
 import {WorkAnalysisService} from './db/features/work-analysis/service'
+import {TodosService} from './db/features/todos/service'
+import {TodoAiRunner} from './todo/runner'
 import {LlmClient} from './services/llm'
 import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler, WorkCollectSyncService} from './work-collect'
@@ -57,6 +59,9 @@ let accountChangeCleaner: AccountChangeCleaner | null = null
 // AgentService 沿用 — agent feature UI 已移除,但 agent_configs 表保留作為
 // LLM provider 配置儲存(work analysis / 未來 Claude SDK Agent v2 都讀這張表)
 let agentService: AgentService | null = null
+// 桌面代辦(docs/23):本地 todos 表 service + AI runner(P2)
+let todosService: TodosService | null = null
+let todoAiRunner: TodoAiRunner | null = null
 /**
  * LlmClient 共用層:任何 main process 要呼 LLM 的 feature 都注入這個實例,
  * 不要各自 new OpenAI。null = AgentService 未就緒(DB 沒起來)。
@@ -74,6 +79,9 @@ let notificationClient: NotificationClient
 let scriptRunner: ScriptRunner
 /** 靈感速記(docs/21):全域熱鍵管理;gracefulShutdown 要 unregister,故提到模組層 */
 let ideaHotkey: IdeaHotkeyManager | null = null
+
+/** 桌面代辦(docs/23):錄入小窗全域熱鍵(P1 硬編碼,後續可配置) */
+const TODO_HOTKEY = 'CommandOrControl+/'
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -127,6 +135,10 @@ function gracefulShutdown(): void {
     dailyAdviceScheduler?.dispose()
     memoReminderScheduler?.dispose()
     ideaHotkey?.unregister()
+    try {
+        globalShortcut.unregister(TODO_HOTKEY)
+    } catch { /* ignore */
+    }
     // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
     notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
@@ -177,6 +189,8 @@ app.whenReady().then(async () => {
     llmClient = new LlmClient(agentService)
     workAnalysisService = new WorkAnalysisService(dbManager)
       dailyAdviceService = new DailyAdviceService(dbManager)
+      todosService = new TodosService(dbManager)
+      todoAiRunner = new TodoAiRunner(todosService)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
@@ -190,6 +204,8 @@ app.whenReady().then(async () => {
     llmClient = null
     workAnalysisService = null
       dailyAdviceService = null
+      todosService = null
+      todoAiRunner = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -228,6 +244,8 @@ app.whenReady().then(async () => {
   windowManager = new WindowManager()
   windowManager.createMainWindow()
   windowManager.createFloatingBallWindow()
+    // 桌面代辦(docs/23):頂部 dock 常駐,開機即建(透明穿透,不擋幹活)
+    windowManager.createTodoDockWindow()
 
   floatingBallMgr = new FloatingBallManager(
     windowManager,
@@ -314,10 +332,25 @@ app.whenReady().then(async () => {
       ideaRefiner,
       ideaHotkey,
       ideaCaptureWindow: windowManager.getIdeaCaptureWindow(),
+      todosService,
+      todoAiRunner,
   })
+
+    // 代辦:啟動時把既有 pending 補跑一次 AI 分析
+    todoAiRunner?.enqueuePending()
 
     // 註冊靈感速記全域快捷鍵(失敗只 log,不影響啟動)
     ideaHotkey.register()
+
+    // 註冊代辦錄入全域快捷鍵 Ctrl+/(docs/23;失敗只 log,不影響啟動)
+    try {
+        const okReg = globalShortcut.register(TODO_HOTKEY, () => {
+            windowManager.createTodoCaptureWindow()
+        })
+        logger.info(okReg ? `代辦熱鍵已註冊:${TODO_HOTKEY}` : `代辦熱鍵註冊失敗(被佔用):${TODO_HOTKEY}`, 'todo.hotkey')
+    } catch (err) {
+        logger.warn(`代辦熱鍵註冊異常:${(err as Error).message}`, 'todo.hotkey')
+    }
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
   workCollector.start()
