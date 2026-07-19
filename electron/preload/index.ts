@@ -40,7 +40,6 @@ import {createTodoBridge} from './bridges/todo.bridge'
 // 字串直接從 IpcChannels 取,避免兩份手動同步。
 const ALLOWED_PUSH_CHANNELS: readonly string[] = [
   IpcChannels.PUSH_CONFIG_CHANGED,
-  IpcChannels.PUSH_TRAY_CLICKED,
   IpcChannels.PUSH_WINDOW_MAXIMIZED,
   IpcChannels.PUSH_BALL_NAVIGATE,
   // electron-updater 廣播的生命週期事件

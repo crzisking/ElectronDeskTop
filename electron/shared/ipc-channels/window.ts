@@ -38,7 +38,4 @@ export const WindowChannels = {
 
   /** PUSH:主視窗最大化 / 還原狀態變動推送 */
   PUSH_WINDOW_MAXIMIZED: 'push:window-maximized',
-
-  /** PUSH:Tray 圖示點擊事件推送 */
-  PUSH_TRAY_CLICKED: 'push:tray-clicked',
 } as const

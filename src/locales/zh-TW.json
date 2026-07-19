@@ -344,33 +344,6 @@
     "workCollect": "工作回顧",
     "ideaLibrary": "想法庫"
   },
-  "projectFlow": {
-    "memos": {
-      "title": "備忘錄",
-      "create": "新建備忘",
-      "titleCol": "標題",
-      "titleRequired": "標題必填",
-      "description": "說明",
-      "priority": "優先級",
-      "priorityLevel": {
-        "0": "低",
-        "1": "中",
-        "2": "高"
-      },
-      "dueDate": "到期時間",
-      "deleteConfirm": "確定刪除?",
-      "aiSuggest": "AI 建議",
-      "aiEmpty": "目前無建議 — 項目進度與待辦都在掌握中",
-      "aiAdded": "已加入 {n} 條建議",
-      "acceptChecked": "採納勾選項",
-      "loginRequired": "請先在主視窗登入,再回來使用備忘錄",
-      "status": {
-        "pending": "進行中",
-        "done": "完成",
-        "dismissed": "已忽略"
-      }
-    }
-  },
   "home": {
     "title": "首頁",
     "greetMorning": "早安",

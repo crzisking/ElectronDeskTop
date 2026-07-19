@@ -7,7 +7,8 @@
  * 多資料夾工作區(每對話可加多個):`workspaces[0]` = 主目錄(bash cwd + 相對路徑基準);
  * glob / grep / list 會跨所有資料夾;read/write/edit 相對主目錄或吃絕對路徑(可達其他已加資料夾)。
  *
- * ⚠️ 完整權限 gate(§5)是 Stage 2;本階段先只做「硬編碼危險命令 deny」這條底線。
+ * ⚠️ 完整權限 gate(§5)已在 runtime.ts 用 wrapToolsWithPermission 接上;本檔的 BASH_HARD_DENY
+ *    是額外的底線硬 deny(與 permission.ts 的 HARD_DENY 同源語義),即使 gate 被繞過也擋。
  */
 
 import {exec} from 'child_process'
@@ -27,7 +28,7 @@ const BASH_MAX_BUFFER = 8 * 1024 * 1024
 const MAX_WALK_FILES = 4000
 const WEB_MAX_BYTES = 200_000
 
-/** 硬編碼危險命令(Stage 2 前的底線;完整權限模型見 docs/19 §5.4) */
+/** 硬編碼危險命令底線(與 permission.ts 的 HARD_DENY 同源語義;完整權限模型見 docs/19 §5.4) */
 const BASH_HARD_DENY = /(^|[\s&|;])(rm|del|rmdir|rd|format|mkfs|shutdown|reboot|halt|diskpart)(\s|$)/i
 
 /**

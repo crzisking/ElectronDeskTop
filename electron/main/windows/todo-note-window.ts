@@ -10,6 +10,7 @@
 
 import {BrowserWindow} from 'electron'
 import {join} from 'path'
+import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import {appIconPath, isDev, resolveRendererEntry} from './internal'
 
@@ -36,7 +37,7 @@ export class TodoNoteWindow {
             this.window.show()
             this.window.focus()
             // 已存在的窗:通知 renderer 重新載入目標(換了另一條代辦的備注)
-            this.window.webContents.send('todo:note-target-changed')
+            this.window.webContents.send(IpcChannels.PUSH_TODO_NOTE_TARGET_CHANGED)
             return this.window
         }
 

@@ -9,6 +9,7 @@
 
 import {BrowserWindow} from 'electron'
 import {join} from 'path'
+import {IpcChannels} from '../../shared/ipc-channels'
 import {logger} from '../utils/logger'
 import {safeOpenExternal} from '../utils/safe-shell'
 import {appIconPath, isDev, resolveRendererEntry} from './internal'
@@ -66,10 +67,10 @@ export class MainWindow {
 
         // 通知 renderer 更新標題欄按鈕狀態
         this.window.on('maximize', () => {
-            this.window?.webContents.send('push:window-maximized', true)
+            this.window?.webContents.send(IpcChannels.PUSH_WINDOW_MAXIMIZED, true)
         })
         this.window.on('unmaximize', () => {
-            this.window?.webContents.send('push:window-maximized', false)
+            this.window?.webContents.send(IpcChannels.PUSH_WINDOW_MAXIMIZED, false)
         })
 
         // 外部連結轉系統瀏覽器

@@ -342,33 +342,6 @@
     "workCollect": "Work Review",
     "ideaLibrary": "Idea Library"
   },
-  "projectFlow": {
-    "memos": {
-      "title": "Memos",
-      "create": "New Memo",
-      "titleCol": "Title",
-      "titleRequired": "Title required",
-      "description": "Description",
-      "priority": "Priority",
-      "priorityLevel": {
-        "0": "Low",
-        "1": "Medium",
-        "2": "High"
-      },
-      "dueDate": "Due Date",
-      "deleteConfirm": "Delete?",
-      "aiSuggest": "AI Suggest",
-      "aiEmpty": "No suggestions — projects and memos all under control",
-      "aiAdded": "Added {n} suggestions",
-      "acceptChecked": "Accept Checked",
-      "loginRequired": "Please sign in from the main window first, then come back to memos",
-      "status": {
-        "pending": "Pending",
-        "done": "Done",
-        "dismissed": "Dismissed"
-      }
-    }
-  },
   "home": {
     "title": "Home",
     "greetMorning": "Good morning",

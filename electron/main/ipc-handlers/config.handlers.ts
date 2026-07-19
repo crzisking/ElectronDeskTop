@@ -1,6 +1,6 @@
 /**
- * 配置文件 IPC Handler（讀/寫 app-config.json）。
- * 用於：渲染進程讀寫配置；文件 IO 必須在主進程進行。
+ * 配置 IPC Handler（讀/寫 DB-backed 配置）。
+ * 配置以 SQLite 為單一真相(非 JSON 檔);渲染端持唯讀投影,寫入走主進程事務。
  */
 
 import {ipcMain} from 'electron'

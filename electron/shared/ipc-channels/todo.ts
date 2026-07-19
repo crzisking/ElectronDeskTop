@@ -38,4 +38,6 @@ export const TodoChannels = {
 
     /** PUSH:代辦有變動 → 通知所有代辦窗 + 主窗刷新 */
     PUSH_TODO_CHANGED: 'todo:push:changed',
+    /** PUSH:備注窗換編輯目標 → 通知備注窗重載回填 */
+    PUSH_TODO_NOTE_TARGET_CHANGED: 'todo:note-target-changed',
 } as const

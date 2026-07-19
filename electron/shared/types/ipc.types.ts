@@ -4,13 +4,6 @@
  * 只含型別(編譯期擦除),sandbox preload 也能安全 import type。
  */
 
-/** 呼叫後端必備上下文:baseUrl + 工號(userId);token 預留 */
-export interface IpcCtx {
-    baseUrl: string
-    userId: string
-    token?: string
-}
-
 export type IpcOk<T> = { ok: true; data: T }
 export type IpcErr = { ok: false; error: string }
 

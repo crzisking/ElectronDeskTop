@@ -142,7 +142,7 @@ export const personalTools = sqliteTable(
     openMode: text('openMode').notNull(),
       /** 僅 openMode='page' 使用 */
     routeName: text('routeName'),
-      /** 僅 openMode='window' 使用,目前支援 'memos' */
+      /** 僅 openMode='window' 使用,目前支援 'todo' */
       windowId: text('windowId'),
     ord: integer('ord').notNull(),
   },

@@ -14,6 +14,7 @@ const IPC = {
     TODO_NOTE_TARGET: 'todo:note-target',
     TODO_PATCH: 'todo:patch',
     TODO_HIDE_NOTE: 'todo:hide-note',
+    TODO_NOTE_TARGET_CHANGED: 'todo:note-target-changed',
 } as const
 
 // 編譯期 drift 守衛:每個內聯字串必須存在於 TodoChannels
@@ -21,9 +22,6 @@ type SharedChannelValue = (typeof TodoChannels)[keyof typeof TodoChannels]
 type _AssertChannelsExist = { [K in keyof typeof IPC]: (typeof IPC)[K] & SharedChannelValue }
 const _channelCheck: _AssertChannelsExist = IPC
 void _channelCheck
-
-// 換目標時 main → renderer 的通知(非 TodoChannels 業務通道,單獨白名單)
-const PUSH_TARGET_CHANGED = 'todo:note-target-changed'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 const c = <T = unknown>(action: string, args: object = {}) =>
@@ -39,7 +37,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
 
     on(channel: string, callback: (...args: unknown[]) => void) {
-        if (channel !== PUSH_TARGET_CHANGED) return
+        if (channel !== IPC.TODO_NOTE_TARGET_CHANGED) return
         const existing = listenerMap.get(callback)
         if (existing) ipcRenderer.off(channel, existing)
         const wrapper = (_e: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
