@@ -66,13 +66,27 @@ function onWindowFocus() {
   focusField()
 }
 
+/**
+ * 主進程推「已顯示」→ **先聚焦 input,隔一拍再拉 Win+H**(保證 input 已聚焦,語音打進本框、
+ * 游標在位)。延遲讓聚焦落定;慢機器上這個順序是關鍵,否則焦點會跑到語音條上。
+ */
+function onShown() {
+  focusField()
+  window.setTimeout(() => {
+    inputEl.value?.focus()
+    void window.electronAPI.todo.triggerVoice()
+  }, 200)
+}
+
 onMounted(() => {
   focusField()
   window.addEventListener('focus', onWindowFocus)
+  window.electronAPI.on('todo:capture-shown', onShown)
 })
 
 onUnmounted(() => {
   window.removeEventListener('focus', onWindowFocus)
+  window.electronAPI.off('todo:capture-shown', onShown)
 })
 </script>
 

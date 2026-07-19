@@ -27,6 +27,8 @@ export const TodoChannels = {
     TODO_OPEN_CAPTURE: 'todo:open-capture',
     /** 錄入窗 🎤 → 觸發 Windows 系統語音輸入(Win+H) */
     TODO_TRIGGER_VOICE: 'todo:trigger-voice',
+    /** PUSH:錄入窗已顯示 → 通知渲染層先聚焦 input 再拉語音(保證順序,修焦點競態) */
+    TODO_CAPTURE_SHOWN: 'todo:capture-shown',
     /** dock 卡片「備注」→ 開可聚焦備注小窗(帶 id) */
     TODO_OPEN_NOTE: 'todo:open-note',
     /** 備注窗載入時查當前編輯目標 → 回 {id, title, note} */

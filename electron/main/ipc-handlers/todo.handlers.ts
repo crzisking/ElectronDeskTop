@@ -59,9 +59,9 @@ export function registerTodoHandlers(deps: {
         return {ok: true, data: true}
     })
 
-    // 🎤 → 開/關系統語音輸入(Win+H);由捕獲窗管狀態,關窗時一起收
+    // 🎤 / 錄入窗顯示 → 拉起系統語音輸入(Win+H);拉起即撒手,不代關(語音自己關)
     ipcMain.handle(IpcChannels.TODO_TRIGGER_VOICE, () => {
-        deps.windowManager.getTodoCaptureWindow().toggleVoice()
+        deps.windowManager.getTodoCaptureWindow().triggerVoice()
         return {ok: true, data: true}
     })
 
