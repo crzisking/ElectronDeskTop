@@ -97,6 +97,7 @@
 <script lang="ts" setup>
 import {computed, onMounted, onUnmounted, ref} from 'vue'
 import type {Todo, TodoCounts} from '@shared/types/todo.types'
+import * as du from './dock-utils'
 
 const api = () => window.electronAPI.todo
 
@@ -126,46 +127,11 @@ async function load() {
 const active = computed(() => todos.value.filter((t) => t.status === 'active'))
 const inbox = computed(() => todos.value.filter((t) => t.status === 'inbox'))
 
-// ── 緊急度 / 顯示 ──
-function endOfToday(): number {
-  const d = new Date(now.value)
-  d.setHours(23, 59, 59, 999)
-  return d.getTime()
-}
-
-function urgency(t: Todo): 'overdue' | 'today' | 'later' | 'none' {
-  if (t.dueAt == null) return 'none'
-  if (t.dueAt < now.value) return 'overdue'
-  if (t.dueAt <= endOfToday()) return 'today'
-  return 'later'
-}
-
-function pad(n: number): string {
-  return n < 10 ? '0' + n : String(n)
-}
-
-function fmtTime(due: number | null): string {
-  if (due == null) return '無截止'
-  const d = new Date(due)
-  const today = new Date(now.value)
-  const sameDay = d.toDateString() === today.toDateString()
-  const tmr = new Date(now.value + 86400000)
-  const isTmr = d.toDateString() === tmr.toDateString()
-  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  if (sameDay) return `今天 ${hm}`
-  if (isTmr) return `明天 ${hm}`
-  return `${d.getMonth() + 1}/${d.getDate()} ${hm}`
-}
-
-function priLabel(p: number): string {
-  return p >= 2 ? '高' : '中'
-}
-
-const dateLabel = computed(() => {
-  const d = new Date(now.value)
-  const wk = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
-  return `週${wk} · ${d.getMonth() + 1}/${d.getDate()}`
-})
+// ── 緊急度 / 顯示(純邏輯在 dock-utils,這裡只把 now.value 傳進去)──
+const urgency = (t: Todo) => du.urgency(t, now.value)
+const fmtTime = (due: number | null) => du.fmtTime(due, now.value)
+const priLabel = du.priLabel
+const dateLabel = computed(() => du.formatDateLabel(now.value))
 
 // ── 動作 ──
 async function complete(id: string) {
@@ -189,24 +155,8 @@ function toggleEdit(id: string) {
   editingId.value = editingId.value === id ? '' : id
 }
 
-/** 預設 → 絕對截止 ms(null=清除) */
-function presetDue(preset: string): number | null {
-  if (preset === 'clear') return null
-  const d = new Date(now.value)
-  if (preset === 'tomorrow') {
-    d.setDate(d.getDate() + 1)
-    d.setHours(9, 0, 0, 0)
-  } else if (preset === 'friday') {
-    d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7))
-    d.setHours(18, 0, 0, 0)
-  } else {
-    d.setHours(18, 0, 0, 0) // today
-  }
-  return d.getTime()
-}
-
 async function setDue(id: string, preset: string) {
-  await api().patch(id, {dueAt: presetDue(preset), dueKind: 'none'})
+  await api().patch(id, {dueAt: du.presetDue(preset, now.value), dueKind: 'none'})
 }
 
 async function setPriority(id: string, p: number) {
@@ -219,23 +169,10 @@ function openNote(id: string) {
 }
 
 /** dueAt 是否等於今天(offset 0)/ 明天(offset 1) —— 給編輯 chip 高亮用 */
-function sameDay(dueAt: number | null, offset: number): boolean {
-  if (dueAt == null) return false
-  const d = new Date(now.value)
-  d.setDate(d.getDate() + offset)
-  return new Date(dueAt).toDateString() === d.toDateString()
-}
+const sameDay = (dueAt: number | null, offset: number) => du.sameDay(dueAt, offset, now.value)
 
 // ── 漸進式完善:隔天仍無截止的舊任務,輕提一次 ──
-function startOfToday(): number {
-  const d = new Date(now.value)
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-function needsEnrich(t: Todo): boolean {
-  return t.aiState === 'done' && t.dueAt == null && !t.enrichPromptedAt && t.createdAt < startOfToday()
-}
+const needsEnrich = (t: Todo) => du.needsEnrich(t, now.value)
 
 async function dismissEnrich(id: string) {
   await api().patch(id, {enrichPromptedAt: now.value})
