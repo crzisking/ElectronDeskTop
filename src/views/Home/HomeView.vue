@@ -174,28 +174,23 @@
 </template>
 
 <script lang="ts" setup>
-import {computed, onMounted, onUnmounted, ref} from 'vue'
-import {ElMessage} from 'element-plus'
+import {computed} from 'vue'
 import {Clock, DataLine, Timer} from '@element-plus/icons-vue'
-import {IpcChannels} from '@shared/ipc-channels'
 import {useUiStore} from '@/stores/ui.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {useI18n} from 'vue-i18n'
 import {formatClock as formatTime} from '@/shared/utils/format'
-import {distPercent, dueDays, dueLevel, heatStyle, paceLevel} from './dashboard-utils'
-import {projectFlowApi} from '@/features/project-flow/api'
-import type {TodayActivitySummary} from '@/features/project-flow/types'
-import type {Todo} from '@shared/types/todo.types'
-import type {DailyAdviceContent, DailyAdviceRow, DailyAdviceStatus} from '@/types/electron/daily-advice'
+import {distPercent, heatStyle} from './dashboard-utils'
+import {useTodayActivity} from './composables/useTodayActivity'
+import {useHomeTodos} from './composables/useHomeTodos'
+import {useDailyAdvice} from './composables/useDailyAdvice'
 
 const ui = useUiStore()
 const auth = useAuthStore()
 const {t} = useI18n()
 
-// ─── 左欄:問候 ──────────────────────────────────────────────
-
+// ─── 左欄:問候(純佈局,留在 view)──────────────────────────
 const displayName = computed(() => auth.user?.name || auth.user?.userName || '')
-
 const hour = new Date().getHours()
 /** 5-11 早安 / 11-14 午安 / 14-18 下午好 / 其餘 晚安 */
 const greeting = computed(() => {
@@ -204,141 +199,13 @@ const greeting = computed(() => {
   if (hour >= 14 && hour < 18) return t('home.greetAfternoon')
   return t('home.greetEvening')
 })
-
 const todayText = new Date().toLocaleDateString(undefined, {month: 'long', day: 'numeric', weekday: 'long'})
-
-// ─── 今日活動(熱力 + 分佈 + 統計) ──────────────────────────
-
-const activity = ref<TodayActivitySummary>({categories: [], hourly: new Array(24).fill(0)})
-
-const totalMinutes = computed(() => activity.value.categories.reduce((s, c) => s + c.minutes, 0))
-
-/** 不直接亮時長數字 — 換成質性「節奏」描述,氛圍感 > 監控感(閾值在 dashboard-utils.paceLevel) */
-const paceText = computed(() => t(`home.pace${paceLevel(totalMinutes.value)}`))
-
-const topCategory = computed(() => activity.value.categories[0]?.category ?? '—')
-const activeHours = computed(() => activity.value.hourly.filter((m) => m > 0).length)
-
 const pad = (n: number) => String(n).padStart(2, '0')
 
-const DIST_COLORS = ['#3a5d96', '#5b8bc9', '#74a8e0', '#9cc2ec', '#c4d9f4', '#8492a6', '#b37feb', '#36cfc9']
-const distColor = (i: number) => DIST_COLORS[i % DIST_COLORS.length]
-const distWidth = (minutes: number) => `${Math.max(2, (minutes / Math.max(1, totalMinutes.value)) * 100)}%`
-
-async function loadActivity() {
-  try {
-    activity.value = await projectFlowApi.todayActivity()
-  } catch {
-    /* 採集服務沒起來就顯示空熱力,不打擾 */
-  }
-}
-
-// ─── 待辦(本地代辦;dock 之外在首頁也能一眼掃到)──────────────
-
-const TODO_SHOW_LIMIT = 5
-const todos = ref<Todo[]>([])
-
-async function loadTodos() {
-  try {
-    const r = await window.electronAPI.todo.listOpen()
-    const list = r.ok ? r.data : []
-    todos.value = [...list]
-        .sort((a, b) => (a.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.dueAt ?? Number.MAX_SAFE_INTEGER))
-        .slice(0, TODO_SHOW_LIMIT)
-  } catch {
-    /* 讀不到就顯示空狀態,不打擾 */
-  }
-}
-
-async function completeTodo(id: string) {
-  try {
-    await window.electronAPI.todo.complete(id)
-  } catch {
-    /* 靜默 */
-  }
-  void loadTodos()
-}
-
-function openTodoCapture() {
-  void window.electronAPI.todo.openCapture()
-}
-
-/** 到期文案:逾期 N 天 / 今天到期 / N 天後 / 無期限(按日曆日,見 dashboard-utils.dueDays) */
-function dueText(due?: number | null): string {
-  const d = dueDays(due ?? null, Date.now())
-  if (d === null) return t('home.todoNoDue')
-  if (d < 0) return t('home.todoOverdue', {n: -d})
-  if (d === 0) return t('home.todoDueToday')
-  return t('home.todoDueDays', {n: d})
-}
-
-/** 顏色等級 class:逾期紅 / 24h 內橙 / 其餘灰 */
-function dueClass(due?: number | null): string {
-  return `lv-${dueLevel(due ?? null, Date.now())}`
-}
-
-/** 代辦變動(錄入 / AI 完成 / dock 就地改)→ 首頁即時刷新 */
-const onTodoChanged = () => void loadTodos()
-
-// ─── 學習建議 ────────────────────────────────────────────────
-
-const loading = ref(false)
-const generating = ref(false)
-const status = ref<DailyAdviceStatus | null>(null)
-
-const ready = computed(() => !!status.value?.templateBound && !!status.value?.llmConfigured)
-
-const content = computed<DailyAdviceContent | null>(() => {
-  const json = status.value?.today?.contentJson
-  if (!json) return null
-  try {
-    return JSON.parse(json) as DailyAdviceContent
-  } catch {
-    return null
-  }
-})
-
-onMounted(() => {
-  void load()
-  void loadActivity()
-  void loadTodos()
-  window.electronAPI.on(IpcChannels.PUSH_DAILY_ADVICE, onPush)
-  window.electronAPI.on(IpcChannels.PUSH_TODO_CHANGED, onTodoChanged)
-})
-onUnmounted(() => {
-  window.electronAPI.off(IpcChannels.PUSH_DAILY_ADVICE, onPush)
-  window.electronAPI.off(IpcChannels.PUSH_TODO_CHANGED, onTodoChanged)
-})
-
-function onPush(...args: unknown[]) {
-  const row = args[0] as DailyAdviceRow
-  if (status.value) status.value.today = row
-}
-
-async function load() {
-  loading.value = true
-  try {
-    const r = await window.electronAPI.dailyAdvice.status()
-    if (r.ok) status.value = r.data
-    else ElMessage.error(r.error)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function onGenerate() {
-  generating.value = true
-  try {
-    const r = await window.electronAPI.dailyAdvice.generate()
-    if (r.ok) {
-      if (status.value) status.value.today = r.data
-    } else {
-      ElMessage.error(r.error)
-    }
-  } finally {
-    generating.value = false
-  }
-}
+// ─── 三個區塊各自的 composable(view 只做佈局編排)──────────
+const {activity, totalMinutes, paceText, topCategory, activeHours, distColor, distWidth} = useTodayActivity()
+const {todos, completeTodo, openTodoCapture, dueText, dueClass} = useHomeTodos()
+const {loading, generating, status, ready, content, onGenerate} = useDailyAdvice()
 </script>
 
 <style scoped>
