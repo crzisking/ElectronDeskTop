@@ -154,11 +154,11 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerLogHandlers()
   registerAuthHandlers()
   registerLogViewerHandlers(logService, windowManager)
-  registerWorkCollectHandlers(workCollector, workRecordService, configManager, windowManager, workTemplateCacheService, workCollectSyncService)
+  registerWorkCollectHandlers({scheduler: workCollector, recordService: workRecordService, configManager, windowManager, templateCacheService: workTemplateCacheService, syncService: workCollectSyncService})
   registerFloatingBallHandlers(windowManager, configManager, floatingBallMgr)
   registerUserProfileHandlers(userProfileService, accountChangeCleaner)
   registerSavedCredentialsHandlers(savedCredentialsService)
-  registerWorkAnalysisHandlers(workAnalysisService, workRecordService, workTemplateCacheService, llmClient, configManager, agentService, windowManager)
+  registerWorkAnalysisHandlers({workAnalysisService, workRecordService, templateCacheService: workTemplateCacheService, llmClient, configManager, agentService, windowManager})
   registerNotificationHandlers(notificationClient, configManager)
     // 首頁今日活動聚合:純本地讀 work-collect
     registerProjectFlowHandlers({workRecordService})

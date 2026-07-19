@@ -91,15 +91,18 @@ type StartStreamResult = StartStreamOutcome | { ok: false; kind: 'bad-payload' }
 
 // ─── Handler registration ────────────────────────────────────────
 
-export function registerWorkAnalysisHandlers(
-    workAnalysisService: WorkAnalysisService | null,
-    workRecordService: WorkRecordService | null,
-    templateCacheService: WorkTemplateCacheService | null,
-    llmClient: LlmClient | null,
-    configManager: ConfigManager,
-    agentService: AgentService | null,
-    windowManager: WindowManager,
-): void {
+export interface WorkAnalysisHandlerDeps {
+    workAnalysisService: WorkAnalysisService | null
+    workRecordService: WorkRecordService | null
+    templateCacheService: WorkTemplateCacheService | null
+    llmClient: LlmClient | null
+    configManager: ConfigManager
+    agentService: AgentService | null
+    windowManager: WindowManager
+}
+
+export function registerWorkAnalysisHandlers(deps: WorkAnalysisHandlerDeps): void {
+    const {workAnalysisService, workRecordService, templateCacheService, llmClient, configManager, agentService, windowManager} = deps
 
     // ── 配額查詢 ──────────────────────────────────────────────────
     ipcMain.handle(

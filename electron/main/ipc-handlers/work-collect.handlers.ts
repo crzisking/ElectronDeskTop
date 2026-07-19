@@ -70,14 +70,17 @@ function validateRemoteConfig(p: any): p is RemoteConfigPayload {
 
 // ─── Handlers ─────────────────────────────────────────────────────────
 
-export function registerWorkCollectHandlers(
-  scheduler: WorkCollectorScheduler,
-  recordService: WorkRecordService | null,
-  configManager: ConfigManager,
-  windowManager: WindowManager,
-  templateCacheService: WorkTemplateCacheService | null,
-  syncService: WorkCollectSyncService | null,
-): void {
+export interface WorkCollectHandlerDeps {
+  scheduler: WorkCollectorScheduler
+  recordService: WorkRecordService | null
+  configManager: ConfigManager
+  windowManager: WindowManager
+  templateCacheService: WorkTemplateCacheService | null
+  syncService: WorkCollectSyncService | null
+}
+
+export function registerWorkCollectHandlers(deps: WorkCollectHandlerDeps): void {
+  const {scheduler, recordService, configManager, windowManager, templateCacheService, syncService} = deps
 
     function validateRunSyncPayload(p: any): p is WorkSyncRunPayload {
         if (!p || typeof p !== 'object') return false
