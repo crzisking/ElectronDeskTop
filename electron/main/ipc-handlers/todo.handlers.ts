@@ -13,13 +13,10 @@ import type {WindowManager} from '../windows/window-manager'
 import type {TodosService} from '../db/features/todos/service'
 import type {TodoAiRunner} from '../todo/runner'
 import type {TodoPatch, TodoStatus} from '../../shared/types/todo.types'
+import type {IpcResult as Result} from '../../shared/types/ipc.types'
+import {fail, ok} from '../utils/ipc-result'
 
 const TAG = 'IPC:todo'
-
-type Result<T> = { ok: true; data: T } | { ok: false; error: string }
-
-const ok = <T>(data: T): Result<T> => ({ok: true, data})
-const fail = (error: string): Result<never> => ({ok: false, error})
 
 const STATUSES: readonly TodoStatus[] = ['inbox', 'active', 'done', 'dropped']
 

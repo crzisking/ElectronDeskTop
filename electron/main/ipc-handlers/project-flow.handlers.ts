@@ -9,20 +9,12 @@
 import {ipcMain} from 'electron'
 import {IpcChannels} from '../../shared/ipc-channels'
 import {summarizeTodayActivityFromService} from '../services/project-flow/ai-local'
+import {safeRun} from '../utils/ipc-result'
 import type {WorkRecordService} from '../db/features/work-collect/service'
 
 /** 註冊 handler 時注入的相依 */
 interface ProjectFlowHandlerDeps {
     workRecordService: WorkRecordService | null
-}
-
-/** 統一錯誤包裝 — handler 回 result 物件,不擴散異常給 renderer */
-async function safeRun<T>(fn: () => Promise<T>): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
-    try {
-        return {ok: true, data: await fn()}
-    } catch (err) {
-        return {ok: false, error: err instanceof Error ? err.message : String(err)}
-    }
 }
 
 export function registerProjectFlowHandlers(

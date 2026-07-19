@@ -24,8 +24,8 @@ export const WRITE_TOOLS = new Set(['write', 'edit', 'bash', 'clipboard_write', 
 /** 帶路徑參數的工具(要做 external_directory / 系統路徑判斷) */
 export const PATH_TOOLS = new Set(['read', 'write', 'edit', 'list'])
 
-/** 硬編碼危險命令(使用者配置也擋不住) */
-const HARD_DENY_CMD = /(^|[\s&|;])(rm|del|rmdir|rd|format|mkfs|shutdown|reboot|halt|diskpart)(\s|$)/i
+/** 硬編碼危險命令(使用者配置也擋不住)—— 單源,agent/tools/index.ts 的底線 deny 也 import 這個 */
+export const HARD_DENY_CMD = /(^|[\s&|;])(rm|del|rmdir|rd|format|mkfs|shutdown|reboot|halt|diskpart)(\s|$)/i
 /** 硬編碼系統路徑(小寫前綴比對) */
 const HARD_DENY_PATHS = ['c:\\windows', 'c:\\program files', 'c:\\program files (x86)']
 

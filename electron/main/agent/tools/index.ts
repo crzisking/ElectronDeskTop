@@ -19,6 +19,7 @@ import {basename, isAbsolute, join, relative, resolve, sep} from 'path'
 import {tool, type ToolSet} from 'ai'
 import {z} from 'zod'
 import {buildWinTools} from './win-tools'
+import {HARD_DENY_CMD} from '../permission'
 import {logger} from '../../utils/logger'
 
 const TAG = 'AgentTools'
@@ -28,8 +29,7 @@ const BASH_MAX_BUFFER = 8 * 1024 * 1024
 const MAX_WALK_FILES = 4000
 const WEB_MAX_BYTES = 200_000
 
-/** 硬編碼危險命令底線(與 permission.ts 的 HARD_DENY 同源語義;完整權限模型見 docs/19 §5.4) */
-const BASH_HARD_DENY = /(^|[\s&|;])(rm|del|rmdir|rd|format|mkfs|shutdown|reboot|halt|diskpart)(\s|$)/i
+// 硬編碼危險命令底線,單源自 permission.ts 的 HARD_DENY_CMD(完整權限模型見 docs/19 §5.4)
 
 /**
  * @param workspaces 工作資料夾清單(第一個為主目錄);至少要有一個(caller 保證,空則 fallback cwd)
@@ -183,7 +183,7 @@ export function buildTools(workspaces: string[]): ToolSet {
             description: '在主工作目錄執行 shell 命令,回 stdout / stderr / 退出碼。',
             inputSchema: z.object({command: z.string().describe('要執行的 shell 命令')}),
             execute: async ({command}) => {
-                if (BASH_HARD_DENY.test(command)) {
+                if (HARD_DENY_CMD.test(command)) {
                     return {ok: false, denied: true, error: `危險命令被安全策略拒絕:${command}`}
                 }
                 try {

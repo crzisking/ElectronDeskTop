@@ -13,6 +13,7 @@ import type {AgentDbAdapter} from '../agent/db-adapter'
 import type {AgentService} from '../db/features/agent/service'
 import type {WindowManager} from '../windows/window-manager'
 import {buildModel, isAgentReady, listModels, resolveActiveProvider} from '../agent/model-provider'
+import {safeRun as safe} from '../utils/ipc-result'
 
 export interface AgentHandlerDeps {
     runtime: AgentRuntime | null
@@ -22,16 +23,6 @@ export interface AgentHandlerDeps {
     agentService: AgentService | null
     /** 資料夾選擇器要用(dialog 的 parent 視窗) */
     windowManager: WindowManager | null
-}
-
-type Result<T> = { ok: true; data: T } | { ok: false; error: string }
-
-async function safe<T>(fn: () => T | Promise<T>): Promise<Result<T>> {
-    try {
-        return {ok: true, data: await fn()}
-    } catch (err) {
-        return {ok: false, error: err instanceof Error ? err.message : String(err)}
-    }
 }
 
 export function registerAgentHandlers(deps: AgentHandlerDeps): void {
