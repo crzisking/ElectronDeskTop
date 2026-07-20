@@ -20,7 +20,6 @@ const IPC = {
     AGENT_NEW_CONVERSATION: 'agent:new-conversation',
     AGENT_PICK_WORKSPACE: 'agent:pick-workspace',
     AGENT_SET_WORKSPACES: 'agent:set-workspaces',
-    AGENT_FORK_CONVERSATION: 'agent:fork-conversation',
     AGENT_DELETE_CONVERSATION: 'agent:delete-conversation',
     AGENT_CONFIG_READ: 'agent:config-read',
     AGENT_CONFIG_WRITE: 'agent:config-write',
@@ -68,8 +67,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
         pickWorkspace: () => c(IPC.AGENT_PICK_WORKSPACE),
         setWorkspaces: (conversationId: string, workspaces: string[]) =>
             c(IPC.AGENT_SET_WORKSPACES, {conversationId, workspaces}),
-        forkConversation: (conversationId: string, uptoMessageId: string) =>
-            c(IPC.AGENT_FORK_CONVERSATION, {conversationId, uptoMessageId}),
         deleteConversation: (conversationId: string) => c(IPC.AGENT_DELETE_CONVERSATION, {conversationId}),
         configRead: () => c(IPC.AGENT_CONFIG_READ),
         configWrite: (partial: object) => c(IPC.AGENT_CONFIG_WRITE, {partial}),

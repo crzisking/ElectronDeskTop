@@ -32,10 +32,6 @@ export function createAgentBridge(ipc: IpcRenderer, ch: AgentChannelMap) {
             c(ch.AGENT_PICK_WORKSPACE) as Promise<Result<{ path: string | null }>>,
         setWorkspaces: (conversationId: string, workspaces: string[]) =>
             c(ch.AGENT_SET_WORKSPACES, {conversationId, workspaces}) as Promise<Result<{ workspaces: string[] }>>,
-        forkConversation: (conversationId: string, uptoMessageId: string) =>
-            c(ch.AGENT_FORK_CONVERSATION, {conversationId, uptoMessageId}) as Promise<Result<{
-                conversationId: string
-            }>>,
         deleteConversation: (conversationId: string) =>
             c(ch.AGENT_DELETE_CONVERSATION, {conversationId}) as Promise<Result<boolean>>,
         configRead: () =>

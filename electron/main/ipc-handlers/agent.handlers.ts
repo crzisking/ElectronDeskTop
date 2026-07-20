@@ -84,12 +84,6 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
         return {ok: true, data: {path: r.canceled || !r.filePaths.length ? null : r.filePaths[0]}}
     })
 
-    ipcMain.handle(ch.AGENT_FORK_CONVERSATION, (_e, p: { conversationId?: string; uptoMessageId?: string }) => {
-        if (!deps.db) return notReady
-        if (!p?.conversationId || !p?.uptoMessageId) return {ok: false, error: '缺 conversationId / uptoMessageId'}
-        return {ok: true, data: {conversationId: deps.db.fork(p.conversationId, p.uptoMessageId)}}
-    })
-
     ipcMain.handle(ch.AGENT_DELETE_CONVERSATION, (_e, p: { conversationId?: string }) => {
         if (!deps.db) return notReady
         if (p?.conversationId) {

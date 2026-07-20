@@ -15,9 +15,6 @@ export const WindowChannels = {
   /** 查詢主視窗是否最大化。invoke。返回:boolean */
   WINDOW_IS_MAXIMIZED: 'window:is-maximized',
 
-  /** 整個應用完全退出 */
-  APP_QUIT: 'app:quit',
-
   /**
    * OPEN_CHILD_WINDOW:從統一平台卡片打開外部 URL 的子視窗。
    * 主進程內白名單校驗。

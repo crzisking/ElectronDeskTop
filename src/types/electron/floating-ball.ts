@@ -6,12 +6,6 @@
  */
 
 export interface FloatingBallAPI {
-    /** 顯示浮球窗口 */
-    show: () => void
-
-    /** 隱藏浮球窗口 */
-    hide: () => void
-
     /**
      * 開始拖動浮球。呼叫後主進程以 ~60fps 輪詢游標位置更新浮球位置。
      * 必須在 mousedown 事件中呼叫。

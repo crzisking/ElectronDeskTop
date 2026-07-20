@@ -2,8 +2,8 @@
  * 浮球相關 IPC handlers。
  *
  * 涵蓋:
- *  - BALL_*:拖動 / 顯隱 / 取座標 / 右鍵菜單
- *  - APP_QUIT:整個應用退出(浮球右鍵的「結束應用程式」走這條)
+ *  - BALL_START_DRAG / BALL_STOP_DRAG:拖動
+ *  - BALL_SHOW_CONTEXT_MENU:右鍵原生菜單(內含 quit-app 直接 app.quit())
  *
  * 注:OPEN_CHILD_WINDOW 是統一平台卡片用,跟浮球無關,在 window.handlers.ts 註冊。
  */
@@ -60,27 +60,6 @@ export function registerFloatingBallHandlers(
   ipcMain.on(IpcChannels.BALL_STOP_DRAG, () => {
     floatingBallMgr.stopDrag()
     logger.debug('浮球停止拖動', 'IPC:ball')
-  })
-
-  /** BALL_SHOW:主視窗隱藏時讓浮球顯示 */
-  ipcMain.on(IpcChannels.BALL_SHOW, () => {
-    windowManager.showFloatingBall()
-  })
-
-  /** BALL_HIDE:主視窗顯示時隱藏浮球避免遮擋 */
-  ipcMain.on(IpcChannels.BALL_HIDE, () => {
-    windowManager.hideFloatingBall()
-  })
-
-  /** BALL_GET_POSITION:浮球渲染進程查詢自身座標 { x, y } */
-  ipcMain.handle(IpcChannels.BALL_GET_POSITION, () => {
-    return windowManager.getFloatingBallPosition()
-  })
-
-  /** APP_QUIT:完全退出應用,浮球右鍵菜單「結束應用程式」用 */
-  ipcMain.on(IpcChannels.APP_QUIT, () => {
-    logger.info('收到退出指令,應用正在退出...', 'IPC:app')
-    app.quit()
   })
 
   /**

@@ -20,7 +20,6 @@ import {contextBridge, ipcRenderer} from 'electron'
 import {IpcChannels} from '@shared/ipc-channels'
 import {createConfigBridge} from './bridges/config.bridge'
 import {createWindowBridge} from './bridges/window.bridge'
-import {createFloatingBallBridge} from './bridges/floating-ball.bridge'
 import {createLogBridge} from './bridges/log.bridge'
 import {createUpdateBridge} from './bridges/update.bridge'
 import {createAuthBridge} from './bridges/auth.bridge'
@@ -87,7 +86,6 @@ const listenerMap = new WeakMap<PushCallback, PushWrapper>()
 contextBridge.exposeInMainWorld('electronAPI', {
   config: createConfigBridge(ipcRenderer, IpcChannels),
   window: createWindowBridge(ipcRenderer, IpcChannels),
-  floatingBall: createFloatingBallBridge(ipcRenderer, IpcChannels),
   log: createLogBridge(ipcRenderer, IpcChannels),
   update: createUpdateBridge(ipcRenderer, IpcChannels),
   auth: createAuthBridge(ipcRenderer, IpcChannels),

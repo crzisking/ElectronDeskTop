@@ -13,7 +13,6 @@ export const AgentChannels = {
     AGENT_PICK_WORKSPACE: 'agent:pick-workspace',
     /** 設定某對話的工作資料夾清單(加 / 移除資料夾後持久化) */
     AGENT_SET_WORKSPACES: 'agent:set-workspaces',
-    AGENT_FORK_CONVERSATION: 'agent:fork-conversation',
     AGENT_DELETE_CONVERSATION: 'agent:delete-conversation',
     AGENT_CONFIG_READ: 'agent:config-read',
     AGENT_CONFIG_WRITE: 'agent:config-write',

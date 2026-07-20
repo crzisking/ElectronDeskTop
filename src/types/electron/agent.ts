@@ -19,7 +19,6 @@ export interface AgentAPI {
     newConversation: (workspace?: string) => Promise<Result<{ conversationId: string; workspaces: string[] }>>
     pickWorkspace: () => Promise<Result<{ path: string | null }>>
     setWorkspaces: (conversationId: string, workspaces: string[]) => Promise<Result<{ workspaces: string[] }>>
-    forkConversation: (conversationId: string, uptoMessageId: string) => Promise<Result<{ conversationId: string }>>
     deleteConversation: (conversationId: string) => Promise<Result<boolean>>
     configRead: () => Promise<Result<AgentConfigView>>
     configWrite: (partial: Partial<AgentConfig>) => Promise<Result<boolean>>
