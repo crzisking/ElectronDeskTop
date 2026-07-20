@@ -19,24 +19,14 @@ import {IdeaConfigStore} from './idea-capture/config-store'
 import {IdeaRefiner} from './idea-capture/refiner'
 import {IdeaHotkeyManager} from './idea-capture/hotkey-manager'
 import {registerDailyAdviceHandlers} from './ipc-handlers/daily-advice.handlers'
-import {DailyAdviceService} from './db/features/daily-advice/service'
 import {DailyAdviceScheduler} from './services/daily-advice/scheduler'
 import {attachLogService, logger} from './utils/logger'
 import {initLogFileWriter} from './utils/log-file-writer'
 import {ensureAutoLaunchRegistered} from './auto-launch-manager'
 import {DatabaseManager} from './db/database-manager'
 import {LogService} from './db/features/logs/service'
-import {WorkRecordService} from './db/features/work-collect/service'
-import {WorkTemplateCacheService} from './db/features/work-collect/template-cache.service'
-import {UserProfileService} from './db/features/user-profile/service'
-import {SavedCredentialsService} from './db/features/saved-credentials/service'
-import {AgentService} from './db/features/agent/service'
-import {WorkAnalysisService} from './db/features/work-analysis/service'
-import {TodosService} from './db/features/todos/service'
-import {TodoAiRunner} from './todo/runner'
-import {LlmClient} from './services/llm'
-import {AccountChangeCleaner} from './db/account-change-cleaner'
 import {WorkCollectorScheduler, WorkCollectSyncService} from './work-collect'
+import {createDbServices, type DbServices} from './create-services'
 import {NotificationClient} from './services/notification-client'
 import {ScriptRunner} from './services/script-runner'
 import {registerBuiltinScripts} from './services/scripts'
@@ -50,25 +40,8 @@ let configManager: ConfigManager
 let updateMgr: UpdateManager
 let dbManager: DatabaseManager | null = null
 let logService: LogService | null = null
-let workRecordService: WorkRecordService | null = null
-let workTemplateCacheService: WorkTemplateCacheService | null = null
-let userProfileService: UserProfileService | null = null
-let savedCredentialsService: SavedCredentialsService | null = null
-let accountChangeCleaner: AccountChangeCleaner | null = null
-// AgentService 沿用 — agent feature UI 已移除,但 agent_configs 表保留作為
-// LLM provider 配置儲存(work analysis / 未來 Claude SDK Agent v2 都讀這張表)
-let agentService: AgentService | null = null
-// 桌面代辦(docs/23):本地 todos 表 service + AI runner(P2)
-let todosService: TodosService | null = null
-let todoAiRunner: TodoAiRunner | null = null
-/**
- * LlmClient 共用層:任何 main process 要呼 LLM 的 feature 都注入這個實例,
- * 不要各自 new OpenAI。null = AgentService 未就緒(DB 沒起來)。
- */
-let llmClient: LlmClient | null = null
-/** 工作分析報告儲存 */
-let workAnalysisService: WorkAnalysisService | null = null
-let dailyAdviceService: DailyAdviceService | null = null
+// DB 依賴的一組服務統一走工廠(見 create-services.ts);DB 未就緒時整包為 null。
+// 只在 whenReady 內用,故不放模組層 —— 見下方 whenReady 內的 `let services`。
 let dailyAdviceScheduler: DailyAdviceScheduler | null = null
 let workCollector: WorkCollectorScheduler
 /** 遠程通知 WebSocket 客戶端(docs/18)。登入後由 renderer IPC NOTIFICATION_START 觸發實際連線 */
@@ -164,6 +137,7 @@ app.whenReady().then(async () => {
   // 失敗只 console.error(因為此時 logger 還沒接 DB,寫了也沒意義);
   // 不 attach 的情況下,logger 內 _logService?.write(...) 自動 noop,
   // 文件寫入跟 console 仍正常,App 照常啟動。
+  let services: DbServices | null = null
   try {
     dbManager = new DatabaseManager()
     dbManager.init()
@@ -174,35 +148,13 @@ app.whenReady().then(async () => {
     if (deleted > 0) {
       logger.info(`啟動清理:刪除 ${deleted} 筆 14 天前的舊日誌`, 'DB')
     }
-    // 同一個 dbManager,連 work_records / user_profiles service 一起建
-    workRecordService = new WorkRecordService(dbManager)
-      workTemplateCacheService = new WorkTemplateCacheService(dbManager)
-    userProfileService = new UserProfileService(dbManager)
-    savedCredentialsService = new SavedCredentialsService(dbManager)
-    // cleaner 拿 workRecordService 是為了清表後 invalidate 內部 unsynced counter
-    accountChangeCleaner = new AccountChangeCleaner(dbManager, workRecordService)
-    agentService = new AgentService(dbManager)
-    // LlmClient 依賴 agentService 拿 provider 配置;一起建,出問題一起 null
-    llmClient = new LlmClient(agentService)
-    workAnalysisService = new WorkAnalysisService(dbManager)
-      dailyAdviceService = new DailyAdviceService(dbManager)
-      todosService = new TodosService(dbManager)
-      todoAiRunner = new TodoAiRunner(todosService)
+    // DB 依賴服務統一走工廠(構造順序=依賴順序,見 create-services.ts)
+    services = createDbServices(dbManager)
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null
     logService = null
-    workRecordService = null
-      workTemplateCacheService = null
-    userProfileService = null
-    savedCredentialsService = null
-    accountChangeCleaner = null
-    agentService = null
-    llmClient = null
-    workAnalysisService = null
-      dailyAdviceService = null
-      todosService = null
-      todoAiRunner = null
+    services = null
   }
 
   // 開發模式：所有窗口都允許 F12 開 DevTools；正式包不暴露
@@ -219,7 +171,7 @@ app.whenReady().then(async () => {
   // 後續所有步驟都依賴配置（窗口大小、浮球位置、靜默啟動等）
   // dbManager 是 **fatal dependency** — 因為 config 已搬進 SQLite,DB 連不上 = App 沒法啟動。
   // 既然 fatal,給使用者一個明確的對話框再退出,不要讓 Electron 出 "Uncaught Error" 黑底白字。
-  if (!dbManager) {
+  if (!dbManager || !services) {
     const {dialog} = await import('electron')
     dialog.showErrorBox(
         '啟動失敗',
@@ -271,11 +223,11 @@ app.whenReady().then(async () => {
 
   // 工作採集 scheduler:必須在 registerAllHandlers 前建構,因 work-collect.handlers 需要它的引用。
   // scheduler 負責 timer + capture + 推 IPC;命中閒置時直接走 recordService 寫 DB 跳過 AI。
-    workCollector = new WorkCollectorScheduler(configManager, windowManager, workRecordService, workTemplateCacheService)
+    workCollector = new WorkCollectorScheduler(configManager, windowManager, services.workRecordService, services.workTemplateCacheService)
 
   // 集中化 sync(docs/20):main 直接跑 listUnsynced + HTTP + markSynced 全流程,
   // renderer 不需 50× IPC 來回。DB 沒就緒(workRecordService=null)時為 null,handler 自降級。
-  const workCollectSyncService = workRecordService ? new WorkCollectSyncService(workRecordService) : null
+  const workCollectSyncService = new WorkCollectSyncService(services.workRecordService)
 
     // 遠程通知(docs/18):
     //   ScriptRunner 註冊 6 個內建腳本(show-message / clear-cache / restart-app / ...)。
@@ -290,7 +242,7 @@ app.whenReady().then(async () => {
     const agentConfigStore = new AgentConfigStore(dbManager)
     const agentDbAdapter = new AgentDbAdapter(dbManager)
     // 模型連線復用現有模型設定的 active provider(agentService)
-    const agentRuntime = new AgentRuntime(agentConfigStore, agentDbAdapter, new AgentEventBridge(windowManager), agentService)
+    const agentRuntime = new AgentRuntime(agentConfigStore, agentDbAdapter, new AgentEventBridge(windowManager), services.agentService)
 
     // 靈感速記(docs/21):配置(熱鍵)/ 後台完善佇列 / 熱鍵管理 / 速記小窗。
   // ⚠️ AI 完善在後端跑(後端 Qwen);refiner 只負責非同步呼叫後端 + 推送,不吃桌面端本地模型。
@@ -305,15 +257,15 @@ app.whenReady().then(async () => {
     updateMgr,
     logService,
     workCollector,
-    workRecordService,
-      workTemplateCacheService,
+    workRecordService: services.workRecordService,
+      workTemplateCacheService: services.workTemplateCacheService,
     workCollectSyncService,
-    userProfileService,
-    savedCredentialsService,
-    accountChangeCleaner,
-    agentService,
-    llmClient,
-    workAnalysisService,
+    userProfileService: services.userProfileService,
+    savedCredentialsService: services.savedCredentialsService,
+    accountChangeCleaner: services.accountChangeCleaner,
+    agentService: services.agentService,
+    llmClient: services.llmClient,
+    workAnalysisService: services.workAnalysisService,
       notificationClient,
       agentRuntime,
       agentConfigStore,
@@ -322,12 +274,12 @@ app.whenReady().then(async () => {
       ideaRefiner,
       ideaHotkey,
       ideaCaptureWindow: windowManager.getIdeaCaptureWindow(),
-      todosService,
-      todoAiRunner,
+      todosService: services.todosService,
+      todoAiRunner: services.todoAiRunner,
   })
 
     // 代辦:啟動時把既有 pending 補跑一次 AI 分析
-    todoAiRunner?.enqueuePending()
+    services.todoAiRunner.enqueuePending()
 
     // 註冊靈感速記全域快捷鍵(失敗只 log,不影響啟動)
     ideaHotkey.register()
@@ -347,9 +299,10 @@ app.whenReady().then(async () => {
 
     // 每日學習建議(純桌面端):08:00 排程 + 啟動補生成。
     // 前置(模板綁定 / LLM 配置)在 scheduler 內部檢查,不滿足就靜默跳過。
-    if (configManager && workRecordService && workTemplateCacheService && dailyAdviceService && llmClient) {
+    if (configManager) {
         dailyAdviceScheduler = new DailyAdviceScheduler(
-            configManager, workRecordService, workTemplateCacheService, dailyAdviceService, llmClient, windowManager,
+            configManager, services.workRecordService, services.workTemplateCacheService,
+            services.dailyAdviceService, services.llmClient, windowManager,
         )
         dailyAdviceScheduler.start()
     }
