@@ -8,7 +8,7 @@
  */
 
 import {randomUUID} from 'crypto'
-import {and, asc, desc, eq, gt, lt} from 'drizzle-orm'
+import {and, asc, desc, eq, gt, isNotNull, lt, ne, sql} from 'drizzle-orm'
 import {logger} from '../utils/logger'
 import type {DatabaseManager} from '../db/database-manager'
 import {type AgentMessageRow, agentMessages, type NewAgentMessage} from '../db/features/agent/schema'
@@ -58,24 +58,59 @@ export class AgentDbAdapter {
         }
     }
 
-    /** 列所有對話(標題 = 首條 user 訊息截斷;按最後活動時間降序) */
+    /**
+     * 列所有對話(標題 = 首條 user 訊息截斷;按最後活動時間降序)。
+     *
+     * 用 SQL 聚合而非把全表撈進記憶體再 JS 分組 —— 對話越多、單一對話越長,
+     * 舊寫法的記憶體與耗時都線性膨脹(含大段 content + toolCalls JSON)。改成:
+     *   1. GROUP BY 拿每對話的 count / max(timestamp)
+     *   2. 另一條只掃 user 訊息,靠 SQLite「有 MIN()/MAX() 時裸欄取該行值」的特性,
+     *      一次拿到「時間最早的 user 訊息」content 當標題(不必把訊息撈回來排序)
+     * 兩條都只回「對話數」量級的列,跟訊息總量脫鉤。
+     */
     listConversations(): ConversationSummary[] {
         if (!this.dbManager.isReady()) return []
-        const rows = this.db.select().from(agentMessages).orderBy(asc(agentMessages.timestamp)).all()
-        const byConv = new Map<string, { title: string; updatedAt: number; count: number }>()
-        for (const r of rows) {
-            const entry = byConv.get(r.conversationId) ?? {title: '', updatedAt: 0, count: 0}
-            entry.count++
-            entry.updatedAt = Math.max(entry.updatedAt, r.timestamp)
-            if (!entry.title && r.role === 'user' && r.content) entry.title = r.content.slice(0, 40)
-            byConv.set(r.conversationId, entry)
+
+        // 1) 每對話聚合:訊息數 + 最後活動時間
+        const aggs = this.db
+            .select({
+                conversationId: agentMessages.conversationId,
+                count: sql<number>`count(*)`,
+                updatedAt: sql<number>`max(${agentMessages.timestamp})`,
+            })
+            .from(agentMessages)
+            .groupBy(agentMessages.conversationId)
+            .all()
+
+        // 2) 每對話標題來源:時間最早、content 非空的 user 訊息。
+        //    SQLite 特例:GROUP BY 內用了 min(timestamp),同 SELECT 的裸欄(content)
+        //    保證取自那筆 min 列 —— 等價於「按時間升序的第一條」但不必真的排序回傳。
+        const titleRows = this.db
+            .select({
+                conversationId: agentMessages.conversationId,
+                content: agentMessages.content,
+                firstTs: sql<number>`min(${agentMessages.timestamp})`,
+            })
+            .from(agentMessages)
+            .where(and(
+                eq(agentMessages.role, 'user'),
+                isNotNull(agentMessages.content),
+                ne(agentMessages.content, ''),
+            ))
+            .groupBy(agentMessages.conversationId)
+            .all()
+
+        const titleByConv = new Map<string, string>()
+        for (const r of titleRows) {
+            if (r.content) titleByConv.set(r.conversationId, r.content.slice(0, 40))
         }
-        return [...byConv.entries()]
-            .map(([conversationId, e]) => ({
-                conversationId,
-                title: e.title || '(未命名對話)',
-                updatedAt: e.updatedAt,
-                messageCount: e.count
+
+        return aggs
+            .map((a) => ({
+                conversationId: a.conversationId,
+                title: titleByConv.get(a.conversationId) || '(未命名對話)',
+                updatedAt: a.updatedAt,
+                messageCount: a.count,
             }))
             .sort((a, b) => b.updatedAt - a.updatedAt)
     }

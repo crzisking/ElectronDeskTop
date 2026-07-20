@@ -17,7 +17,8 @@ app.use(createPinia())
 app.use(i18n)
 app.use(ElementPlus)
 
-// 全量註冊 ElementPlus 圖標,跟主窗 / 備忘窗對齊
+// 全量註冊 ElementPlus 圖標為全局組件:auto-import 只能解析模板裡的標籤名,
+// 解析不了 <component :is="字串名"> 這種動態圖標(跟主窗 main.ts 同一原因),故仍需全量註冊。
 for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(name, component)
 }

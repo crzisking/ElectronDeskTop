@@ -18,6 +18,13 @@ export class FloatingBallManager {
   /** 拖動時游標相對浮球左上角的偏移 */
   private dragOffset = { x: 0, y: 0 }
 
+  /**
+   * 拖動期間快取的工作區尺寸。
+   * workAreaSize 一次拖動內不變(分辨率 / 任務欄不會拖到一半改),
+   * 每 16ms tick 都呼 getPrimaryDisplay() 是白費的原生調用 → startDrag 時取一次快取。
+   */
+  private dragWorkArea = { width: 0, height: 0 }
+
   /** 浮球直徑（從配置讀取） */
   private ballSize = 80
 
@@ -47,6 +54,8 @@ export class FloatingBallManager {
       x: cursor.x - winX,
       y: cursor.y - winY
     }
+    // 拖動全程用同一份工作區尺寸,tick 內不再重複呼 getPrimaryDisplay()
+    this.dragWorkArea = screen.getPrimaryDisplay().workAreaSize
 
     this.dragInterval = setInterval(() => {
       this.updateBallPosition()
@@ -81,7 +90,7 @@ export class FloatingBallManager {
     }
 
     const cursor = screen.getCursorScreenPoint()
-    const { width, height } = screen.getPrimaryDisplay().workAreaSize
+    const { width, height } = this.dragWorkArea
 
     let targetX = cursor.x - this.dragOffset.x
     let targetY = cursor.y - this.dragOffset.y

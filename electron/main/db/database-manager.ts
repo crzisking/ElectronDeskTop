@@ -41,6 +41,10 @@ export class DatabaseManager {
     // WAL:讀寫並發更好;FK:跟著開,後續加表用得到
     this.sqlite.pragma('journal_mode = WAL')
     this.sqlite.pragma('foreign_keys = ON')
+    // busy_timeout:遇到寫鎖(如 server backfill 的整批 transaction)先等 5s 再放棄,
+    // 不設的話 better-sqlite3 遇 SQLITE_BUSY 立即拋錯 —— 高頻的日誌 / config 寫入
+    // 會在回填期間被餓死報錯。等待成本遠低於直接失敗重試。
+    this.sqlite.pragma('busy_timeout = 5000')
 
     this.db = drizzle(this.sqlite, {schema})
     migrate(this.db, {migrationsFolder})

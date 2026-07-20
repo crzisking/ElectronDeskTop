@@ -150,6 +150,11 @@ app.whenReady().then(async () => {
     }
     // DB 依賴服務統一走工廠(構造順序=依賴順序,見 create-services.ts)
     services = createDbServices(dbManager)
+    // work_records 保留 90 天(只刪已同步的舊列;防止只增不減拖慢範圍查詢)
+    const wrDeleted = services.workRecordService?.cleanupOlderThan(90) ?? 0
+    if (wrDeleted > 0) {
+      logger.info(`啟動清理:刪除 ${wrDeleted} 筆 90 天前且已同步的工作紀錄`, 'DB')
+    }
   } catch (err) {
     console.error('[App] DB 初始化失敗,日誌只走 txt + console', err)
     dbManager = null

@@ -12,7 +12,7 @@
  */
 
 import {defineStore} from 'pinia'
-import {computed, ref} from 'vue'
+import {computed, markRaw, ref, shallowRef} from 'vue'
 import {useConfigStore} from '@/stores/config.store'
 import {useAuthStore} from '@/stores/auth.store'
 import {logger} from '@/shared/utils/logger'
@@ -68,7 +68,13 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
   }))
 
   /** 當前查詢區間的紀錄(時間軸 UI 用) */
-  const records = ref<WorkRecord[]>([])
+  /**
+   * 採集紀錄(~30 天,可達數千筆)。用 shallowRef + markRaw:
+   * 這些是 IPC 來的唯讀快照,從不就地修改(只整包重指),用普通 ref 會把數千個物件
+   * 全部 deep-proxy,每次 refresh 白付一次代理成本、且每個依賴 computed 深度追蹤。
+   * shallowRef 只在「整包重指」時觸發響應,markRaw 確保元素永不被下游 reactive() 代理。
+   */
+  const records = shallowRef<WorkRecord[]>([])
   const loading = ref(false)
 
     /**
@@ -156,12 +162,15 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
    * 預設範圍:過去 30 天 → now,讓 TimelineList 的日期選擇器有歷史可挑;
    * 各 chart 元件仍會用各自的 filter(filterTodayRecords / filterWeekRecords)截短自己要的範圍。
    */
+  /** onRecordNew 的 debounce timer(closure per renderer instance) */
+  let recordNewTimer: ReturnType<typeof setTimeout> | null = null
+
   async function refresh(since?: number, until?: number): Promise<void> {
     loading.value = true
     try {
       const start = since ?? startOfDaysAgo(30)
       const end = until ?? Date.now()
-      records.value = await window.electronAPI.workCollect.list({since: start, until: end})
+      records.value = markRaw(await window.electronAPI.workCollect.list({since: start, until: end}))
     } catch (err) {
       logger.error('查詢採集紀錄失敗', 'WorkCollectStore', err)
       records.value = []
@@ -223,9 +232,20 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     }
   }
 
-  /** 主進程 DB 寫入完成 → 重 query 流水線 */
+  /**
+   * 主進程 DB 寫入完成 → 重 query 流水線。
+   *
+   * debounce(trailing 800ms):server backfill 會一次寫入上千筆並逐筆推 PUSH_WORK_RECORD_NEW,
+   * 每次 refresh 都是「拉 30 天全量(~3000 筆)→ 7 個 ECharts + TimelineList 全重算」。
+   * 不 debounce 的話一次回填 = 上千次全量重算,renderer 直接卡死。
+   * 合併成回填靜默後只跑一次;正常單筆 tick(5 分一次)延遲 800ms 落地,無感。
+   */
   function onRecordNew() {
-    refresh().catch(() => undefined)
+    if (recordNewTimer !== null) clearTimeout(recordNewTimer)
+    recordNewTimer = setTimeout(() => {
+      recordNewTimer = null
+      refresh().catch(() => undefined)
+    }, 800)
   }
 
     // ── 集中化(docs/11):config 拉取 + sync 上傳 ──────────────────────

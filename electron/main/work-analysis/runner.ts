@@ -185,8 +185,50 @@ async function runStream(
     workAnalysisRunContext.end(handle.runId)
 }
 
+/**
+ * 串流 delta 合併緩衝(比照 agent event-bridge 的 FLUSH_MS 機制)。
+ * LLM 每 token 一次 webContents.send,分析串流可跑 1-2 分鐘 → 每秒數十~百次 IPC
+ * 打在 main 事件迴圈上。以 runId 為 key 累積 delta,~24ms flush 一則;pushEnd 前強制 flush。
+ * renderer 端 StreamingController 本就非響應式寫 textContent,合併不影響顯示。
+ */
+const STREAM_FLUSH_MS = 24
+const streamBuffers = new Map<string, {
+    winMgr: WindowManager
+    delta: string
+    timer: ReturnType<typeof setTimeout> | null
+}>()
+
 function pushStream(winMgr: WindowManager, runId: string, delta: string): void {
-    sendToAllWindows(winMgr, IpcChannels.PUSH_WORK_ANALYSIS_STREAM, {runId, delta})
+    if (!delta) return
+    let b = streamBuffers.get(runId)
+    if (!b) {
+        b = {winMgr, delta: '', timer: null}
+        streamBuffers.set(runId, b)
+    }
+    b.delta += delta
+    if (b.timer === null) {
+        b.timer = setTimeout(() => flushStream(runId), STREAM_FLUSH_MS)
+    }
+}
+
+/** 把某 runId 緩衝的 delta 合併成一則送出(清 timer,保留 buffer 供後續 delta 續用) */
+function flushStream(runId: string): void {
+    const b = streamBuffers.get(runId)
+    if (!b) return
+    if (b.timer !== null) {
+        clearTimeout(b.timer)
+        b.timer = null
+    }
+    if (b.delta) {
+        sendToAllWindows(b.winMgr, IpcChannels.PUSH_WORK_ANALYSIS_STREAM, {runId, delta: b.delta})
+        b.delta = ''
+    }
+}
+
+/** 串流結束:flush 殘留 + 移除 buffer,避免 map 殘留(每次 run 結束都會走 pushEnd) */
+function endStream(runId: string): void {
+    flushStream(runId)
+    streamBuffers.delete(runId)
 }
 
 function pushEnd(
@@ -196,6 +238,7 @@ function pushEnd(
         | { ok: true; structured: boolean; reportId: string; finalText: string }
         | { ok: false; kind: 'no-provider' | 'llm-call' | 'db' | 'aborted'; error?: string },
 ): void {
+    endStream(runId)  // 送 END 前把殘留 delta 全部 flush 並清緩衝
     sendToAllWindows(winMgr, IpcChannels.PUSH_WORK_ANALYSIS_END, {runId, ...payload})
 }
 

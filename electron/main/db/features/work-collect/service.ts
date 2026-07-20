@@ -160,22 +160,31 @@ export class WorkRecordService {
     /**
      * server backfill:寫入本地,以 (capturedAt, screenshotHash) 粗略去重,一律標 synced=1。
      *
-     * 整批走一個 transaction —— 大規模首次同步(10K 列)從「N 次獨立 commit」收斂為單次 commit,
-     * better-sqlite3 同步寫盤的瓶頸是 fsync,單 commit 比 10K commits 快 100× 以上。
-     * SELECT 仍逐列做(idx_work_capturedAt 已索引,單筆 sub-ms),但全部在記憶體中累積,
-     * 寫盤只在 transaction 結束時 fsync 一次。
+     * 分塊事務(每 CHUNK 列一個 transaction):
+     *   - 逐列獨立 commit → fsync N 次,10K 列慢到爆(fsync 是 better-sqlite3 的寫盤瓶頸)。
+     *   - 整批單一 commit → fsync 1 次最快,但**整段持有寫鎖**;首次大回填(10K+)期間
+     *     日誌 / config 等其他寫入即使有 busy_timeout 也可能等超時失敗。
+     *   - 折衷:分塊 → fsync 只做「列數/CHUNK」次(仍比逐列快上千倍),且**鎖在塊之間釋放**,
+     *     讓其他寫入有空隙插進來,不被整批餓死。
      *
-     * 失敗策略:單列 SELECT/INSERT 拋出 → recordFailure 累計失敗計數但**不**回滾整批
-     * (drizzle 內 .transaction 內 throw 才會 rollback;我們手動捕獲就是讓壞列跳過、好列照寫,
-     * 這跟原本逐列獨立 transaction 的語義保持一致)。
+     * 失敗策略:單列 SELECT/INSERT 拋出 → recordFailure 累計失敗計數但**不**回滾該塊
+     * (drizzle 內 .transaction 內 throw 才會 rollback;我們手動捕獲就是讓壞列跳過、好列照寫)。
+     * 去重仍逐列 SELECT(idx_work_capturedAt 已索引,單筆 sub-ms);沒改成唯一索引 + INSERT OR
+     * IGNORE 是因為 screenshotHash 可為 NULL,SQLite 唯一約束視 NULL 互異會讓 NULL 那批漏去重。
      */
+  private static readonly BACKFILL_CHUNK = 1000
+
   upsertFromServer(rows: Omit<NewWorkRecord, 'id'>[]): number {
     if (!this.dbManager.isReady() || rows.length === 0) return 0
     let inserted = 0
     const db = this.dbManager.getDb()
-        const now = Date.now()
+    const now = Date.now()
+    const CHUNK = WorkRecordService.BACKFILL_CHUNK
+
+    for (let offset = 0; offset < rows.length; offset += CHUNK) {
+        const chunk = rows.slice(offset, offset + CHUNK)
         db.transaction((tx) => {
-            for (const r of rows) {
+            for (const r of chunk) {
                 try {
                     const exists = tx
                         .select({id: workRecords.id})
@@ -203,8 +212,34 @@ export class WorkRecordService {
                 }
             }
         })
+    }
     return inserted
   }
+
+    /**
+     * 刪除 N 天前且**已同步**的舊紀錄(對齊 LogService.cleanupOlderThan,啟動時呼叫一次)。
+     *
+     * work_records 只增不減會讓索引 B-tree / 範圍查詢越來越慢(schema 註解:10K+ 後可感卡頓);
+     * 本地是 server 的快取,已 synced=1 的舊列刪掉無損(server 仍有全量)。
+     * **只刪 synced=1**:離線期間累積、還沒上傳的 synced=0 列即使超過 N 天也保留,等網路恢復補傳,
+     * 避免資料在上傳前就被清掉。保留窗須 > 本地檢視窗(時間線預設 30 天),取 90 天。
+     * @returns 被刪除的筆數
+     */
+    cleanupOlderThan(days: number): number {
+        if (!this.dbManager.isReady()) return 0
+        const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+        try {
+            const result = this.dbManager
+                .getDb()
+                .delete(workRecords)
+                .where(and(lt(workRecords.capturedAt, cutoff), eq(workRecords.synced, 1)))
+                .run()
+            return result.changes
+        } catch (err) {
+            this.recordFailure('write', `cleanup 失敗: ${errMsg(err)}`)
+            return 0
+        }
+    }
 
     private recordFailure(kind: 'write' | 'mark', reason: string): { ok: false; reason: string } {
         if (kind === 'write') this.health.writeFailures++
