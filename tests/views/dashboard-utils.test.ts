@@ -41,6 +41,10 @@ describe('heatStyle(熱力格顏色)', () => {
     it('60 分鐘 → 最深的藍(alpha 封頂 1.00)', () => {
         expect(heatStyle(60).background).toBe('rgba(48, 90, 158, 1.00)')
     })
+    it('中間值:線性 alpha = 0.25 + 分鐘/60*0.75(20→0.50,40→0.75)', () => {
+        expect(heatStyle(20).background).toBe('rgba(48, 90, 158, 0.50)')
+        expect(heatStyle(40).background).toBe('rgba(48, 90, 158, 0.75)')
+    })
     it('超過 60 分鐘不會溢出', () => {
         expect(heatStyle(999).background).toBe('rgba(48, 90, 158, 1.00)')
     })

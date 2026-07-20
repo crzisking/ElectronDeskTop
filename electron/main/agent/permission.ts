@@ -113,7 +113,7 @@ function subjectOf(tool: string, args: Record<string, unknown>): string {
 }
 
 /** 建議「永遠」粒度:bash 取命令首兩詞;其餘用整個工具名(*) */
-function suggestPattern(tool: string, subject: string): string {
+export function suggestPattern(tool: string, subject: string): string {
     if (tool === 'bash') {
         const words = subject.trim().split(/\s+/).slice(0, 2).join(' ')
         return words ? `${words} *` : '*'
@@ -126,7 +126,8 @@ function resolveAbs(p: string | undefined, primary: string): string | null {
     return isAbsolute(p) ? p : resolve(primary || process.cwd(), p)
 }
 
-function isExternal(absPath: string, workspaces: string[]): boolean {
+/** 路徑是否在所有工作區之外(前綴比對用分隔符防 C:\ws 誤配 C:\ws2) */
+export function isExternal(absPath: string, workspaces: string[]): boolean {
     const p = absPath.toLowerCase().replace(/\//g, '\\')
     return !workspaces.some((w) => {
         const root = w.toLowerCase().replace(/\//g, '\\')

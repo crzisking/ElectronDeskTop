@@ -2,9 +2,11 @@ import {describe, expect, it} from 'vitest'
 import {
     decideFromConfig,
     gateDecide,
+    isExternal,
     isHardDeniedCommand,
     isHardDeniedPath,
     matchPatternMap,
+    suggestPattern,
 } from '@main/agent/permission'
 import type {PermissionConfig} from '@shared/types/agent.types'
 
@@ -90,5 +92,44 @@ describe('gateDecide(靜態決策全流程)', () => {
     it('工作資料夾內 → 走工具本身 verdict', () => {
         expect(gateDecide('read', {path: 'C:\\ws\\a.ts'}, base)).toBe('allow')
         expect(gateDecide('write', {path: 'C:\\ws\\a.ts'}, base)).toBe('ask')
+    })
+})
+
+describe('suggestPattern(「永遠」規則粒度)', () => {
+    it('bash 取命令首兩詞 + " *"', () => {
+        expect(suggestPattern('bash', 'git push origin main')).toBe('git push *')
+        expect(suggestPattern('bash', 'ls')).toBe('ls *')
+    })
+    it('bash 空命令 → *', () => {
+        expect(suggestPattern('bash', '   ')).toBe('*')
+    })
+    it('非 bash 工具 → *(整個工具粒度)', () => {
+        expect(suggestPattern('write', 'C:\\ws\\a.ts')).toBe('*')
+        expect(suggestPattern('read', '')).toBe('*')
+    })
+})
+
+describe('isExternal(工作區邊界;前綴防兄弟目錄誤配)', () => {
+    const ws = ['C:\\ws']
+    it('工作區內 / 等於根 → false', () => {
+        expect(isExternal('C:\\ws\\a.ts', ws)).toBe(false)
+        expect(isExternal('C:\\ws', ws)).toBe(false)
+    })
+    it('兄弟前綴 C:\\ws2 → true(不因 startsWith 誤判在內)', () => {
+        expect(isExternal('C:\\ws2\\a.ts', ws)).toBe(true)
+    })
+    it('完全在外 → true;大小寫 + 正斜線正規化', () => {
+        expect(isExternal('D:\\other\\x', ws)).toBe(true)
+        expect(isExternal('c:/WS/a.ts', ws)).toBe(false)
+    })
+    it('多工作區:命中任一即非 external', () => {
+        expect(isExternal('D:\\proj\\x', ['C:\\ws', 'D:\\proj'])).toBe(false)
+    })
+})
+
+describe('decideFromConfig fallthrough(glob 表無命中且全域 * 為物件 → ask)', () => {
+    it('tool 表無命中 + 無表級 * + 全域 * 是物件 → ask', () => {
+        const config: PermissionConfig = {bash: {'foo *': 'allow'}, '*': {'x': 'allow'}}
+        expect(decideFromConfig('bash', 'git push', config)).toBe('ask')
     })
 })

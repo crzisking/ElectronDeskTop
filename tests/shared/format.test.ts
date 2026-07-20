@@ -37,9 +37,10 @@ describe('format utils', () => {
         expect(formatClock(ms)).toBe('08:05')
     })
 
-    it('formatDateTime 非空時走 toLocaleString(不是 "-")', () => {
+    it('formatDateTime 非空時走 toLocaleString(不是 "-",且反映輸入年份)', () => {
         expect(formatDateTime(ms)).not.toBe('-')
-        expect(formatDateTime(ms).length).toBeGreaterThan(0)
+        // 不綁 locale 格式,但輸出必須包含輸入的年份(否則等於沒反映輸入)
+        expect(formatDateTime(ms)).toContain('2026')
     })
 
     describe('formatRelative', () => {
