@@ -8,8 +8,8 @@ import type {
     IdeaListQuery,
     IdeaRefineStatus,
     IdeaStatus,
-    IdeaType
-} from '@shared/types/idea-capture.types'
+    IdeaType,
+} from '@/features/idea-capture/types'
 import {ideaLibraryApi} from '../api'
 
 const PAGE_SIZE = 30

@@ -39,69 +39,9 @@ export interface IdeaDraftAttachment {
     path?: string
 }
 
-export interface IdeaListItem {
-    clientId: string
-    ideaType: IdeaType
-    status: IdeaStatus
-    refineStatus: IdeaRefineStatus
-    visibility: IdeaVisibility
-    title: string
-    userName: string
-    tags: string[]
-    /** 第一張圖附件的 MinIO URL(主進程代拉) */
-    thumbnailUrl?: string
-    createdAt: number
-}
-
-export interface IdeaAttachmentInfo {
-    id: number
-    fileName: string
-    fileUrl: string
-    size: number
-    isImage: boolean
-    sortOrder: number
-}
-
-export interface IdeaDetail {
-    clientId: string
-    ideaType: IdeaType
-    status: IdeaStatus
-    visibility: IdeaVisibility
-    userName: string
-    title: string
-    content: string
-    scene?: string
-    expectation?: string
-    polishedText?: string
-    actionItems: string[]
-    aiQuestions: string[]
-    refineStatus: IdeaRefineStatus
-    activeWindow?: string
-    tags: string[]
-    attachments: IdeaAttachmentInfo[]
-    createdAt: number
-    updatedAt: number
-}
-
-/** 想法庫列表查詢 */
-export interface IdeaListQuery {
-    pageIndex?: number
-    pageSize?: number
-    since?: number
-    status?: IdeaStatus
-    ideaType?: IdeaType
-    tag?: string
-}
-
-/** 使用者修改(狀態 / 三段 / 標籤增減) */
-export interface IdeaPatch {
-    status?: IdeaStatus
-    content?: string
-    scene?: string
-    expectation?: string
-    addTags?: string[]
-    removeTags?: string[]
-}
+// ⚠️ 想法庫列表 / 詳情 / 查詢 / 修改型別(IdeaListItem/IdeaDetail/IdeaAttachmentInfo/
+//    IdeaListQuery/IdeaPatch)讀取走 axios 直連後端、不過 IPC,只在渲染層用 →
+//    已移到 src/features/idea-capture/types.ts。此檔只留真跨進程的部分。
 
 /** idea-capture 桌面端配置(目前只有熱鍵) */
 export interface IdeaCaptureConfig {

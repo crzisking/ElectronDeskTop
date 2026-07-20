@@ -103,7 +103,7 @@
 <script lang="ts" setup>
 import {computed, ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import type {IdeaDetail, IdeaStatus} from '@shared/types/idea-capture.types'
+import type {IdeaDetail, IdeaStatus} from '@/features/idea-capture/types'
 import {STATUS_LABEL, TYPE_LABEL} from '../composables/useIdeaLibrary'
 import {ideaLibraryApi} from '../api'
 

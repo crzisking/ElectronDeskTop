@@ -12,7 +12,7 @@ import {httpClientFor} from '@/api/http-client'
 import {BACKEND_BASE_URL} from '@/shared/config/backend'
 import {unwrapIpc} from '@/shared/utils/ipc'
 import {useAuthStore} from '@/stores/auth.store'
-import type {IdeaDetail, IdeaListItem, IdeaListQuery, IdeaPatch} from '@shared/types/idea-capture.types'
+import type {IdeaDetail, IdeaListItem, IdeaListQuery, IdeaPatch} from './types'
 import type {IdeaPaged} from '@/types/electron/idea-capture'
 
 const client = () => httpClientFor(BACKEND_BASE_URL, 20000)
