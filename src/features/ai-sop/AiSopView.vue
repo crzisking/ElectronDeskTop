@@ -131,7 +131,7 @@ async function handleUpload() {
 </script>
 
 <template>
-  <div class="bpm-finder-view">
+  <div class="ai-sop-view">
 
     <div class="toolbar">
       <el-button
@@ -215,7 +215,7 @@ async function handleUpload() {
           <IframeContainer
               v-if="difyUrl"
               :src="difyUrl"
-              title="BPM Finder"
+              title="AiSop"
           />
 
           <el-empty
@@ -235,7 +235,7 @@ async function handleUpload() {
 
 <style scoped>
 
-.bpm-finder-view{
+.ai-sop-view{
   display:flex;
   flex-direction:column;
   height:100%;
