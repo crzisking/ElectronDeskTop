@@ -20,7 +20,7 @@ import type {SavedCredentialsAPI} from './electron/saved-credentials'
 import type {WorkAnalysisAPI} from './electron/work-analysis'
 import type {AuthAPI} from './electron/auth'
 import type {NotificationAPI} from './electron/notification'
-import type {ProjectFlowAPI} from './electron/project-flow'
+import type {ActivityAPI} from './electron/activity'
 import type {DailyAdviceAPI} from './electron/daily-advice'
 import type {AgentAPI} from './electron/agent'
 import type {IdeaCaptureAPI} from './electron/idea-capture'
@@ -44,7 +44,7 @@ declare global {
       workAnalysis: WorkAnalysisAPI
       auth: AuthAPI
         notification: NotificationAPI
-      projectFlow: ProjectFlowAPI
+      activity: ActivityAPI
       dailyAdvice: DailyAdviceAPI
         agent: AgentAPI
         ideaCapture: IdeaCaptureAPI

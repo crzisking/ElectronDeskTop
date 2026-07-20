@@ -34,7 +34,7 @@ import {registerUserProfileHandlers} from './user-profile.handlers'
 import {registerSavedCredentialsHandlers} from './saved-credentials.handlers'
 import {registerWorkAnalysisHandlers} from './work-analysis.handlers'
 import {registerNotificationHandlers} from './notification.handlers'
-import {registerProjectFlowHandlers} from './project-flow.handlers'
+import {registerActivityHandlers} from './activity.handlers'
 import {registerAgentHandlers} from './agent.handlers'
 import {registerIdeaCaptureHandlers} from './idea-capture.handlers'
 import {registerTodoHandlers} from './todo.handlers'
@@ -161,7 +161,7 @@ export function registerAllHandlers(ctx: IpcHandlerContext): void {
   registerWorkAnalysisHandlers({workAnalysisService, workRecordService, templateCacheService: workTemplateCacheService, llmClient, configManager, agentService, windowManager})
   registerNotificationHandlers(notificationClient, configManager)
     // 首頁今日活動聚合:純本地讀 work-collect
-    registerProjectFlowHandlers({workRecordService})
+    registerActivityHandlers({workRecordService})
     // Agent v2(docs/19);agentService 提供模型連線,windowManager 給資料夾選擇器當 parent
     registerAgentHandlers({
         runtime: agentRuntime,

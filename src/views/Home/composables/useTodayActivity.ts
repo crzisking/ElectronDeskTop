@@ -5,8 +5,8 @@
 import {computed, onMounted, ref} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {paceLevel} from '../dashboard-utils'
-import {projectFlowApi} from '@/features/project-flow/api'
-import type {TodayActivitySummary} from '@/features/project-flow/types'
+import {activityApi} from '@/features/activity/api'
+import type {TodayActivitySummary} from '@/features/activity/types'
 
 const DIST_COLORS = ['#3a5d96', '#5b8bc9', '#74a8e0', '#9cc2ec', '#c4d9f4', '#8492a6', '#b37feb', '#36cfc9']
 
@@ -25,7 +25,7 @@ export function useTodayActivity() {
 
     async function load() {
         try {
-            activity.value = await projectFlowApi.todayActivity()
+            activity.value = await activityApi.todayActivity()
         } catch {
             /* 採集服務沒起來就顯示空熱力,不打擾 */
         }

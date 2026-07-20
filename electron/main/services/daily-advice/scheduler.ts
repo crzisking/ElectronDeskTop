@@ -23,7 +23,7 @@ import type {DailyAdviceService} from '../../db/features/daily-advice/service'
 import type {DailyAdviceRow} from '../../db/features'
 import type {LlmClient} from '../llm'
 import type {WindowManager} from '../../windows/window-manager'
-import {stripJsonFence} from '../project-flow/ai-local'
+import {stripJsonFence} from '../../utils/strip-json-fence'
 
 const TAG = 'DailyAdvice'
 

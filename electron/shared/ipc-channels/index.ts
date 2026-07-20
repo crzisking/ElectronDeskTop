@@ -29,7 +29,7 @@ import {UserProfileChannels} from './user-profile'
 import {SavedCredentialsChannels} from './saved-credentials'
 import {WorkAnalysisChannels} from './work-analysis'
 import {NotificationChannels} from './notification'
-import {ProjectFlowChannels} from './project-flow'
+import {ActivityChannels} from './activity'
 import {DailyAdviceChannels} from './daily-advice'
 import {AgentChannels} from './agent'
 import {IdeaCaptureChannels} from './idea-capture'
@@ -47,7 +47,7 @@ export const IpcChannels = {
   ...SavedCredentialsChannels,
   ...WorkAnalysisChannels,
     ...NotificationChannels,
-  ...ProjectFlowChannels,
+  ...ActivityChannels,
   ...DailyAdviceChannels,
     ...AgentChannels,
     ...IdeaCaptureChannels,
@@ -67,7 +67,7 @@ export {
   SavedCredentialsChannels,
   WorkAnalysisChannels,
     NotificationChannels,
-  ProjectFlowChannels,
+  ActivityChannels,
   DailyAdviceChannels,
     AgentChannels,
     IdeaCaptureChannels,

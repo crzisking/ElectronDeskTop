@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
-import {stripJsonFence, summarizeTodayActivity} from '@main/services/project-flow/ai-local'
+import {summarizeTodayActivity} from '@main/services/activity/today-activity'
+import {stripJsonFence} from '@main/utils/strip-json-fence'
 
 describe('stripJsonFence(剝掉模型加的 ```json 圍欄)', () => {
     it('剝 ```json 圍欄', () => {

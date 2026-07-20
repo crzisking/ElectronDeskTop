@@ -30,7 +30,7 @@ import {createUserProfileBridge} from './bridges/user-profile.bridge'
 import {createSavedCredentialsBridge} from './bridges/saved-credentials.bridge'
 import {createWorkAnalysisBridge} from './bridges/work-analysis.bridge'
 import {createNotificationBridge} from './bridges/notification.bridge'
-import {createProjectFlowBridge} from './bridges/project-flow.bridge'
+import {createActivityBridge} from './bridges/activity.bridge'
 import {createDailyAdviceBridge} from './bridges/daily-advice.bridge'
 import {createAgentBridge} from './bridges/agent.bridge'
 import {createIdeaCaptureBridge} from './bridges/idea-capture.bridge'
@@ -97,7 +97,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   savedCredentials: createSavedCredentialsBridge(ipcRenderer, IpcChannels),
   workAnalysis: createWorkAnalysisBridge(ipcRenderer, IpcChannels),
     notification: createNotificationBridge(ipcRenderer, IpcChannels),
-  projectFlow: createProjectFlowBridge(ipcRenderer, IpcChannels),
+  activity: createActivityBridge(ipcRenderer, IpcChannels),
   dailyAdvice: createDailyAdviceBridge(ipcRenderer, IpcChannels),
     agent: createAgentBridge(ipcRenderer, IpcChannels),
     ideaCapture: createIdeaCaptureBridge(ipcRenderer, IpcChannels),
