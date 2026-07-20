@@ -49,7 +49,7 @@ export const workRecords = sqliteTable(
       reason: text('reason'),
 
       /**
-       * 是否已同步到 server(集中化設計,docs/20):
+       * 是否已同步到 server(集中化設計,docs/11):
        *   0 = 未同步;1 = 已同步
        * 預設 0,sync-daily 成功後寫 1。離線時繼續 insert 0,網路恢復補傳。
        * 既有歷史紀錄遷移後預設 0,首次啟動會被 safety net 一次性 batch upload。

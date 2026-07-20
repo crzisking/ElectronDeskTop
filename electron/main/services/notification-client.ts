@@ -51,8 +51,8 @@ export interface NotificationClientIdentity {
 
 /** server 推 Task 事件的 payload 結構。兩種 shape 共存於同個 SignalR "Task" 事件:
  *   1. 遠程腳本派發(docs/18):{taskId, action, params}
- *   2. ProjectFlow 業務事件(docs/20):{action: 'project-flow.*', payload: {...}}
- * 由 action 前綴判斷,前者走 ScriptRunner,後者轉發給 renderer */
+ *   2. ProjectFlow 業務事件(已退場):{action: 'project-flow.*', ...} —— 桌面端靜默忽略(見 handleTask)
+ * 由 action 前綴判斷,前者走 ScriptRunner,後者忽略 */
 interface TaskPayload {
     taskId?: string
     action: string

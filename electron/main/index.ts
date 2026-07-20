@@ -225,7 +225,7 @@ app.whenReady().then(async () => {
   // scheduler 負責 timer + capture + 推 IPC;命中閒置時直接走 recordService 寫 DB 跳過 AI。
     workCollector = new WorkCollectorScheduler(configManager, windowManager, services.workRecordService, services.workTemplateCacheService)
 
-  // 集中化 sync(docs/20):main 直接跑 listUnsynced + HTTP + markSynced 全流程,
+  // 集中化 sync(docs/11):main 直接跑 listUnsynced + HTTP + markSynced 全流程,
   // renderer 不需 50× IPC 來回。DB 沒就緒(workRecordService=null)時為 null,handler 自降級。
   const workCollectSyncService = new WorkCollectSyncService(services.workRecordService)
 

@@ -1,7 +1,7 @@
 /**
  * WorkCollectSyncService — 主進程版批次同步協調器。
  *
- * 集中化的最後一步(docs/20):原本 renderer 端 90 行的 syncDailyRecords 循環,
+ * 集中化的最後一步(docs/11):原本 renderer 端 90 行的 syncDailyRecords 循環,
  * 包含 listUnsynced(IPC) → HTTP POST → markSynced(IPC) → loop;每批 2 次 IPC,
  * 50 批 ~ 100 次跨進程往返。本服務把整段流程搬到 main:
  *   - listUnsynced / markSynced 直接呼 workRecordService(同進程 DB)

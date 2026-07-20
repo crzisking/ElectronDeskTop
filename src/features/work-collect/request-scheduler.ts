@@ -12,7 +12,7 @@
  *   而 /analyze 在 tick 內也是「拍到圖立刻發」,沒有額外散開。
  *
  * 解決:統一在 api.ts 入口套這個 schedule(),每筆請求發出前先 random delay [0, spreadMs)。
- *   500 / spreadMs(預設 25s)≈ 20 req/s 峰值,server 單實例 hold 得住(docs/20 §5.1)。
+ *   500 / spreadMs(預設 25s)≈ 20 req/s 峰值,server 單實例 hold 得住(docs/11)。
  *
  * 為什麼不在 server 端做 rate limit:
  *   - server 拒絕請求 → desktop 還是會重試 → 沒削到峰
@@ -28,7 +28,7 @@
 
 import {logger} from '@/shared/utils/logger'
 
-/** server 目標峰值(docs/20 §6.1 估算 20 req/s 為單實例上限) */
+/** server 目標峰值(docs/11 估算 20 req/s 為單實例上限) */
 const TARGET_PEAK_RPS = 20
 
 /** 規模假設:同時在線採集人數;若上 1000 人要把 spread 拉到 50s */

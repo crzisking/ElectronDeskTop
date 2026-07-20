@@ -6,7 +6,7 @@
  *   - electronAPI.on/off:訂閱 AGENT_PUSH_*(串流 / 工具 / 結束 / 錯誤)
  *
  * ⚠️ channel 字串內聯(不 import @shared 常數):sandbox: true 下共用模組會被 Rollup 抽 chunk,
- *   照 memos.preload / log-viewer 同樣處理。下方 satisfies 對 AgentChannels 做編譯期 drift 防護。
+ *   照 log-viewer / idea-capture 等 sandbox preload 同樣處理。下方 satisfies 對 AgentChannels 做編譯期 drift 防護。
  */
 
 import {contextBridge, ipcRenderer} from 'electron'

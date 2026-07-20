@@ -102,7 +102,7 @@ export class WorkRecordService {
       .all()
   }
 
-  // ─── 集中化(docs/20):server sync 相關 ────────────────────────────
+  // ─── 集中化(docs/11):server sync 相關 ────────────────────────────
 
   /**
    * 列出尚未同步到 server 的紀錄(synced=0),最多 `limit` 筆,按 capturedAt 升序。

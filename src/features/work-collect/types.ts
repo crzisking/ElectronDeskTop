@@ -43,7 +43,7 @@ export interface WorkAnalyzeResponse {
 }
 
 /**
- * 集中化(docs/20):後端 /api/WorkCollect/my-config 的 .data
+ * 集中化(docs/11):後端 /api/WorkCollect/my-config 的 .data
  * desktop 啟動 + 每天首次 tick 進工時前拉一次,版本變了就覆蓋本地 config。
  */
 export interface WorkConfigResponse {

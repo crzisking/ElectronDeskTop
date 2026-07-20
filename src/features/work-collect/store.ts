@@ -228,7 +228,7 @@ export const useWorkCollectStore = defineStore('workCollect', () => {
     refresh().catch(() => undefined)
   }
 
-    // ── 集中化(docs/20):config 拉取 + sync 上傳 ──────────────────────
+    // ── 集中化(docs/11):config 拉取 + sync 上傳 ──────────────────────
 
     /**
      * server 配置同步:

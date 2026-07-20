@@ -3,7 +3,7 @@
  *
  * 命名:WORK_COLLECT_* 為 renderer→main invoke;PUSH_* 為 main→renderer send。
  *
- * 集中化 sync(docs/20 + v1.4.x 再次集中):
+ * 集中化 sync(docs/11 + v1.4.x 再次集中):
  *   - **AI analyze HTTP**:仍在 renderer 跑(scheduler 推 tick → renderer 拿截圖打 AI → 回 main 寫 DB)
  *     原因:截圖在 renderer 已有 jpeg buffer,直接打 AI 省 IPC 序列化;analyze 也要 JWT,renderer 直接帶
  *   - **sync-daily HTTP**:已搬到 main(WORK_COLLECT_RUN_SYNC,renderer 一次 invoke 觸發整段 50 輪)
@@ -22,7 +22,7 @@ export const WorkCollectChannels = {
     /** DB 寫入後通知 renderer 刷新流水線(push) */
   PUSH_WORK_RECORD_NEW: 'push:work-record-new',
 
-    // ── 集中化 sync(docs/20) ──────────────────────────────────────────
+    // ── 集中化 sync(docs/11) ──────────────────────────────────────────
 
     /** 推 renderer 上傳 unsynced(send {reason}) */
   PUSH_WORK_COLLECT_SYNC_REQUEST: 'push:work-collect-sync-request',

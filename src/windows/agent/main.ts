@@ -1,6 +1,6 @@
 /**
  * AI Agent 子視窗 Vue app 入口(docs/19)。
- * 跟備忘錄窗同模式 — 獨立 renderer / Pinia / 生命週期;後端身分靠主進程 authContext + IPC。
+ * 獨立子窗模式 — 自己的 renderer / Pinia / 生命週期;後端身分靠主進程 authContext + IPC。
  */
 
 import {createApp} from 'vue'

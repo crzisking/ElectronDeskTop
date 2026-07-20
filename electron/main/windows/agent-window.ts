@@ -1,7 +1,7 @@
 /**
  * AI Agent 獨立視窗(docs/19)— 跟主窗平行的獨立 BrowserWindow。
  *
- * 從側邊欄「aiAgent」入口開啟。設計沿用 MemosWindow:
+ * 從側邊欄「aiAgent」入口開啟。獨立子窗設計:
  *   - 不持久化,關閉即銷毀
  *   - ⚠️ **不設 parent**:設 parent 會變成子視窗,主窗最小化時它會跟著一起最小化。
  *     Agent 要能獨立最小化 / 有自己的工作列按鈕,故做成 top-level 視窗。

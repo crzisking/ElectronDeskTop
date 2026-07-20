@@ -23,7 +23,7 @@ export interface WorkCollectAPI {
      */
     sendResult: (payload: WorkResultPayload) => void
 
-    // ─── 集中化(docs/20)新增 ──────────────────────────────────
+    // ─── 集中化(docs/11)新增 ──────────────────────────────────
 
     /**
      * 列出本地 synced=0 的紀錄,sync-daily 撈 unsynced 用。
