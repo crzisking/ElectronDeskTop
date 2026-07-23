@@ -22,6 +22,9 @@
       ],
       "@shared/*": [
         "electron/shared/*"
+      ],
+      "@main/*": [
+        "electron/main/*"
       ]
     }
   },

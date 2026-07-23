@@ -135,8 +135,12 @@ export function isExternal(absPath: string, workspaces: string[]): boolean {
     })
 }
 
-/** 執行前的靜態決策(不含問使用者);回 allow/ask/deny */
-export function gateDecide(tool: string, args: Record<string, unknown>, ctx: Omit<GateContext, 'ask' | 'persist'>): PermissionVerdict {
+/**
+ * 執行前的靜態決策(不含問使用者);回 allow/ask/deny。
+ * ctx 只需 planMode / workspaces / config —— doomLoopLimit 是執行時(wrapToolsWithPermission)
+ * 的重複呼叫防護,靜態決策用不到,故一併 Omit,型別即反映真實依賴。
+ */
+export function gateDecide(tool: string, args: Record<string, unknown>, ctx: Omit<GateContext, 'ask' | 'persist' | 'doomLoopLimit'>): PermissionVerdict {
     if (ctx.planMode && WRITE_TOOLS.has(tool)) return 'deny'
 
     const subject = subjectOf(tool, args)
