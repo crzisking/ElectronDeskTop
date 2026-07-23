@@ -124,6 +124,17 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      // 知識檢索(docs/24)— 個人功能入口開啟此頁;單一知識庫的 Agent 問答
+      {
+        path: 'knowledge-search',
+        name: 'knowledge-search',
+        component: () => import('@/features/knowledge-search/KnowledgeSearchView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'router.knowledgeSearch'
+        }
+      },
+
         // 備忘錄、桌面代辦均已退場,無對應路由;
         // 項目流程的專案/畫布/匯報/團隊功能亦已清退,無對應路由。
 

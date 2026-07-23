@@ -149,6 +149,15 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
               openMode: 'page',
               routeName: 'work-collect',
           },
+        {
+          id: 'knowledgeSearch',
+          name: '知識檢索',
+          description: '選一個知識庫,用自然語言提問,答案帶引用來源',
+          icon: 'Search',
+          enabled: true,
+          openMode: 'page',
+          routeName: 'knowledge-search',
+        },
       ],
   },
   update: {

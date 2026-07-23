@@ -27,6 +27,12 @@ interface ImportMetaEnv {
   readonly VITE_DIFY_URL?: string
   /** Dify 應用 API Key（Authorization: Bearer） */
   readonly VITE_DIFY_API_KEY?: string
+
+  /**
+   * 知識檢索(RAG)後端 dataMiddlePlatform 的 API 基礎地址，**含 /api/v1 前綴**。
+   * 開發 http://localhost:8000/api/v1 / 正式 http://192.168.120.174:8000/api/v1。
+   */
+  readonly VITE_KB_QA_URL?: string
   /** 開發環境自動登錄開關（'true' 時啟用） */
   readonly VITE_DEV_AUTO_LOGIN?: string
   /** 開發環境自動登錄工號 */
