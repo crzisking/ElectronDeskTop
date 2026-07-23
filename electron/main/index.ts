@@ -4,7 +4,7 @@
  * 模塊順序受依賴關係限制（IPC handler 需要各 manager 已建構）。
  */
 
-import {app, globalShortcut} from 'electron'
+import {app} from 'electron'
 import {WindowManager} from './window-manager'
 import {FloatingBallManager} from './floating-ball'
 import {TrayManager} from './tray-manager'
@@ -30,7 +30,6 @@ import {createDbServices, type DbServices} from './create-services'
 import {NotificationClient} from './services/notification-client'
 import {ScriptRunner} from './services/script-runner'
 import {registerBuiltinScripts} from './services/scripts'
-import {IpcChannels} from '../shared/ipc-channels'
 
 // Electron API 只能在 whenReady 後使用，所以 manager 先 let 宣告，等 ready 再賦值
 let windowManager: WindowManager
@@ -50,9 +49,6 @@ let notificationClient: NotificationClient
 let scriptRunner: ScriptRunner
 /** 靈感速記(docs/21):全域熱鍵管理;gracefulShutdown 要 unregister,故提到模組層 */
 let ideaHotkey: IdeaHotkeyManager | null = null
-
-/** 桌面代辦(docs/23):錄入小窗全域熱鍵(P1 硬編碼,後續可配置) */
-const TODO_HOTKEY = 'CommandOrControl+/'
 
 /**
  * 單例鎖：確保整個應用只能有一個實例在運行。
@@ -105,10 +101,6 @@ function gracefulShutdown(): void {
   workCollector?.dispose()
     dailyAdviceScheduler?.dispose()
     ideaHotkey?.unregister()
-    try {
-        globalShortcut.unregister(TODO_HOTKEY)
-    } catch { /* ignore */
-    }
     // 主動斷開 WebSocket(送 unregister + close),server 端 Registry 立即清掉
     notificationClient?.stop()
   // 必須在 windowManager 銷毀前 close DB,讓 WAL 內容 checkpoint 進主檔;
@@ -198,8 +190,6 @@ app.whenReady().then(async () => {
   windowManager = new WindowManager()
   windowManager.createMainWindow()
   windowManager.createFloatingBallWindow()
-    // 桌面代辦(docs/23):頂部 dock 常駐,開機即建(透明穿透,不擋幹活)
-    windowManager.createTodoDockWindow()
 
   floatingBallMgr = new FloatingBallManager(
     windowManager,
@@ -279,25 +269,10 @@ app.whenReady().then(async () => {
       ideaRefiner,
       ideaHotkey,
       ideaCaptureWindow: windowManager.getIdeaCaptureWindow(),
-      todosService: services.todosService,
-      todoAiRunner: services.todoAiRunner,
   })
-
-    // 代辦:啟動時把既有 pending 補跑一次 AI 分析
-    services.todoAiRunner.enqueuePending()
 
     // 註冊靈感速記全域快捷鍵(失敗只 log,不影響啟動)
     ideaHotkey.register()
-
-    // 註冊代辦錄入全域快捷鍵 Ctrl+/(docs/23;失敗只 log,不影響啟動)
-    try {
-        const okReg = globalShortcut.register(TODO_HOTKEY, () => {
-            windowManager.createTodoCaptureWindow()
-        })
-        logger.info(okReg ? `代辦熱鍵已註冊:${TODO_HOTKEY}` : `代辦熱鍵註冊失敗(被佔用):${TODO_HOTKEY}`, 'todo.hotkey')
-    } catch (err) {
-        logger.warn(`代辦熱鍵註冊異常:${(err as Error).message}`, 'todo.hotkey')
-    }
 
   // 配置 enabled=true 就立刻啟動(等渲染端送 token 來才會真的 tick)
   workCollector.start()

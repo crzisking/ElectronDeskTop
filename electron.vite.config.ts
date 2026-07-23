@@ -87,13 +87,7 @@ export default defineConfig({
             // AI Agent 子視窗預加載腳本 → out/preload/agent.preload.js
             'agent.preload': resolve('electron/preload/agent.preload.ts'),
             // 靈感速記速記小窗預加載腳本 → out/preload/idea-capture.preload.js
-            'idea-capture.preload': resolve('electron/preload/idea-capture.preload.ts'),
-            // 代辦錄入小窗預加載腳本 → out/preload/todo-capture.preload.js
-            'todo-capture.preload': resolve('electron/preload/todo-capture.preload.ts'),
-            // 代辦頂部 dock 窗預加載腳本 → out/preload/todo-dock.preload.js
-            'todo-dock.preload': resolve('electron/preload/todo-dock.preload.ts'),
-            // 代辦備注小窗預加載腳本 → out/preload/todo-note.preload.js
-            'todo-note.preload': resolve('electron/preload/todo-note.preload.ts')
+            'idea-capture.preload': resolve('electron/preload/idea-capture.preload.ts')
         }
       }
     }
@@ -121,17 +115,14 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          // 4 個窗口 entry 統一在 src/windows/<name>/index.html(對齊 docs/24 §5.6)。
+            // 各窗口 entry 統一在 src/windows/<name>/index.html。
           // 各自輸出到 out/renderer/src/windows/<name>/index.html
           // main 進程 loadFile 對應這個輸出路徑。
           index: resolve('src/windows/main/index.html'),
           floatingBall: resolve('src/windows/floating-ball/index.html'),
           logViewer: resolve('src/windows/log-viewer/index.html'),
             agent: resolve('src/windows/agent/index.html'),
-            ideaCapture: resolve('src/windows/idea-capture/index.html'),
-            todoCapture: resolve('src/windows/todo-capture/index.html'),
-            todoDock: resolve('src/windows/todo-dock/index.html'),
-            todoNote: resolve('src/windows/todo-note/index.html')
+            ideaCapture: resolve('src/windows/idea-capture/index.html')
         }
       }
     },

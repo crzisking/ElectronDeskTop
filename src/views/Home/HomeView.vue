@@ -95,26 +95,6 @@
 
       <el-divider/>
 
-      <!-- 待辦(本地代辦;到期近的在前,點圈完成,＋記一條開錄入窗) -->
-      <section class="sec">
-        <div class="sec-head">
-          <span class="sec-label">{{ $t('home.todoTitle') }}</span>
-          <el-button link size="small" type="primary" @click="openTodoCapture">
-            {{ $t('home.todoAdd') }} ＋
-          </el-button>
-        </div>
-        <div v-if="!todos.length" class="sec-empty">{{ $t('home.todoEmpty') }}</div>
-        <ul v-else class="todo-list">
-          <li v-for="td in todos" :key="td.id" class="todo-item">
-            <span class="todo-circle" title="完成" @click="completeTodo(td.id)"></span>
-            <span class="todo-title">{{ td.title }}</span>
-            <span :class="dueClass(td.dueAt)" class="todo-due">{{ dueText(td.dueAt) }}</span>
-          </li>
-        </ul>
-      </section>
-
-      <el-divider/>
-
       <!-- 今日學習建議 -->
       <section v-loading="loading" class="sec">
         <div class="sec-head">
@@ -182,7 +162,6 @@ import {useI18n} from 'vue-i18n'
 import {formatClock as formatTime} from '@/shared/utils/format'
 import {distPercent, heatStyle} from './dashboard-utils'
 import {useTodayActivity} from './composables/useTodayActivity'
-import {useHomeTodos} from './composables/useHomeTodos'
 import {useDailyAdvice} from './composables/useDailyAdvice'
 
 const ui = useUiStore()
@@ -204,7 +183,6 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 // ─── 三個區塊各自的 composable(view 只做佈局編排)──────────
 const {activity, totalMinutes, paceText, topCategory, activeHours, distColor, distWidth} = useTodayActivity()
-const {todos, completeTodo, openTodoCapture, dueText, dueClass} = useHomeTodos()
 const {loading, generating, status, ready, content, onGenerate} = useDailyAdvice()
 </script>
 
@@ -396,68 +374,6 @@ const {loading, generating, status, ready, content, onGenerate} = useDailyAdvice
   height: 8px;
   border-radius: 50%;
   display: inline-block;
-}
-
-/* 待辦 */
-.todo-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.todo-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px dashed #f0f2f5;
-}
-
-.todo-item:last-child {
-  border-bottom: none;
-}
-
-.todo-circle {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  border: 1.5px solid #c4ccd8;
-  flex: none;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.todo-circle:hover {
-  border-color: #52c41a;
-  background: #52c41a;
-  box-shadow: inset 0 0 0 2px #fff;
-}
-
-.todo-title {
-  font-size: 13px;
-  color: #3c4858;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todo-due {
-  font-size: 12px;
-  flex: none;
-}
-
-.todo-due.lv-overdue {
-  color: #f56c6c;
-  font-weight: 600;
-}
-
-.todo-due.lv-soon {
-  color: #e6a23c;
-}
-
-.todo-due.lv-normal, .todo-due.lv-none {
-  color: #8a94a6;
 }
 
 /* 建議 */

@@ -21,12 +21,6 @@ export const WindowChannels = {
    */
   OPEN_CHILD_WINDOW: 'window:open-child',
 
-  /**
-   * 拉起代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/)。
-   * invoke,無 payload;已開則 show+focus,未開則 create。
-   */
-  WINDOW_OPEN_TODO_CAPTURE: 'window:open-todo-capture',
-
     /** 打開 AI Agent 獨立窗(docs/19)。invoke,無 payload;已開則 focus。 */
     WINDOW_OPEN_AGENT: 'window:open-agent',
 

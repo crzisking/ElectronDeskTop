@@ -134,6 +134,13 @@
       "when": 1784201869770,
       "tag": "0018_clever_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1784786583960,
+      "tag": "0019_aberrant_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

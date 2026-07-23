@@ -47,9 +47,6 @@ export interface PersonalTool {
     /** 路由名(對應 router/index.ts 內路由的 name 字段);僅 openMode='page' 用 */
     routeName?: string
 
-    /**
-     * 子視窗 ID;僅 openMode='window' 用。目前支援:
-     *   - 'todo':代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/)
-     */
-    windowId?: 'todo'
+    /** 子視窗 ID;僅 openMode='window' 用。目前無內建 window 型個人功能(通用欄位,備未來擴充) */
+    windowId?: string
 }

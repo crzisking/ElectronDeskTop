@@ -18,9 +18,6 @@ import {FloatingBallWindow} from './floating-ball-window'
 import {LogViewerWindow} from './log-viewer-window'
 import {AgentWindow} from './agent-window'
 import {IdeaCaptureWindow} from './idea-capture-window'
-import {TodoCaptureWindow} from './todo-capture-window'
-import {TodoDockWindow} from './todo-dock-window'
-import {TodoNoteWindow} from './todo-note-window'
 import {openChildWindow} from './child-window'
 
 export class WindowManager {
@@ -29,9 +26,6 @@ export class WindowManager {
     private logViewer = new LogViewerWindow()
     private agent = new AgentWindow()
     private ideaCapture = new IdeaCaptureWindow()
-    private todoCapture = new TodoCaptureWindow()
-    private todoDock = new TodoDockWindow()
-    private todoNote = new TodoNoteWindow()
 
     // ── 退出標記 ────────────────────────────────────────────────────
     setQuitting(value: boolean): void {
@@ -72,35 +66,6 @@ export class WindowManager {
         return this.ideaCapture
     }
 
-    /** 開啟代辦錄入小窗(docs/23);已開過就 show+focus,不重建 */
-    createTodoCaptureWindow(): BrowserWindow {
-        return this.todoCapture.open()
-    }
-
-    /** 代辦錄入小窗實例(保存 / Esc 後隱藏用) */
-    getTodoCaptureWindow(): TodoCaptureWindow {
-        return this.todoCapture
-    }
-
-    /** 建立代辦頂部 dock 窗(docs/23);開機常駐,呼叫一次 */
-    createTodoDockWindow(): BrowserWindow {
-        return this.todoDock.create()
-    }
-
-    /** 代辦 dock 窗實例(懸停切穿透用) */
-    getTodoDockWindow(): TodoDockWindow {
-        return this.todoDock
-    }
-
-    /** 開啟代辦備注小窗(docs/23);帶要編輯的代辦 id,已開過就換目標 + 前台 */
-    createTodoNoteWindow(id: string): BrowserWindow {
-        return this.todoNote.open(id)
-    }
-
-    /** 代辦備注小窗實例(查編輯目標 / 保存後隱藏用) */
-    getTodoNoteWindow(): TodoNoteWindow {
-        return this.todoNote
-    }
 
     // ── 主窗 ↔ 浮球 切換 ────────────────────────────────────────────
     showMainWindow(): void {
@@ -174,9 +139,6 @@ export class WindowManager {
 
     // ── 退出時銷毀全部 ─────────────────────────────────────────
     destroyAll(): void {
-        this.todoNote.destroy()
-        this.todoDock.destroy()
-        this.todoCapture.destroy()
         this.ideaCapture.destroy()
         this.agent.destroy()
         this.logViewer.destroy()

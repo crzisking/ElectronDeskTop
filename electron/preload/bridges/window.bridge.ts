@@ -11,7 +11,6 @@ export interface WindowChannelMap {
   WINDOW_HIDE: string
   WINDOW_IS_MAXIMIZED: string
   OPEN_CHILD_WINDOW: string
-  WINDOW_OPEN_TODO_CAPTURE: string
     WINDOW_OPEN_AGENT: string
     WINDOW_OPEN_IDEA_CAPTURE: string
 }
@@ -31,9 +30,6 @@ export function createWindowBridge(ipc: IpcRenderer, ch: WindowChannelMap) {
      * @param title 子窗口標題
      */
     openChild: (url: string, title: string) => ipc.invoke(ch.OPEN_CHILD_WINDOW, url, title),
-
-    /** 拉起代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/) */
-    openTodoCapture: () => ipc.invoke(ch.WINDOW_OPEN_TODO_CAPTURE) as Promise<void>,
 
       /** 打開 AI Agent 獨立窗(docs/19) */
       openAgent: () => ipc.invoke(ch.WINDOW_OPEN_AGENT) as Promise<void>,

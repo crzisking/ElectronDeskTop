@@ -32,9 +32,6 @@ export interface WindowAPI {
      */
     openChild: (url: string, title: string) => Promise<void>
 
-    /** 拉起代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/);已開則 show+focus,未開則 create */
-    openTodoCapture: () => Promise<void>
-
     /** 打開 AI Agent 獨立窗(docs/19);已開則 focus,未開則 create */
     openAgent: () => Promise<void>
 

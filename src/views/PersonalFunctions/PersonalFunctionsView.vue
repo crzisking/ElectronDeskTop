@@ -41,16 +41,8 @@ function handleOpen(tool: PersonalTool) {
     router.push({name: tool.routeName}).catch((err) => {
       logger.warn('個人功能路由跳轉失敗', 'PersonalFunctions', {routeName: tool.routeName, err})
     })
-    return
   }
-  if (tool.openMode === 'window' && tool.windowId) {
-    // 目前只有 todo 一個;之後加新窗在這 switch
-    if (tool.windowId === 'todo') {
-      window.electronAPI.window.openTodoCapture().catch((err) => {
-        logger.warn('打開代辦錄入窗失敗', 'PersonalFunctions', err as Error)
-      })
-    }
-  }
+  // openMode==='window' 目前無內建目標(代辦已移除);之後加 window 型個人功能在這分派
 }
 
 const appVersion = computed(() => configStore.appConfig?.version ?? '—')

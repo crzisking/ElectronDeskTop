@@ -85,12 +85,6 @@ export function registerWindowHandlers(
     logger.info(`打開子窗口: ${title}`, 'IPC:window')
   })
 
-  /** 拉起代辦錄入窗(docs/23,等同全域熱鍵 Ctrl+/);已開則 show+focus,未開則 create */
-  ipcMain.handle(IpcChannels.WINDOW_OPEN_TODO_CAPTURE, () => {
-    windowManager.createTodoCaptureWindow()
-    logger.info('拉起代辦錄入窗', 'IPC:window')
-  })
-
     /** 打開 AI Agent 獨立窗(docs/19);已開則 focus,未開則 create */
     ipcMain.handle(IpcChannels.WINDOW_OPEN_AGENT, () => {
         windowManager.createAgentWindow()
