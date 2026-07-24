@@ -21,9 +21,16 @@ const IPC = {
   BALL_START_DRAG: 'floating-ball:start-drag',
   BALL_STOP_DRAG: 'floating-ball:stop-drag',
   BALL_SHOW_CONTEXT_MENU: 'floating-ball:show-context-menu',
+    BALL_GET_PET_FRAMES: 'floating-ball:get-pet-frames',
+    PUSH_BALL_MODE_CHANGED: 'floating-ball:push:mode-changed',
   WINDOW_SHOW: 'window:show',
   CONFIG_READ: 'config:read',
 } as const
+
+/** on/off 白名單:浮球 renderer 只允許訂閱造型切換推播 */
+const ALLOWED_PUSH_CHANNELS: readonly string[] = [IPC.PUSH_BALL_MODE_CHANGED]
+
+const listenerMap = new WeakMap<(...a: unknown[]) => void, (e: Electron.IpcRendererEvent, ...a: unknown[]) => void>()
 
 contextBridge.exposeInMainWorld('electronAPI', {
   floatingBall: {
@@ -32,6 +39,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     /** mouseup 時呼叫,觸發邊緣吸附動畫 */
     stopDrag: () => ipcRenderer.send(IPC.BALL_STOP_DRAG),
+
+      /** 取桌面寵物 sprite 幀(base64);進寵物模式時取一次 */
+      getPetFrames: () => ipcRenderer.invoke(IPC.BALL_GET_PET_FRAMES),
   },
 
   window: {
@@ -40,7 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   config: {
-    /** 浮球需要讀 floatingBall.quickMenu */
+      /** 浮球需要讀 floatingBall.{quickMenu, mode} */
     read: () => ipcRenderer.invoke(IPC.CONFIG_READ),
   },
 
@@ -50,4 +60,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * 主進程收到後自行讀 config.floatingBall.quickMenu,各 action.type 一站式處理。
    */
   showContextMenu: () => ipcRenderer.send(IPC.BALL_SHOW_CONTEXT_MENU),
+
+    /** 訂閱造型切換推播(白名單過濾) */
+    on(channel: string, callback: (...args: unknown[]) => void) {
+        if (!ALLOWED_PUSH_CHANNELS.includes(channel)) return
+        const existing = listenerMap.get(callback)
+        if (existing) ipcRenderer.off(channel, existing)
+        const wrapper = (_e: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)
+        listenerMap.set(callback, wrapper)
+        ipcRenderer.on(channel, wrapper)
+    },
+    off(channel: string, callback: (...args: unknown[]) => void) {
+        const wrapper = listenerMap.get(callback)
+        if (wrapper) {
+            ipcRenderer.off(channel, wrapper)
+            listenerMap.delete(callback)
+        }
+    },
 })

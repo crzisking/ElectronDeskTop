@@ -196,12 +196,14 @@ app.whenReady().then(async () => {
     config.floatingBall.snapToEdge
   )
 
-  floatingBallMgr.setBallSize(config.floatingBall.size)
+    // 依造型模式(小球/寵物)套用視窗尺寸,拿回實際邊長給拖曳 / 吸附 clamp 對齊
+    const ballSize = windowManager.applyFloatingBallMode(config.floatingBall.mode)
+    floatingBallMgr.setBallSize(ballSize)
 
   // 延遲 500ms 等浮球 WebContents 就緒，否則 setPosition 可能無效
   const { x, y } = config.floatingBall.defaultPosition
   setTimeout(() => {
-    windowManager.setFloatingBallPosition(x, y, config.floatingBall.size)
+      windowManager.setFloatingBallPosition(x, y, ballSize)
   }, 500)
 
   // TrayManager 作為 UpdateManager 的依賴注入；init() 延後到 IPC 註冊後

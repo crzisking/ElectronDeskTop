@@ -55,6 +55,7 @@ export function assembleAppConfig(db: Db): Omit<AppConfig, 'version'> {
             })),
         },
         floatingBall: {
+            mode: getKv(kv, 'floatingBall.mode', DEFAULT_CONFIG.floatingBall.mode),
             size: getKv(kv, 'floatingBall.size', DEFAULT_CONFIG.floatingBall.size),
             opacity: getKv(kv, 'floatingBall.opacity', DEFAULT_CONFIG.floatingBall.opacity),
             defaultPosition: getKv(kv, 'floatingBall.defaultPosition', DEFAULT_CONFIG.floatingBall.defaultPosition),

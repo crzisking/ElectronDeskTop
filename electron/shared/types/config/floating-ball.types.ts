@@ -2,6 +2,14 @@
  * 浮動小球配置 — app-config.json 的 "floatingBall" 區塊。
  */
 export interface FloatingBallConfig {
+    /**
+     * 造型模式:
+     *   - 'ball' 傳統圓形浮球(預設)
+     *   - 'pet'  桌面寵物(sprite 動畫,滑鼠事件驅動 hover/grab/drag/drop/poke)
+     * 使用者可從浮球右鍵菜單切換;非 dev-owned,切換後永久保存。
+     */
+    mode: 'ball' | 'pet'
+
     /** 浮球直徑(px),推薦 48-72,預設 60 */
     size: number
 
@@ -69,3 +77,4 @@ export type QuickMenuAction =
     | { type: 'navigate'; routeName: string }
     | { type: 'open-url'; url: string; target: 'browser' | 'iframe' }
     | { type: 'quit-app' }
+    | { type: 'toggle-appearance' }  // 切換小球 / 桌面寵物造型

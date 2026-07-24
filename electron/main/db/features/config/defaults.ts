@@ -41,12 +41,21 @@ export const DEFAULT_CONFIG: Omit<AppConfig, 'version'> = {
     ],
   },
   floatingBall: {
+      mode: 'pet',
     size: 80,
     opacity: 0.9,
     defaultPosition: {x: 100, y: 300},
     snapToEdge: true,
     quickMenu: [
       {id: 'menu-show-main',   label: '打開主窗口', icon: 'Monitor',     enabled: true, separator: false, action: {type: 'show-main-window'}},
+        {
+            id: 'menu-toggle-appearance',
+            label: '切換造型(小球/寵物)',
+            icon: 'MagicStick',
+            enabled: true,
+            separator: false,
+            action: {type: 'toggle-appearance'}
+        },
       {id: 'menu-sep-1',       label: '',                                  enabled: true, separator: true,  action: {type: 'show-main-window'}},
         {
             id: 'menu-go-platform',

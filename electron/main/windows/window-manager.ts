@@ -19,6 +19,7 @@ import {LogViewerWindow} from './log-viewer-window'
 import {AgentWindow} from './agent-window'
 import {IdeaCaptureWindow} from './idea-capture-window'
 import {openChildWindow} from './child-window'
+import type {FloatingBallConfig} from '../../shared/types/config/floating-ball.types'
 
 export class WindowManager {
     private main = new MainWindow()
@@ -130,6 +131,16 @@ export class WindowManager {
 
     setFloatingBallPosition(x: number, y: number, ballSize = 80): void {
         this.floatingBall.setPosition(x, y, ballSize)
+    }
+
+    /** 依造型模式(ball/pet)調整浮球視窗尺寸;回套用後的邊長,供 FloatingBallManager.setBallSize */
+    applyFloatingBallMode(mode: FloatingBallConfig['mode']): number {
+        return this.floatingBall.applyMode(mode)
+    }
+
+    /** 浮球視窗當前邊長(拖曳 / 吸附 clamp 用) */
+    getFloatingBallSize(): number {
+        return this.floatingBall.size
     }
 
     // ── 通用子窗口(unified-platform 開外部 URL 用)─────────────

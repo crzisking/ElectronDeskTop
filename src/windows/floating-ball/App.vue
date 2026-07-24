@@ -28,12 +28,18 @@ import FloatingBall from './FloatingBall.vue'
 
 html,
 body {
-  width: 80px;
-  height: 80px;
+  /* 填滿視窗(尺寸由主進程依造型 mode 決定:小球 80 / 寵物 180),內容自行置中 */
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   background: transparent;
   /* 禁用文字選中，避免拖動時出現選中效果 */
   user-select: none;
   -webkit-user-select: none;
+}
+
+#floating-ball-app {
+  width: 100%;
+  height: 100%;
 }
 </style>

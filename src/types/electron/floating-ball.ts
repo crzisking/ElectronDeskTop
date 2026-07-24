@@ -5,6 +5,8 @@
  * 主進程接管後以 ~60fps 輪詢游標位置移動窗口,放掉時觸發邊緣吸附動畫。
  */
 
+import type {PetFrames} from '@shared/types/pet.types'
+
 export interface FloatingBallAPI {
     /**
      * 開始拖動浮球。呼叫後主進程以 ~60fps 輪詢游標位置更新浮球位置。
@@ -17,4 +19,7 @@ export interface FloatingBallAPI {
      * 必須在 mouseup 事件中呼叫。
      */
     stopDrag: () => void
+
+    /** 取桌面寵物 sprite 幀(base64 data URL);進寵物模式時取一次 */
+    getPetFrames: () => Promise<PetFrames>
 }

@@ -11,20 +11,33 @@ import {BrowserWindow, screen} from 'electron'
 import {join} from 'path'
 import {logger} from '../utils/logger'
 import {resolveRendererEntry} from './internal'
+import type {FloatingBallConfig} from '../../shared/types/config/floating-ball.types'
+
+/** 小球模式視窗尺寸(緊貼球體外接正方形) */
+const BALL_SIZE = 80
+/** 寵物模式視窗尺寸:sprite 顯示約 150px,留餘量容納抓起/落下等超出動作 */
+const PET_SIZE = 180
 
 export class FloatingBallWindow {
     private window: BrowserWindow | null = null
+    /** 目前視窗邊長,依造型模式而定(ball=80 / pet=180),供拖曳吸附 clamp 用 */
+    private currentSize = BALL_SIZE
 
     get instance(): BrowserWindow | null {
         return this.window
+    }
+
+    /** 目前視窗邊長(FloatingBallManager 拖曳 / 吸附的 clamp 尺寸) */
+    get size(): number {
+        return this.currentSize
     }
 
     create(): BrowserWindow {
         // 視窗緊貼球體外接正方形(80×80),不留 padding —— 已去掉 box-shadow,
         // 同時最小化四角透明區,拖動時 Windows DWM 不會把多餘透明矩形描出來
         this.window = new BrowserWindow({
-            width: 80,
-            height: 80,
+            width: BALL_SIZE,
+            height: BALL_SIZE,
             frame: false,
             transparent: true,
             alwaysOnTop: true,
@@ -108,6 +121,22 @@ export class FloatingBallWindow {
             'FloatingBallWindow',
         )
         this.window.setPosition(fallbackX, fallbackY)
+    }
+
+    /**
+     * 依造型模式調整視窗尺寸(ball=80 / pet=180)。
+     * 保持左上角座標不變、就地放大/縮小,再走 setPosition 依新尺寸 clamp 回顯示器內。
+     * @returns 套用後的視窗邊長(供 FloatingBallManager.setBallSize 對齊 clamp)
+     */
+    applyMode(mode: FloatingBallConfig['mode']): number {
+        const size = mode === 'pet' ? PET_SIZE : BALL_SIZE
+        this.currentSize = size
+        if (!this.window || this.window.isDestroyed()) return size
+        const [x, y] = this.window.getPosition()
+        this.window.setSize(size, size)
+        this.setPosition(x, y, size)  // 依新尺寸夾回顯示器,避免放大後右/下越界
+        logger.info(`浮球造型切換為 ${mode}(視窗 ${size}×${size})`, 'FloatingBallWindow')
+        return size
     }
 
     destroy(): void {

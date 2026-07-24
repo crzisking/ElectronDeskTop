@@ -58,6 +58,10 @@ export function applyPartial(db: Db, partial: Partial<AppConfig>): void {
 
         // ── floatingBall(散值 + quickMenu collection)──
         if (partial.floatingBall) {
+            // mode 非 dev-owned(resync 不覆寫),故條件寫入:partial 沒帶 mode 時不動既有值
+            if (partial.floatingBall.mode !== undefined) {
+                upsertKv(tx, 'floatingBall.mode', partial.floatingBall.mode)
+            }
             upsertKv(tx, 'floatingBall.size', partial.floatingBall.size)
             upsertKv(tx, 'floatingBall.opacity', partial.floatingBall.opacity)
             upsertKv(tx, 'floatingBall.defaultPosition', partial.floatingBall.defaultPosition)

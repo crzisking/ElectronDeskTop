@@ -340,6 +340,15 @@ watch(
   }
 }
 
+/* 全域 body 設了 user-select:none,對話文字會繼承而無法複製;
+   這裡把答案(markdown)與使用者提問重新開放成可選取,方便框選複製。 */
+.ks-markdown,
+.ks-msg__content {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
 /* markdown 渲染區:壓掉外距、給程式碼 / 表格 / 引用基本樣式 */
 .ks-markdown {
   font-size: 14px;
@@ -373,7 +382,7 @@ watch(
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--el-fill-color);
-  font-family: var(--el-font-family-mono, monospace);
+  font-family: var(--app-font-mono);
   font-size: 0.92em;
 }
 
