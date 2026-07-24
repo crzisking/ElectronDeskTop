@@ -19,12 +19,12 @@ interface AnimSpec {
 
 /** 各動作的節奏 / 循環規則(fps 越小越慢;動作切換的節奏也由此決定) */
 const ANIM: Record<PetAction, AnimSpec> = {
-    idle: {fps: 2, loop: true},
-    hover: {fps: 4, loop: true},
-    grab: {fps: 6, loop: false},            // 抓起:播一次停在末幀,等 drag/drop 接手
-    drag: {fps: 5, loop: true},
-    drop: {fps: 6, loop: false, next: 'idle'},
-    poke: {fps: 5, loop: false, next: 'idle'},
+    idle: {fps: 1.5, loop: true},
+    hover: {fps: 3, loop: true},
+    grab: {fps: 4, loop: false},            // 抓起:播一次停在末幀,等 drag/drop 接手
+    drag: {fps: 3.5, loop: true},
+    drop: {fps: 4, loop: false, next: 'idle'},
+    poke: {fps: 3.5, loop: false, next: 'idle'},
 }
 
 export function usePetAnimator() {

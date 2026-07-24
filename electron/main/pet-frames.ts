@@ -20,7 +20,7 @@ import type {PetFrames} from '../shared/types/pet.types'
 const FOLDER_MAP: Record<keyof PetFrames, string> = {
     idle: 'idlenoback',
     hover: 'hovernoback',
-    grab: 'grapnoback',
+    grab: 'grabnoback',
     drag: 'dragnoback',
     drop: 'dropnoback',
     poke: 'pokenoback',
